@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-credit-card me-2"></i>Payments</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-download me-1"></i>Export
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list me-2"></i>Payment History</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Booking ID</th>
+                                <th>Customer</th>
+                                <th>Movie</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if payments %}
+                                {% for payment in payments %}
+                                <tr>
+                                    <td>{{ payment.id }}</td>
+                                    <td>
+                                        <a href="{{ url_for('bookings.view', id=payment.booking.id) }}" class="text-decoration-none">
+                                            #{{ payment.booking.id }}
+                                        </a>
+                                    </td>
+                                    <td>{{ payment.booking.customer_name }}</td>
+                                    <td>{{ payment.booking.show.movie.title }}</td>
+                                    <td>₹{{ "%.2f"|format(payment.amount) }}</td>
+                                    <td>
+                                        {% if payment.payment_method %}
+                                        <span class="badge bg-info">{{ payment.payment_method }}</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if payment.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif payment.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif payment.status == 'failed' %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% elif payment.status == 'refunded' %}
+                                            <span class="badge bg-secondary">Refunded</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">{{ payment.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ payment.payment_date.strftime('%d %b %Y %H:%M') if payment.payment_date else '-' }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('payments.receipt', id=payment.id) }}" class="btn btn-outline-primary" title="View Receipt">
+                                                <i class="fas fa-receipt"></i>
+                                            </a>
+                                            {% if current_user.role == 'admin' and payment.status == 'completed' %}
+                                            <button type="button" class="btn btn-outline-warning" title="Process Refund">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-4">
+                                        <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No payments found</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">Completed</h5>
+                <h2 class="text-success">{{ completed_payments or 0 }}</h2>
+                <p class="text-muted">Payments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">Pending</h5>
+                <h2 class="text-warning">{{ pending_payments or 0 }}</h2>
+                <p class="text-muted">Payments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-danger">
+            <div class="card-body">
+                <h5 class="card-title text-danger">Failed</h5>
+                <h2 class="text-danger">{{ failed_payments or 0 }}</h2>
+                <p class="text-muted">Payments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <h5 class="card-title text-info">Total Revenue</h5>
+                <h2 class="text-info">₹{{ "%.2f"|format(total_revenue or 0) }}</h2>
+                <p class="text-muted">This Month</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

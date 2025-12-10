@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Bookings</h1>
+            <a href="{{ url_for('bookings.new') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>New Booking
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="mb-0">Booking List</h5>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Search bookings..." id="searchInput">
+                            <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Customer Name</th>
+                                <th>Movie</th>
+                                <th>Screen</th>
+                                <th>Show Date & Time</th>
+                                <th>Seats</th>
+                                <th>Amount</th>
+                                <th>Payment Method</th>
+                                <th>Booked By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Sample data - this would be populated from the database -->
+                            <tr>
+                                <td>#1001</td>
+                                <td>John Doe</td>
+                                <td>Avatar 2</td>
+                                <td>Screen 1</td>
+                                <td>2023-12-10 18:30</td>
+                                <td>A5, A6</td>
+                                <td>$24.00</td>
+                                <td><span class="badge bg-success">Cash</span></td>
+                                <td>admin</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Cancel Booking">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>#1002</td>
+                                <td>Jane Smith</td>
+                                <td>Oppenheimer</td>
+                                <td>Screen 2</td>
+                                <td>2023-12-10 21:00</td>
+                                <td>B3, B4, B5</td>
+                                <td>$36.00</td>
+                                <td><span class="badge bg-info">Card</span></td>
+                                <td>cashier1</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Cancel Booking">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <!-- More rows would be populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <nav aria-label="Bookings pagination">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1">Previous</a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Details Modal -->
+<div class="modal fade" id="bookingDetailsModal" tabindex="-1" aria-labelledby="bookingDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bookingDetailsModalLabel">Booking Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Booking details would be populated here -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Booking ID:</strong> #1001
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Booking Time:</strong> 2023-12-09 15:30:00
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Customer Name:</strong> John Doe
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Payment Method:</strong> Cash
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <strong>Movie:</strong> Avatar 2
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Screen:</strong> Screen 1
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Show Time:</strong> 2023-12-10 18:30
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <strong>Seats:</strong> A5, A6
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <strong>Total Amount:</strong> $24.00
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" id="cancelBookingBtn">Cancel Booking</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        
+        searchBtn.addEventListener('click', function() {
+            const searchTerm = searchInput.value.toLowerCase();
+            // Implement search functionality
+            console.log('Searching for:', searchTerm);
+        });
+        
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchBtn.click();
+            }
+        });
+        
+        // View booking details
+        const viewButtons = document.querySelectorAll('.btn-outline-primary');
+        viewButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const modal = new bootstrap.Modal(document.getElementById('bookingDetailsModal'));
+                modal.show();
+            });
+        });
+        
+        // Cancel booking
+        const cancelButtons = document.querySelectorAll('.btn-outline-danger');
+        cancelButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to cancel this booking?')) {
+                    // Implement cancel booking functionality
+                    console.log('Cancelling booking');
+                }
+            });
+        });
+        
+        // Modal cancel button
+        const cancelBookingBtn = document.getElementById('cancelBookingBtn');
+        cancelBookingBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to cancel this booking?')) {
+                // Implement cancel booking functionality
+                const modal = bootstrap.Modal.getInstance(document.getElementById('bookingDetailsModal'));
+                modal.hide();
+                console.log('Cancelling booking from modal');
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">New Booking</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Booking Details</h5>
+            </div>
+            <div class="card-body">
+                <form id="bookingForm">
+                    <!-- Customer Information -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6>Customer Information</h6>
+                            <hr>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="customerName" class="form-label">Customer Name</label>
+                            <input type="text" class="form-control" id="customerName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="customerPhone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="customerPhone">
+                        </div>
+                    </div>
+
+                    <!-- Movie Selection -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6>Select Movie</h6>
+                            <hr>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="movieSelect" class="form-label">Movie</label>
+                            <select class="form-select" id="movieSelect" required>
+                                <option value="" selected disabled>Select a movie</option>
+                                <option value="1">Avatar 2</option>
+                                <option value="2">Oppenheimer</option>
+                                <option value="3">Barbie</option>
+                                <option value="4">Fast X</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Show Selection -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6>Select Show</h6>
+                            <hr>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="showDate" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="showDate" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="showTime" class="form-label">Time</label>
+                            <select class="form-select" id="showTime" required>
+                                <option value="" selected disabled>Select a time</option>
+                                <option value="09:00">09:00 AM</option>
+                                <option value="12:00">12:00 PM</option>
+                                <option value="15:00">03:00 PM</option>
+                                <option value="18:30">06:30 PM</option>
+                                <option value="21:00">09:00 PM</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="screenSelect" class="form-label">Screen</label>
+                            <select class="form-select" id="screenSelect" required>
+                                <option value="" selected disabled>Select a screen</option>
+                                <option value="1">Screen 1 (Premium)</option>
+                                <option value="2">Screen 2 (Standard)</option>
+                                <option value="3">Screen 3 (Standard)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Seat Selection -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6>Select Seats</h6>
+                            <hr>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <div>
+                                    <span class="badge bg-success me-2">Available</span>
+                                    <span class="badge bg-warning me-2">Selected</span>
+                                    <span class="badge bg-secondary">Booked</span>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="resetSeats">Reset Selection</button>
+                                </div>
+                            </div>
+                            <div class="seat-layout p-3 bg-light rounded">
+                                <div class="screen text-center mb-3">SCREEN</div>
+                                <div class="seat-container">
+                                    <!-- Row A -->
+                                    <div class="seat-row mb-2">
+                                        <div class="seat-label me-2">A</div>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A1">A1</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A2">A2</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A3">A3</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A4">A4</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A5">A5</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A6">A6</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A7">A7</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A8">A8</button>
+                                    </div>
+                                    <!-- Row B -->
+                                    <div class="seat-row mb-2">
+                                        <div class="seat-label me-2">B</div>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B1">B1</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B2">B2</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B3">B3</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B4">B4</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B5">B5</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B6">B6</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B7">B7</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B8">B8</button>
+                                    </div>
+                                    <!-- Row C -->
+                                    <div class="seat-row mb-2">
+                                        <div class="seat-label me-2">C</div>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C1">C1</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C2">C2</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C3">C3</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C4">C4</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C5">C5</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C6">C6</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C7">C7</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C8">C8</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Information -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6>Payment Information</h6>
+                            <hr>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="paymentMethod" class="form-label">Payment Method</label>
+                            <select class="form-select" id="paymentMethod" required>
+                                <option value="" selected disabled>Select payment method</option>
+                                <option value="cash">Cash</option>
+                                <option value="card">Credit/Debit Card</option>
+                                <option value="upi">UPI</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="referenceId" class="form-label">Reference ID (if applicable)</label>
+                            <input type="text" class="form-control" id="referenceId">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Create Booking
+                            </button>
+                            <a href="{{ url_for('bookings.index') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Booking Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Movie:</strong> <span id="summaryMovie">Not selected</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Date:</strong> <span id="summaryDate">Not selected</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Time:</strong> <span id="summaryTime">Not selected</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Screen:</strong> <span id="summaryScreen">Not selected</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Seats:</strong> <span id="summarySeats">None selected</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Price per seat:</strong> $<span id="summaryPricePerSeat">12.00</span>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <strong>Total Amount:</strong> $<span id="summaryTotal">0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const seatPrice = 12.00;
+        let selectedSeats = [];
+        
+        // Seat selection
+        const seatButtons = document.querySelectorAll('.seat');
+        seatButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const seatId = this.getAttribute('data-seat');
+                
+                if (this.classList.contains('btn-outline-success')) {
+                    // Select seat
+                    this.classList.remove('btn-outline-success');
+                    this.classList.add('btn-warning');
+                    selectedSeats.push(seatId);
+                } else if (this.classList.contains('btn-warning')) {
+                    // Deselect seat
+                    this.classList.remove('btn-warning');
+                    this.classList.add('btn-outline-success');
+                    selectedSeats = selectedSeats.filter(seat => seat !== seatId);
+                }
+                
+                updateSummary();
+            });
+        });
+        
+        // Reset seat selection
+        document.getElementById('resetSeats').addEventListener('click', function() {
+            selectedSeats = [];
+            seatButtons.forEach(button => {
+                if (button.classList.contains('btn-warning')) {
+                    button.classList.remove('btn-warning');
+                    button.classList.add('btn-outline-success');
+                }
+            });
+            updateSummary();
+        });
+        
+        // Update summary when form fields change
+        document.getElementById('movieSelect').addEventListener('change', updateSummary);
+        document.getElementById('showDate').addEventListener('change', updateSummary);
+        document.getElementById('showTime').addEventListener('change', updateSummary);
+        document.getElementById('screenSelect').addEventListener('change', updateSummary);
+        
+        function updateSummary() {
+            // Update movie
+            const movieSelect = document.getElementById('movieSelect');
+            const summaryMovie = document.getElementById('summaryMovie');
+            summaryMovie.textContent = movieSelect.options[movieSelect.selectedIndex]?.text || 'Not selected';
+            
+            // Update date
+            const showDate = document.getElementById('showDate');
+            const summaryDate = document.getElementById('summaryDate');
+            summaryDate.textContent = showDate.value || 'Not selected';
+            
+            // Update time
+            const showTime = document.getElementById('showTime');
+            const summaryTime = document.getElementById('summaryTime');
+            summaryTime.textContent = showTime.options[showTime.selectedIndex]?.text || 'Not selected';
+            
+            // Update screen
+            const screenSelect = document.getElementById('screenSelect');
+            const summaryScreen = document.getElementById('summaryScreen');
+            summaryScreen.textContent = screenSelect.options[screenSelect.selectedIndex]?.text || 'Not selected';
+            
+            // Update seats
+            const summarySeats = document.getElementById('summarySeats');
+            summarySeats.textContent = selectedSeats.length > 0 ? selectedSeats.join(', ') : 'None selected';
+            
+            // Update total
+            const totalAmount = selectedSeats.length * seatPrice;
+            document.getElementById('summaryTotal').textContent = totalAmount.toFixed(2);
+        }
+        
+        // Form submission
+        document.getElementById('bookingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (selectedSeats.length === 0) {
+                alert('Please select at least one seat');
+                return;
+            }
+            
+            // Collect form data
+            const formData = {
+                customerName: document.getElementById('customerName').value,
+                customerPhone: document.getElementById('customerPhone').value,
+                movieId: document.getElementById('movieSelect').value,
+                showDate: document.getElementById('showDate').value,
+                showTime: document.getElementById('showTime').value,
+                screenId: document.getElementById('screenSelect').value,
+                seats: selectedSeats,
+                paymentMethod: document.getElementById('paymentMethod').value,
+                referenceId: document.getElementById('referenceId').value,
+                totalAmount: selectedSeats.length * seatPrice
+            };
+            
+            // In a real application, this would be sent to the server
+            console.log('Booking data:', formData);
+            
+            // Show success message
+            alert('Booking created successfully!');
+            
+            // Redirect to bookings list
+            window.location.href = "{{ url_for('bookings.index') }}";
+        });
+    });
+</script>
+
+<style>
+    .seat-layout {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    
+    .screen {
+        background-color: #ccc;
+        padding: 5px;
+        border-radius: 5px;
+        font-weight: bold;
+    }
+    
+    .seat-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .seat-row {
+        display: flex;
+        align-items: center;
+    }
+    
+    .seat-label {
+        width: 20px;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    .seat {
+        width: 35px;
+        height: 35px;
+        margin: 2px;
+        font-size: 12px;
+        padding: 0;
+    }
+</style>
+{% endblock %}

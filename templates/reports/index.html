@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Reports</h1>
+    </div>
+</div>
+
+{% if current_user.is_admin() %}
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Daily Sales</h5>
+                <p class="card-text">View today's sales report</p>
+                <a href="{{ url_for('reports.daily_sales') }}" class="btn btn-light">
+                    <i class="fas fa-chart-line me-1"></i>View Report
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title">Occupancy</h5>
+                <p class="card-text">View seat occupancy reports</p>
+                <a href="{{ url_for('reports.occupancy') }}" class="btn btn-light">
+                    <i class="fas fa-chair me-1"></i>View Report
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Cashier Summary</h5>
+                <p class="card-text">View cashier performance</p>
+                <a href="{{ url_for('reports.cashier_summary') }}" class="btn btn-light">
+                    <i class="fas fa-users me-1"></i>View Report
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">Payment Methods</h5>
+                <p class="card-text">Payment method breakdown</p>
+                <button class="btn btn-light" onclick="showPaymentReport()">
+                    <i class="fas fa-credit-card me-1"></i>View Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <h3 class="text-primary">$2,450</h3>
+                        <p class="text-muted">Today's Revenue</p>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <h3 class="text-success">85%</h3>
+                        <p class="text-muted">Occupancy Rate</p>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <h3 class="text-info">142</h3>
+                        <p class="text-muted">Today's Bookings</p>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <h3 class="text-warning">4.8</h3>
+                        <p class="text-muted">Avg. Tickets/Booking</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Date Range Reports</h5>
+            </div>
+            <div class="card-body">
+                <form id="dateRangeForm">
+                    <div class="mb-3">
+                        <label for="startDate" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="startDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="endDate" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="endDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reportType" class="form-label">Report Type</label>
+                        <select class="form-select" id="reportType" required>
+                            <option value="sales">Sales Report</option>
+                            <option value="occupancy">Occupancy Report</option>
+                            <option value="movies">Movie Performance</option>
+                            <option value="screens">Screen Utilization</option>
+                        </select>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-download me-1"></i>Generate Report
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Movie</th>
+                                <th>Screen</th>
+                                <th>Seats</th>
+                                <th>Amount</th>
+                                <th>Cashier</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>2023-12-10</td>
+                                <td>14:30</td>
+                                <td>Avatar 2</td>
+                                <td>Screen 1</td>
+                                <td>4</td>
+                                <td>$48.00</td>
+                                <td>admin</td>
+                            </tr>
+                            <tr>
+                                <td>2023-12-10</td>
+                                <td>13:45</td>
+                                <td>Oppenheimer</td>
+                                <td>Screen 2</td>
+                                <td>2</td>
+                                <td>$24.00</td>
+                                <td>cashier1</td>
+                            </tr>
+                            <tr>
+                                <td>2023-12-10</td>
+                                <td>12:15</td>
+                                <td>Jawan</td>
+                                <td>Screen 3</td>
+                                <td>6</td>
+                                <td>$72.00</td>
+                                <td>cashier2</td>
+                            </tr>
+                            <tr>
+                                <td>2023-12-10</td>
+                                <td>11:30</td>
+                                <td>Avatar 2</td>
+                                <td>Screen 1</td>
+                                <td>3</td>
+                                <td>$36.00</td>
+                                <td>admin</td>
+                            </tr>
+                            <tr>
+                                <td>2023-12-10</td>
+                                <td>10:45</td>
+                                <td>Fast X</td>
+                                <td>Screen 4</td>
+                                <td>2</td>
+                                <td>$24.00</td>
+                                <td>cashier1</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Methods Modal -->
+<div class="modal fade" id="paymentMethodsModal" tabindex="-1" aria-labelledby="paymentMethodsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentMethodsModalLabel">Payment Methods Breakdown</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="paymentChart"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Payment Method</th>
+                                        <th>Count</th>
+                                        <th>Amount</th>
+                                        <th>Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="badge bg-success">Cash</span></td>
+                                        <td>85</td>
+                                        <td>$1,020.00</td>
+                                        <td>41.7%</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-info">Card</span></td>
+                                        <td>95</td>
+                                        <td>$1,140.00</td>
+                                        <td>46.5%</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-warning">UPI</span></td>
+                                        <td>25</td>
+                                        <td>$300.00</td>
+                                        <td>11.8%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="exportPaymentReport()">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">Access Denied</h4>
+            <p>You don't have permission to access the reports section. This feature is only available to administrators.</p>
+            <hr>
+            <p class="mb-0">Please contact your system administrator if you need access to these reports.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set today's date as default for date range form
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('startDate').value = today;
+        document.getElementById('endDate').value = today;
+        
+        // Date range form submission
+        document.getElementById('dateRangeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const reportType = document.getElementById('reportType').value;
+            
+            // In a real application, this would generate and download a report
+            console.log('Generating report:', { startDate, endDate, reportType });
+            
+            alert(`Generating ${reportType} report from ${startDate} to ${endDate}`);
+            
+            // In a real app, this would trigger a download or redirect to a report page
+        });
+    });
+    
+    function showPaymentReport() {
+        const modal = new bootstrap.Modal(document.getElementById('paymentMethodsModal'));
+        modal.show();
+        
+        // In a real application, you would initialize a chart here
+        // For demo purposes, we'll just show a simple message
+        setTimeout(() => {
+            const canvas = document.getElementById('paymentChart');
+            const ctx = canvas.getContext('2d');
+            
+            // Simple chart representation (in a real app, you'd use Chart.js or similar)
+            ctx.fillStyle = '#28a745';
+            ctx.fillRect(50, 50, 100, 100);
+            
+            ctx.fillStyle = '#17a2b8';
+            ctx.fillRect(50, 160, 100, 100);
+            
+            ctx.fillStyle = '#ffc107';
+            ctx.fillRect(50, 270, 100, 100);
+        }, 500);
+    }
+    
+    function exportPaymentReport() {
+        // In a real application, this would export the payment report
+        console.log('Exporting payment report');
+        alert('Payment report exported successfully!');
+    }
+</script>
+{% endblock %}

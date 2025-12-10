@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-ticket-alt me-2"></i>Booking Details</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5>Booking Information</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Booking ID:</strong></td>
+                                <td>#{{ booking.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Customer:</strong></td>
+                                <td>{{ booking.customer_name }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Contact:</strong></td>
+                                <td>{{ booking.contact_number }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ booking.email or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Booking Date:</strong></td>
+                                <td>{{ booking.booking_date.strftime('%d %b %Y %H:%M') }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    {% if booking.status == 'confirmed' %}
+                                        <span class="badge bg-success">Confirmed</span>
+                                    {% elif booking.status == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% elif booking.status == 'cancelled' %}
+                                        <span class="badge bg-danger">Cancelled</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ booking.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Movie Information</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Movie:</strong></td>
+                                <td>{{ booking.show.movie.title }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Screen:</strong></td>
+                                <td>{{ booking.show.screen.name }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Show Date:</strong></td>
+                                <td>{{ booking.show.show_date.strftime('%d %b %Y') }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Show Time:</strong></td>
+                                <td>{{ booking.show.show_time.strftime('%H:%M') }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Seats:</strong></td>
+                                <td>{{ booking.seats }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h5>Payment Information</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Total Amount:</strong></td>
+                                <td>₹{{ "%.2f"|format(booking.total_amount) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Payment Status:</strong></td>
+                                <td>
+                                    {% if booking.payment_status == 'paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% elif booking.payment_status == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% elif booking.payment_status == 'failed' %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ booking.payment_status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if booking.payment_method %}
+                            <tr>
+                                <td><strong>Payment Method:</strong></td>
+                                <td>{{ booking.payment_method }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if booking.payment_date %}
+                            <tr>
+                                <td><strong>Payment Date:</strong></td>
+                                <td>{{ booking.payment_date.strftime('%d %b %Y %H:%M') }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('bookings.index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Bookings
+                    </a>
+                    <div>
+                        {% if booking.payment_status == 'pending' %}
+                        <a href="{{ url_for('payments.process', booking_id=booking.id) }}" class="btn btn-primary">
+                            <i class="fas fa-credit-card me-2"></i>Process Payment
+                        </a>
+                        {% endif %}
+                        {% if booking.payment_status == 'paid' %}
+                        <a href="{{ url_for('payments.receipt', id=booking.id) }}" class="btn btn-info">
+                            <i class="fas fa-receipt me-2"></i>View Receipt
+                        </a>
+                        {% endif %}
+                        {% if current_user.role == 'admin' %}
+                        <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="fas fa-trash me-2"></i>Delete
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle me-2"></i>Seat Layout</h5>
+            </div>
+            <div class="card-body">
+                <div class="screen-preview">
+                    <div class="screen-text">SCREEN</div>
+                    <div class="seats-container">
+                        {% for seat in booking.seats_list %}
+                        <div class="seat booked">{{ seat }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-history me-2"></i>Booking History</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">No previous bookings for this customer.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if current_user.role == 'admin' %}
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this booking? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('bookings.delete', id=booking.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Delete Booking</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block styles %}
+<style>
+.screen-preview {
+    text-align: center;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.screen-text {
+    background-color: #6c757d;
+    color: white;
+    padding: 8px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.seats-container {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 5px;
+    max-width: 200px;
+    margin: 0 auto;
+}
+
+.seat {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.seat.booked {
+    background-color: #dc3545;
+    color: white;
+}
+</style>
+{% endblock %}

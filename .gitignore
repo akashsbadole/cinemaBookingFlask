@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Database
+data/db.sqlite
+data/backups/
+data/receipts/
+data/prescriptions/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Configuration
+config.ini
+settings.ini
+
+# Test
+.test_cache/
+htmlcov/

@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Movies</h1>
+            {% if current_user.is_admin() %}
+            <a href="{{ url_for('movies.add') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Add Movie
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Search movies..." id="searchInput">
+            <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" id="statusFilter">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" id="languageFilter">
+            <option value="">All Languages</option>
+            <option value="English">English</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Tamil">Tamil</option>
+            <option value="Telugu">Telugu</option>
+        </select>
+    </div>
+</div>
+
+<!-- Grid View -->
+<div class="row" id="gridView">
+    <!-- Sample Movie Card 1 -->
+    <div class="col-md-4 mb-4 movie-item" data-status="active" data-language="English">
+        <div class="card h-100">
+            <div class="card-img-top bg-primary text-white text-center p-4">
+                <i class="fas fa-film fa-3x"></i>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Avatar 2</h5>
+                <div class="mb-2">
+                    <span class="badge bg-success me-1">Active</span>
+                    <span class="badge bg-info me-1">English</span>
+                </div>
+                <p class="card-text">
+                    <strong>Duration:</strong> 192 minutes<br>
+                    <strong>Language:</strong> English
+                </p>
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewMovieDetails(1)">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    {% if current_user.is_admin() %}
+                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="editMovie(1)">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMovie(1)">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sample Movie Card 2 -->
+    <div class="col-md-4 mb-4 movie-item" data-status="active" data-language="English">
+        <div class="card h-100">
+            <div class="card-img-top bg-success text-white text-center p-4">
+                <i class="fas fa-film fa-3x"></i>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Oppenheimer</h5>
+                <div class="mb-2">
+                    <span class="badge bg-success me-1">Active</span>
+                    <span class="badge bg-info me-1">English</span>
+                </div>
+                <p class="card-text">
+                    <strong>Duration:</strong> 180 minutes<br>
+                    <strong>Language:</strong> English
+                </p>
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewMovieDetails(2)">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    {% if current_user.is_admin() %}
+                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="editMovie(2)">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMovie(2)">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sample Movie Card 3 -->
+    <div class="col-md-4 mb-4 movie-item" data-status="active" data-language="Hindi">
+        <div class="card h-100">
+            <div class="card-img-top bg-warning text-white text-center p-4">
+                <i class="fas fa-film fa-3x"></i>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Jawan</h5>
+                <div class="mb-2">
+                    <span class="badge bg-success me-1">Active</span>
+                    <span class="badge bg-info me-1">Hindi</span>
+                </div>
+                <p class="card-text">
+                    <strong>Duration:</strong> 165 minutes<br>
+                    <strong>Language:</strong> Hindi
+                </p>
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewMovieDetails(3)">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    {% if current_user.is_admin() %}
+                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="editMovie(3)">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMovie(3)">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sample Movie Card 4 -->
+    <div class="col-md-4 mb-4 movie-item" data-status="inactive" data-language="English">
+        <div class="card h-100">
+            <div class="card-img-top bg-secondary text-white text-center p-4">
+                <i class="fas fa-film fa-3x"></i>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Fast X</h5>
+                <div class="mb-2">
+                    <span class="badge bg-secondary me-1">Inactive</span>
+                    <span class="badge bg-info me-1">English</span>
+                </div>
+                <p class="card-text">
+                    <strong>Duration:</strong> 141 minutes<br>
+                    <strong>Language:</strong> English
+                </p>
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewMovieDetails(4)">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    {% if current_user.is_admin() %}
+                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="editMovie(4)">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMovie(4)">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table View (hidden by default) -->
+<div class="card d-none" id="tableView">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Duration</th>
+                        <th>Language</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>Avatar 2</td>
+                        <td>192 minutes</td>
+                        <td>English</td>
+                        <td><span class="badge bg-success">Active</span></td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewMovieDetails(1)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if current_user.is_admin() %}
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="editMovie(1)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMovie(1)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>Oppenheimer</td>
+                        <td>180 minutes</td>
+                        <td>English</td>
+                        <td><span class="badge bg-success">Active</span></td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewMovieDetails(2)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if current_user.is_admin() %}
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="editMovie(2)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMovie(2)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>Jawan</td>
+                        <td>165 minutes</td>
+                        <td>Hindi</td>
+                        <td><span class="badge bg-success">Active</span></td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewMovieDetails(3)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if current_user.is_admin() %}
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="editMovie(3)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMovie(3)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>Fast X</td>
+                        <td>141 minutes</td>
+                        <td>English</td>
+                        <td><span class="badge bg-secondary">Inactive</span></td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewMovieDetails(4)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if current_user.is_admin() %}
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="editMovie(4)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMovie(4)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- View Toggle -->
+<div class="d-flex justify-content-end mb-3">
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-primary active" id="gridViewBtn">
+            <i class="fas fa-th"></i> Grid
+        </button>
+        <button type="button" class="btn btn-outline-primary" id="tableViewBtn">
+            <i class="fas fa-list"></i> Table
+        </button>
+    </div>
+</div>
+
+<!-- Movie Details Modal -->
+<div class="modal fade" id="movieDetailsModal" tabindex="-1" aria-labelledby="movieDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="movieDetailsModalLabel">Movie Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Movie details would be populated here -->
+                <div id="movieDetailsContent">
+                    <!-- Content will be dynamically loaded -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const statusFilter = document.getElementById('statusFilter');
+        const languageFilter = document.getElementById('languageFilter');
+        
+        function filterMovies() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const statusValue = statusFilter.value;
+            const languageValue = languageFilter.value;
+            
+            const movieItems = document.querySelectorAll('.movie-item');
+            movieItems.forEach(item => {
+                const title = item.querySelector('.card-title').textContent.toLowerCase();
+                const status = item.getAttribute('data-status');
+                const language = item.getAttribute('data-language');
+                
+                const matchesSearch = title.includes(searchTerm);
+                const matchesStatus = !statusValue || status === statusValue;
+                const matchesLanguage = !languageValue || language === languageValue;
+                
+                if (matchesSearch && matchesStatus && matchesLanguage) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+        
+        searchBtn.addEventListener('click', filterMovies);
+        searchInput.addEventListener('input', filterMovies);
+        statusFilter.addEventListener('change', filterMovies);
+        languageFilter.addEventListener('change', filterMovies);
+        
+        // View toggle
+        const gridView = document.getElementById('gridView');
+        const tableView = document.getElementById('tableView');
+        const gridViewBtn = document.getElementById('gridViewBtn');
+        const tableViewBtn = document.getElementById('tableViewBtn');
+        
+        gridViewBtn.addEventListener('click', function() {
+            gridView.classList.remove('d-none');
+            tableView.classList.add('d-none');
+            gridViewBtn.classList.add('active');
+            tableViewBtn.classList.remove('active');
+        });
+        
+        tableViewBtn.addEventListener('click', function() {
+            gridView.classList.add('d-none');
+            tableView.classList.remove('d-none');
+            gridViewBtn.classList.remove('active');
+            tableViewBtn.classList.add('active');
+        });
+    });
+    
+    function viewMovieDetails(movieId) {
+        // In a real application, this would fetch data from the server
+        const movieData = {
+            1: { name: 'Avatar 2', duration: 192, language: 'English', status: 'Active' },
+            2: { name: 'Oppenheimer', duration: 180, language: 'English', status: 'Active' },
+            3: { name: 'Jawan', duration: 165, language: 'Hindi', status: 'Active' },
+            4: { name: 'Fast X', duration: 141, language: 'English', status: 'Inactive' }
+        };
+        
+        const movie = movieData[movieId];
+        const detailsContent = document.getElementById('movieDetailsContent');
+        
+        detailsContent.innerHTML = `
+            <div class="mb-3">
+                <strong>Name:</strong> ${movie.name}
+            </div>
+            <div class="mb-3">
+                <strong>Duration:</strong> ${movie.duration} minutes
+            </div>
+            <div class="mb-3">
+                <strong>Language:</strong> ${movie.language}
+            </div>
+            <div class="mb-3">
+                <strong>Status:</strong> <span class="badge ${movie.status === 'Active' ? 'bg-success' : 'bg-secondary'}">${movie.status}</span>
+            </div>
+        `;
+        
+        const modal = new bootstrap.Modal(document.getElementById('movieDetailsModal'));
+        modal.show();
+    }
+    
+    function editMovie(movieId) {
+        // In a real application, this would redirect to the edit page
+        window.location.href = `/movies/edit/${movieId}`;
+    }
+    
+    function deleteMovie(movieId) {
+        if (confirm('Are you sure you want to delete this movie?')) {
+            // In a real application, this would send a delete request to the server
+            console.log('Deleting movie:', movieId);
+            
+            // For demo purposes, just show an alert
+            alert('Movie deleted successfully!');
+            
+            // In a real app, you would refresh the page or update the UI
+        }
+    }
+</script>
+{% endblock %}

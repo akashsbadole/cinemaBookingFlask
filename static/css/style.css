@@ -1,0 +1,243 @@
+/* Cinema POS System Custom Styles */
+
+/* Global Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Navbar Styles */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.navbar-nav .nav-link {
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Card Styles */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-bottom: none;
+    background-color: transparent;
+    font-weight: 600;
+}
+
+/* Button Styles */
+.btn {
+    border-radius: 5px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+    transform: translateY(-2px);
+}
+
+/* Form Styles */
+.form-control {
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Alert Styles */
+.alert {
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+/* Dashboard Stats */
+.dashboard-stats {
+    text-align: center;
+    padding: 20px;
+}
+
+.dashboard-stats h3 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-stats p {
+    color: #6c757d;
+    margin: 0;
+}
+
+/* Footer Styles */
+footer {
+    background-color: #f8f9fa !important;
+    border-top: 1px solid #dee2e6;
+    margin-top: auto;
+}
+
+/* Seat Selection Grid (for future implementation) */
+.seat-grid {
+    display: grid;
+    gap: 5px;
+    margin: 20px 0;
+    justify-content: center;
+}
+
+.seat {
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.seat.available {
+    background-color: #28a745;
+    color: white;
+}
+
+.seat.selected {
+    background-color: #ffc107;
+    color: black;
+}
+
+.seat.booked {
+    background-color: #dc3545;
+    color: white;
+    cursor: not-allowed;
+}
+
+.seat.unavailable {
+    background-color: #6c757d;
+    color: white;
+    cursor: not-allowed;
+}
+
+/* Movie Card Styles */
+.movie-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.movie-poster {
+    height: 300px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.movie-info {
+    padding: 15px;
+}
+
+.movie-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.movie-details {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Booking Summary */
+.booking-summary {
+    position: sticky;
+    top: 20px;
+}
+
+.booking-summary .card {
+    background-color: #f8f9fa;
+}
+
+.booking-summary .list-group-item {
+    border: none;
+    padding: 10px 0;
+}
+
+.booking-summary .total {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .dashboard-stats h3 {
+        font-size: 2rem;
+    }
+    
+    .card {
+        margin-bottom: 15px;
+    }
+    
+    .seat {
+        width: 25px;
+        height: 25px;
+        font-size: 10px;
+    }
+}
+
+/* Loading Spinner */
+.spinner-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* Print Styles */
+@media print {
+    .navbar,
+    .btn,
+    footer {
+        display: none !important;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+    }
+    
+    body {
+        background-color: white !important;
+    }
+}
