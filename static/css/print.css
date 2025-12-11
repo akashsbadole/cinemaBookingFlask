@@ -1,0 +1,378 @@
+/* Print-specific styles for Cinema POS */
+
+/* General print styles */
+@media print {
+    /* Hide elements that shouldn't be printed */
+    .no-print,
+    .btn,
+    .btn-group,
+    .navbar,
+    .sidebar,
+    .card-header .btn,
+    .modal,
+    .dropdown,
+    .pagination,
+    .alert-dismissible .btn-close,
+    .toast-container {
+        display: none !important;
+    }
+    
+    /* Remove shadows and borders */
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Adjust body and container */
+    body {
+        font-size: 12pt;
+        line-height: 1.4;
+        color: black !important;
+        background: white !important;
+    }
+    
+    .container {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    
+    /* Adjust table styles for printing */
+    .table {
+        font-size: 10pt;
+        margin-bottom: 1rem;
+        width: 100%;
+    }
+    
+    .table th,
+    .table td {
+        padding: 5px;
+        border: 1px solid #000 !important;
+        vertical-align: top;
+    }
+    
+    .table th {
+        background-color: #f0f0f0 !important;
+        font-weight: bold;
+    }
+    
+    /* Ensure text doesn't wrap awkwardly */
+    .text-nowrap {
+        white-space: nowrap;
+    }
+    
+    /* Adjust spacing */
+    .mb-4,
+    .my-4 {
+        margin-bottom: 1rem !important;
+    }
+    
+    .mt-4,
+    .my-4 {
+        margin-top: 1rem !important;
+    }
+    
+    /* Page breaks */
+    .page-break {
+        page-break-before: always;
+    }
+    
+    .avoid-page-break {
+        page-break-inside: avoid;
+    }
+    
+    /* Ticket specific styles */
+    .ticket-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .ticket-title {
+        font-size: 24pt;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    
+    .ticket-subtitle {
+        font-size: 16pt;
+        margin-bottom: 20px;
+    }
+    
+    .ticket-details {
+        margin-bottom: 20px;
+    }
+    
+    .ticket-details-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+        border-bottom: 1px dashed #ccc;
+        padding-bottom: 5px;
+    }
+    
+    .ticket-details-label {
+        font-weight: bold;
+    }
+    
+    .qr-code {
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .qr-code img {
+        max-width: 150px;
+        max-height: 150px;
+    }
+    
+    .ticket-footer {
+        margin-top: 30px;
+        font-size: 9pt;
+        text-align: center;
+        border-top: 1px solid #000;
+        padding-top: 10px;
+    }
+    
+    /* Receipt specific styles */
+    .receipt-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .receipt-title {
+        font-size: 18pt;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    
+    .receipt-section {
+        margin-bottom: 15px;
+    }
+    
+    .receipt-section-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+        border-bottom: 1px solid #000;
+        padding-bottom: 2px;
+    }
+    
+    .receipt-details {
+        margin-bottom: 5px;
+    }
+    
+    .receipt-details-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2px;
+    }
+    
+    .receipt-total {
+        font-weight: bold;
+        font-size: 14pt;
+        border-top: 1px double #000;
+        padding-top: 5px;
+        margin-top: 10px;
+    }
+    
+    /* Report specific styles */
+    .report-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .report-title {
+        font-size: 20pt;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    
+    .report-subtitle {
+        font-size: 12pt;
+        margin-bottom: 20px;
+    }
+    
+    .report-summary {
+        margin-bottom: 20px;
+    }
+    
+    .report-summary-card {
+        border: 1px solid #000;
+        padding: 10px;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .report-summary-value {
+        font-size: 16pt;
+        font-weight: bold;
+    }
+    
+    .report-summary-label {
+        font-size: 10pt;
+        color: #666;
+    }
+    
+    /* Thermal printer specific styles */
+    @media print and (max-width: 80mm) {
+        body {
+            font-size: 8pt;
+            width: 80mm;
+            margin: 0;
+            padding: 5mm;
+        }
+        
+        .table {
+            font-size: 7pt;
+        }
+        
+        .ticket-title,
+        .receipt-title {
+            font-size: 12pt;
+        }
+        
+        .ticket-subtitle,
+        .report-title {
+            font-size: 10pt;
+        }
+        
+        .qr-code img {
+            max-width: 80px;
+            max-height: 80px;
+        }
+        
+        .btn {
+            display: none !important;
+        }
+    }
+    
+    /* Ensure charts are not printed */
+    canvas {
+        display: none !important;
+    }
+    
+    /* Hide chart containers */
+    .card-body canvas,
+    .chart-container {
+        display: none !important;
+    }
+    
+    /* Show a message for charts */
+    .chart-placeholder::after {
+        content: "Chart data available in digital view only";
+        display: block;
+        text-align: center;
+        font-style: italic;
+        color: #666;
+        margin: 20px 0;
+    }
+    
+    /* Print layout adjustments */
+    @page {
+        margin: 1cm;
+        size: A4;
+    }
+    
+    @page :left {
+        margin: 1cm;
+    }
+    
+    @page :right {
+        margin: 1cm;
+    }
+    
+    /* For thermal printer receipts */
+    @page receipt {
+        size: 80mm 200mm;
+        margin: 5mm;
+    }
+    
+    /* For tickets */
+    @page ticket {
+        size: A4;
+        margin: 1cm;
+    }
+    
+    /* For reports */
+    @page report {
+        size: A4;
+        margin: 1cm;
+        @top-center {
+            content: "Cinema POS System";
+            font-size: 10pt;
+        }
+        @bottom-center {
+            content: "Page " counter(page);
+            font-size: 10pt;
+        }
+    }
+}
+
+/* Helper classes for print-specific elements */
+.print-only {
+    display: none;
+}
+
+@media print {
+    .print-only {
+        display: block;
+    }
+}
+
+/* Ensure proper color contrast for black and white printing */
+@media print and (color-index: 0) {
+    .text-success,
+    .text-info,
+    .text-warning,
+    .text-danger,
+    .text-primary,
+    .text-secondary {
+        color: black !important;
+    }
+    
+    .bg-success,
+    .bg-info,
+    .bg-warning,
+    .bg-danger,
+    .bg-primary,
+    .bg-secondary {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid black !important;
+    }
+    
+    .badge {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid black !important;
+    }
+}
+
+/* Progress bar replacement for print */
+@media print {
+    .progress {
+        border: 1px solid #000;
+        height: 15px;
+        background-color: white;
+    }
+    
+    .progress-bar {
+        background-color: #ccc !important;
+        display: block;
+        height: 100%;
+        text-align: center;
+        line-height: 15px;
+        font-size: 8pt;
+    }
+}
+
+/* Avatar replacement for print */
+@media print {
+    .avatar-sm,
+    .avatar-md,
+    .avatar-lg {
+        background-color: #f0f0f0 !important;
+        color: black !important;
+        border: 1px solid #000 !important;
+    }
+}

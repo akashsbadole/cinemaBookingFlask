@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-undo me-2"></i>Process Refund</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Payment Details</h5>
+                        <span class="badge bg-{{ payment.get_status_badge_class() }} fs-6">
+                            {{ payment.get_status_display() }}
+                        </span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Payment ID:</strong></td>
+                                <td>#{{ payment.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Booking ID:</strong></td>
+                                <td>#{{ payment.booking.id if payment.booking else 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Customer:</strong></td>
+                                <td>{{ payment.booking.customer_name if payment.booking else 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Payment Method:</strong></td>
+                                <td>{{ payment.get_payment_method_display() }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Original Amount:</strong></td>
+                                <td class="text-primary fw-bold">₹{{ "%.2f"|format(payment.amount) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Payment Date:</strong></td>
+                                <td>{{ payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A' }}</td>
+                            </tr>
+                            {% if payment.booking %}
+                            <tr>
+                                <td><strong>Movie:</strong></td>
+                                <td>{{ payment.booking.show.movie.title }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Show Date & Time:</strong></td>
+                                <td>{{ payment.booking.show.show_date.strftime('%d %b %Y') }} at {{ payment.booking.show.show_time.strftime('%H:%M') }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+                
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="refund_amount" class="form-label">Refund Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            {{ form.refund_amount(class="form-control", placeholder="0.00", max=payment.amount, id="refund_amount") }}
+                        </div>
+                        <div class="form-text">
+                            Maximum refundable amount: <strong>₹{{ "%.2f"|format(payment.amount) }}</strong>
+                        </div>
+                        {% if form.refund_amount.errors %}
+                            <div class="text-danger">
+                                {% for error in form.refund_amount.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="refund_reason" class="form-label">Refund Reason</label>
+                        {{ form.refund_reason(class="form-select") }}
+                        {% if form.refund_reason.errors %}
+                            <div class="text-danger">
+                                {% for error in form.refund_reason.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="refund_method" class="form-label">Refund Method</label>
+                        {{ form.refund_method(class="form-select") }}
+                        {% if form.refund_method.errors %}
+                            <div class="text-danger">
+                                {% for error in form.refund_method.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reference_id" class="form-label">Refund Reference ID (Optional)</label>
+                        {{ form.reference_id(class="form-control", placeholder="Enter refund reference if available") }}
+                        {% if form.reference_id.errors %}
+                            <div class="text-danger">
+                                {% for error in form.reference_id.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="refund_notes" class="form-label">Refund Notes</label>
+                        {{ form.refund_notes(class="form-control", rows="3", placeholder="Enter detailed notes about this refund") }}
+                        {% if form.refund_notes.errors %}
+                            <div class="text-danger">
+                                {% for error in form.refund_notes.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Important:</strong> Refunds cannot be undone. Please verify all details before submitting.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('payments.receipt', id=payment.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Receipt
+                        </a>
+                        {{ form.submit(class="btn btn-warning") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

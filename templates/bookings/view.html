@@ -21,16 +21,16 @@
                                 <td>{{ booking.customer_name }}</td>
                             </tr>
                             <tr>
-                                <td><strong>Contact:</strong></td>
-                                <td>{{ booking.contact_number }}</td>
+                                <td><strong>Phone:</strong></td>
+                                <td>{{ booking.customer_phone }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Email:</strong></td>
-                                <td>{{ booking.email or 'N/A' }}</td>
+                                <td>{{ booking.customer_email or 'N/A' }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Booking Date:</strong></td>
-                                <td>{{ booking.booking_date.strftime('%d %b %Y %H:%M') }}</td>
+                                <td>{{ booking.booking_time.strftime('%d %b %Y %H:%M') }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Status:</strong></td>
@@ -65,7 +65,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Show Time:</strong></td>
-                                <td>{{ booking.show.show_time.strftime('%H:%M') }}</td>
+                                <td>{{ booking.show.show_time.strftime('%I:%M %p') }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Seats:</strong></td>
@@ -86,14 +86,14 @@
                             <tr>
                                 <td><strong>Payment Status:</strong></td>
                                 <td>
-                                    {% if booking.payment_status == 'paid' %}
-                                        <span class="badge bg-success">Paid</span>
-                                    {% elif booking.payment_status == 'pending' %}
+                                    {% if booking.status == 'confirmed' %}
+                                        <span class="badge bg-success">Confirmed</span>
+                                    {% elif booking.status == 'pending' %}
                                         <span class="badge bg-warning">Pending</span>
-                                    {% elif booking.payment_status == 'failed' %}
-                                        <span class="badge bg-danger">Failed</span>
+                                    {% elif booking.status == 'cancelled' %}
+                                        <span class="badge bg-danger">Cancelled</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">{{ booking.payment_status }}</span>
+                                        <span class="badge bg-secondary">{{ booking.status }}</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -103,10 +103,10 @@
                                 <td>{{ booking.payment_method }}</td>
                             </tr>
                             {% endif %}
-                            {% if booking.payment_date %}
+                            {% if booking.booking_time %}
                             <tr>
-                                <td><strong>Payment Date:</strong></td>
-                                <td>{{ booking.payment_date.strftime('%d %b %Y %H:%M') }}</td>
+                                <td><strong>Booking Time:</strong></td>
+                                <td>{{ booking.booking_time.strftime('%d %b %Y %H:%M') }}</td>
                             </tr>
                             {% endif %}
                         </table>
@@ -118,14 +118,16 @@
                         <i class="fas fa-arrow-left me-2"></i>Back to Bookings
                     </a>
                     <div>
-                        {% if booking.payment_status == 'pending' %}
-                        <a href="{{ url_for('payments.process', booking_id=booking.id) }}" class="btn btn-primary">
-                            <i class="fas fa-credit-card me-2"></i>Process Payment
-                        </a>
-                        {% endif %}
-                        {% if booking.payment_status == 'paid' %}
+                        {% if booking.status == 'confirmed' %}
                         <a href="{{ url_for('payments.receipt', id=booking.id) }}" class="btn btn-info">
                             <i class="fas fa-receipt me-2"></i>View Receipt
+                        </a>
+                        <a href="{{ url_for('bookings.ticket', id=booking.id) }}" class="btn btn-info">
+                            <i class="fas fa-ticket-alt me-2"></i>Print Ticket
+                        </a>
+                        {% elif booking.status == 'pending' %}
+                        <a href="{{ url_for('payments.process', booking_id=booking.id) }}" class="btn btn-success">
+                            <i class="fas fa-credit-card me-2"></i>Process Payment
                         </a>
                         {% endif %}
                         {% if current_user.role == 'admin' %}

@@ -1,0 +1,577 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Select Seats</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{{ show.movie.title }}</h5>
+                    <small class="text-muted">{{ show.show_date.strftime('%d %b %Y') }} at {{ show.show_time.strftime('%I:%M %p') }} - {{ show.screen.name }}</small>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshSeats">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Seat Legend -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-center">
+                            <div class="me-4">
+                                <span class="badge bg-success me-1">Available</span>
+                                <span class="text-muted">Available</span>
+                            </div>
+                            <div class="me-4">
+                                <span class="badge bg-warning me-1">Selected</span>
+                                <span class="text-muted">Selected</span>
+                            </div>
+                            <div class="me-4">
+                                <span class="badge bg-info me-1">Locked</span>
+                                <span class="text-muted">Temporarily Locked</span>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary me-1">Booked</span>
+                                <span class="text-muted">Already Booked</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing Information -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">Pricing Information</h6>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <strong>Normal:</strong> ₹{{ "%.2f"|format(price_info.base_price) }}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Premium:</strong> ₹{{ "%.2f"|format(price_info.base_price * 1.5) }}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>VIP:</strong> ₹{{ "%.2f"|format(price_info.base_price * 2.0) }}
+                                </div>
+                                <div class="col-md-3">
+                                    {% if price_info.weekend_surcharge %}
+                                        <small class="text-warning">Weekend Surcharge: +₹{{ "%.2f"|format(price_info.weekend_surcharge) }}</small>
+                                    {% endif %}
+                                    {% if price_info.matinee_discount %}
+                                        <small class="text-info">Matinee Discount: -₹{{ "%.2f"|format(price_info.matinee_discount) }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seat Layout -->
+                <div class="seat-container">
+                    <div class="screen mb-4">SCREEN</div>
+                    
+                    {% for row, seats in seat_layout.items() %}
+                    <div class="seat-row mb-2">
+                        <div class="seat-label">{{ row }}</div>
+                        <div class="seats-row">
+                            {% for seat in seats %}
+                            <button type="button"
+                                    class="seat btn btn-sm seat-{{ seat.status }}"
+                                    data-seat-id="{{ seat.id }}"
+                                    data-seat-name="{{ seat.row }}{{ seat.column }}"
+                                    data-seat-type="{{ seat.seat_type }}"
+                                    data-row="{{ seat.row }}"
+                                    data-column="{{ seat.column }}"
+                                    {% if seat.status == 'booked' or seat.status == 'locked' %}disabled{% endif %}>
+                                {{ seat.row }}{{ seat.column }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-outline-secondary" id="resetSelection">
+                            <i class="fas fa-times me-1"></i>Reset Selection
+                        </button>
+                        <button type="button" class="btn btn-primary" id="continueToPayment" disabled>
+                            <i class="fas fa-arrow-right me-1"></i>Continue to Payment
+                        </button>
+                        <a href="{{ url_for('bookings.select_show') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Shows
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Booking Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Movie:</strong> {{ show.movie.title }}
+                </div>
+                <div class="mb-3">
+                    <strong>Date:</strong> {{ show.show_date.strftime('%d %b %Y') }}
+                </div>
+                <div class="mb-3">
+                    <strong>Time:</strong> {{ show.show_time.strftime('%I:%M %p') }}
+                </div>
+                <div class="mb-3">
+                    <strong>Screen:</strong> {{ show.screen.name }}
+                </div>
+                
+                <hr>
+                
+                <div class="mb-3">
+                    <strong>Selected Seats:</strong>
+                    <div id="selectedSeatsList" class="mt-2">
+                        <span class="text-muted">No seats selected</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Seat Count:</strong> <span id="seatCount">0</span>
+                </div>
+                
+                <hr>
+                
+                <div class="mb-3">
+                    <strong>Price Breakdown:</strong>
+                    <div id="priceBreakdown" class="mt-2">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Total Amount: ₹<span id="totalAmount">0.00</span></h5>
+                </div>
+                
+                <div id="loadingMessage" class="text-center" style="display: none;">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <small class="text-muted">Processing...</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errorModalLabel">Error</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="errorMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.seat-container {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.screen {
+    background: linear-gradient(to bottom, #6c757d, #495057);
+    color: white;
+    padding: 10px;
+    border-radius: 10px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.seat-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 5px;
+}
+
+.seat-label {
+    width: 30px;
+    text-align: center;
+    font-weight: bold;
+    color: #6c757d;
+    margin-right: 10px;
+}
+
+.seats-row {
+    display: flex;
+    gap: 5px;
+}
+
+.seat {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    border: 2px solid;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.seat-available {
+    border-color: #28a745;
+    color: #28a745;
+}
+
+.seat-available:hover:not(:disabled) {
+    background-color: #28a745;
+    color: white;
+    transform: scale(1.1);
+}
+
+.seat-selected {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+    transform: scale(1.1);
+}
+
+.seat-locked {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+    color: white;
+}
+
+.seat-booked {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.seat:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.price-breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .seat {
+        width: 30px;
+        height: 30px;
+        font-size: 10px;
+    }
+    
+    .seats-row {
+        gap: 3px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const showId = {{ show.id }};
+let selectedSeats = [];
+let seatLocks = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSeatSelection();
+    setupEventListeners();
+});
+
+function initializeSeatSelection() {
+    const seatButtons = document.querySelectorAll('.seat-available');
+    
+    seatButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const seatId = parseInt(this.dataset.seatId);
+            const seatName = this.dataset.seatName;
+            const seatType = this.dataset.seatType;
+            
+            if (selectedSeats.find(s => s.id === seatId)) {
+                // Deselect seat
+                deselectSeat(seatId, this);
+            } else {
+                // Select seat
+                selectSeat(seatId, seatName, seatType, this);
+            }
+            
+            updateSummary();
+        });
+    });
+}
+
+function selectSeat(seatId, seatName, seatType, button) {
+    selectedSeats.push({
+        id: seatId,
+        name: seatName,
+        type: seatType
+    });
+    
+    button.classList.remove('seat-available');
+    button.classList.add('seat-selected');
+    
+    // Lock the seat on server
+    lockSeat(seatId);
+}
+
+function deselectSeat(seatId, button) {
+    selectedSeats = selectedSeats.filter(s => s.id !== seatId);
+    
+    button.classList.remove('seat-selected');
+    button.classList.add('seat-available');
+    
+    // Release the lock on server
+    releaseSeat(seatId);
+}
+
+async function lockSeat(seatId) {
+    try {
+        const response = await fetch('/bookings/api/lock_seats', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                show_id: showId,
+                seat_ids: [seatId],
+                duration_minutes: 5
+            })
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            console.error('Failed to lock seat:', data.error);
+        }
+    } catch (error) {
+        console.error('Error locking seat:', error);
+    }
+}
+
+async function releaseSeat(seatId) {
+    try {
+        const response = await fetch('/bookings/api/release_seats', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                show_id: showId,
+                seat_ids: [seatId]
+            })
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            console.error('Failed to release seat:', data.error);
+        }
+    } catch (error) {
+        console.error('Error releasing seat:', error);
+    }
+}
+
+async function calculatePrice() {
+    if (selectedSeats.length === 0) return 0;
+    
+    try {
+        const seatIds = selectedSeats.map(s => s.id);
+        const response = await fetch('/bookings/api/calculate_price', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                show_id: showId,
+                seat_ids: seatIds
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            return data;
+        } else {
+            showError('Failed to calculate price: ' + data.error);
+            return null;
+        }
+    } catch (error) {
+        showError('Error calculating price: ' + error.message);
+        return null;
+    }
+}
+
+function updateSummary() {
+    const seatsList = document.getElementById('selectedSeatsList');
+    const seatCount = document.getElementById('seatCount');
+    const totalAmount = document.getElementById('totalAmount');
+    const continueButton = document.getElementById('continueToPayment');
+    const priceBreakdown = document.getElementById('priceBreakdown');
+    
+    if (selectedSeats.length === 0) {
+        seatsList.innerHTML = '<span class="text-muted">No seats selected</span>';
+        seatCount.textContent = '0';
+        totalAmount.textContent = '0.00';
+        priceBreakdown.innerHTML = '';
+        continueButton.disabled = true;
+        return;
+    }
+    
+    // Update seats list
+    seatsList.innerHTML = selectedSeats.map(s => 
+        `<span class="badge bg-warning me-1">${s.name}</span>`
+    ).join('');
+    
+    seatCount.textContent = selectedSeats.length;
+    
+    // Calculate price
+    showLoading(true);
+    calculatePrice().then(data => {
+        if (data) {
+            totalAmount.textContent = data.total_cost.toFixed(2);
+            
+            // Update price breakdown
+            let breakdownHtml = '';
+            data.breakdown.seats.forEach(seat => {
+                breakdownHtml += `
+                    <div class="price-breakdown-item">
+                        <span>${seat.name} (${seat.type})</span>
+                        <span>₹${seat.final_price.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+            
+            breakdownHtml += `
+                <hr>
+                <div class="price-breakdown-item">
+                    <strong>Total</strong>
+                    <strong>₹${data.total_cost.toFixed(2)}</strong>
+                </div>
+            `;
+            
+            priceBreakdown.innerHTML = breakdownHtml;
+            continueButton.disabled = false;
+        }
+        showLoading(false);
+    });
+}
+
+function setupEventListeners() {
+    // Reset selection button
+    document.getElementById('resetSelection').addEventListener('click', function() {
+        const seatIds = selectedSeats.map(s => s.id);
+        
+        // Release all locks
+        releaseSeat(seatIds);
+        
+        // Reset UI
+        selectedSeats = [];
+        document.querySelectorAll('.seat-selected').forEach(button => {
+            button.classList.remove('seat-selected');
+            button.classList.add('seat-available');
+        });
+        
+        updateSummary();
+    });
+    
+    // Continue to payment button
+    document.getElementById('continueToPayment').addEventListener('click', function() {
+        if (selectedSeats.length === 0) {
+            showError('Please select at least one seat');
+            return;
+        }
+        
+        const seatIds = selectedSeats.map(s => s.id).join(',');
+        window.location.href = `/bookings/confirm_booking?show_id=${showId}&seat_ids=${seatIds}`;
+    });
+    
+    // Refresh seats button
+    document.getElementById('refreshSeats').addEventListener('click', function() {
+        refreshSeatStatus();
+    });
+    
+    // Auto-refresh every 30 seconds
+    setInterval(refreshSeatStatus, 30000);
+}
+
+async function refreshSeatStatus() {
+    try {
+        const response = await fetch(`/bookings/api/show/${showId}/seat_status`);
+        const data = await response.json();
+        
+        if (data.success) {
+            updateSeatLayout(data.seat_layout);
+        }
+    } catch (error) {
+        console.error('Error refreshing seat status:', error);
+    }
+}
+
+function updateSeatLayout(seatLayout) {
+    // Update seat statuses based on server response
+    for (const [row, seats] of Object.entries(seatLayout)) {
+        seats.forEach(seat => {
+            const button = document.querySelector(`[data-seat-id="${seat.id}"]`);
+            if (button) {
+                // Remove all status classes
+                button.classList.remove('seat-available', 'seat-selected', 'seat-locked', 'seat-booked');
+                
+                // Add current status class
+                button.classList.add(`seat-${seat.status}`);
+                
+                // Update disabled state
+                if (seat.status === 'booked' || seat.status === 'locked') {
+                    button.disabled = true;
+                    
+                    // If seat was selected by current user but now locked/booked
+                    if (selectedSeats.find(s => s.id === seat.id)) {
+                        selectedSeats = selectedSeats.filter(s => s.id !== seat.id);
+                        button.classList.remove('seat-selected');
+                        updateSummary();
+                    }
+                } else {
+                    button.disabled = false;
+                }
+            }
+        });
+    }
+}
+
+function showLoading(show) {
+    document.getElementById('loadingMessage').style.display = show ? 'block' : 'none';
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

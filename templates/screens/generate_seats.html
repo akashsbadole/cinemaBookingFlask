@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Generate Seats - {{ screen.name }}</h1>
+            <a href="{{ url_for('screens.manage_seats', screen_id=screen.id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Seat Management
+            </a>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Seat Generation Options</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('screens.generate_seats', screen_id=screen.id) }}">
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="mb-3">
+                                {{ form.pattern.label(class="form-label") }}
+                                {{ form.pattern(class="form-control") }}
+                                {% if form.pattern.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.pattern.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Choose a seating pattern for the screen layout.
+                                </small>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        {{ form.normal_price.label(class="form-label") }}
+                                        <div class="input-group">
+                                            <span class="input-group-text">₹</span>
+                                            {{ form.normal_price(class="form-control") }}
+                                        </div>
+                                        {% if form.normal_price.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.normal_price.errors %}
+                                                    <small>{{ error }}</small>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        {{ form.premium_price.label(class="form-label") }}
+                                        <div class="input-group">
+                                            <span class="input-group-text">₹</span>
+                                            {{ form.premium_price(class="form-control") }}
+                                        </div>
+                                        {% if form.premium_price.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.premium_price.errors %}
+                                                    <small>{{ error }}</small>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        {{ form.vip_price.label(class="form-label") }}
+                                        <div class="input-group">
+                                            <span class="input-group-text">₹</span>
+                                            {{ form.vip_price(class="form-control") }}
+                                        </div>
+                                        {% if form.vip_price.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.vip_price.errors %}
+                                                    <small>{{ error }}</small>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    {{ form.clear_existing(class="form-check-input") }}
+                                    {{ form.clear_existing.label(class="form-check-label") }}
+                                </div>
+                                <small class="form-text text-muted">
+                                    Check this box to remove all existing seats before generating new ones.
+                                </small>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('screens.manage_seats', screen_id=screen.id) }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Cancel
+                                </a>
+                                {{ form.submit(class="btn btn-success") }}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Pattern Preview</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="pattern-preview">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-th-large fa-3x mb-3"></i>
+                                <p>Select a pattern to see preview</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Pattern Descriptions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="pattern-info">
+                            <div class="mb-3">
+                                <h6><i class="fas fa-th me-2 text-primary"></i>Regular Layout</h6>
+                                <p class="text-muted small mb-0">
+                                    All seats are of normal type with the same price. This creates a uniform layout 
+                                    suitable for standard theaters.
+                                </p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6><i class="fas fa-layer-group me-2 text-warning"></i>Stadium Layout</h6>
+                                <p class="text-muted small mb-0">
+                                    Front rows are normal, middle rows are premium, and back rows are VIP. 
+                                    This mimics stadium seating with better views for premium/VIP seats.
+                                </p>
+                            </div>
+                            
+                            <div class="mb-0">
+                                <h6><i class="fas fa-th-large me-2 text-info"></i>Mixed Layout</h6>
+                                <p class="text-muted small mb-0">
+                                    Center seats are premium/VIP while side seats are normal. 
+                                    This provides better viewing experience for center seats.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Screen Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="screen-info">
+                            <p><strong>Screen:</strong> {{ screen.name }}</p>
+                            <p><strong>Dimensions:</strong> {{ screen.total_rows }} × {{ screen.total_columns }}</p>
+                            <p><strong>Total Capacity:</strong> {{ screen.total_rows * screen.total_columns }} seats</p>
+                            <p><strong>Current Seats:</strong> {{ screen.seats|length }} seats</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const patternSelect = document.getElementById('pattern');
+    const normalPrice = document.getElementById('normal_price');
+    const premiumPrice = document.getElementById('premium_price');
+    const vipPrice = document.getElementById('vip_price');
+    const preview = document.getElementById('pattern-preview');
+    
+    // Set default prices if empty
+    if (!normalPrice.value) normalPrice.value = '100.00';
+    if (!premiumPrice.value) premiumPrice.value = '150.00';
+    if (!vipPrice.value) vipPrice.value = '250.00';
+    
+    function generatePreview() {
+        const pattern = patternSelect.value;
+        const nPrice = parseFloat(normalPrice.value) || 100;
+        const pPrice = parseFloat(premiumPrice.value) || 150;
+        const vPrice = parseFloat(vipPrice.value) || 250;
+        
+        const rows = {{ screen.total_rows }};
+        const cols = {{ screen.total_columns }};
+        
+        let html = '<div class="seat-grid">';
+        
+        for (let r = 0; r < rows; r++) {
+            html += '<div class="seat-row">';
+            for (let c = 0; c < cols; c++) {
+                let seatClass = 'seat-normal';
+                let seatPrice = nPrice;
+                
+                if (pattern === 'stadium') {
+                    // Back 25% are VIP
+                    if (r >= rows * 0.75) {
+                        seatClass = 'seat-vip';
+                        seatPrice = vPrice;
+                    }
+                    // 25% before that are premium
+                    else if (r >= rows * 0.5) {
+                        seatClass = 'seat-premium';
+                        seatPrice = pPrice;
+                    }
+                } else if (pattern === 'mixed') {
+                    const centerStart = cols * 0.25;
+                    const centerEnd = cols * 0.75;
+                    
+                    // Center seats are premium/vip
+                    if (centerStart <= c < centerEnd) {
+                        // Middle 50% of center are VIP
+                        if (c < (centerStart + centerEnd) / 2) {
+                            seatClass = 'seat-vip';
+                            seatPrice = vPrice;
+                        } else {
+                            seatClass = 'seat-premium';
+                            seatPrice = pPrice;
+                        }
+                    }
+                }
+                
+                html += `<div class="seat-preview ${seatClass}" title="${String.fromCharCode(65 + r)}${c + 1} - ₹${seatPrice}">${String.fromCharCode(65 + r)}${c + 1}</div>`;
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+        
+        // Add legend
+        html += `
+            <div class="mt-3">
+                <h6>Price Legend:</h6>
+                <div class="d-flex gap-3">
+                    <span><div class="seat-preview seat-normal"></div> Normal: ₹${nPrice}</span>
+                    <span><div class="seat-preview seat-premium"></div> Premium: ₹${pPrice}</span>
+                    <span><div class="seat-preview seat-vip"></div> VIP: ₹${vPrice}</span>
+                </div>
+            </div>
+        `;
+        
+        preview.innerHTML = html;
+    }
+    
+    patternSelect.addEventListener('change', generatePreview);
+    normalPrice.addEventListener('input', generatePreview);
+    premiumPrice.addEventListener('input', generatePreview);
+    vipPrice.addEventListener('input', generatePreview);
+    
+    // Initial preview
+    generatePreview();
+});
+</script>
+
+<style>
+.seat-grid {
+    display: inline-block;
+    border: 1px solid #ddd;
+    padding: 10px;
+    background: white;
+    max-height: 300px;
+    overflow: auto;
+}
+
+.seat-row {
+    display: flex;
+    margin-bottom: 2px;
+}
+
+.seat-preview {
+    width: 25px;
+    height: 25px;
+    border: 1px solid;
+    margin: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: bold;
+    border-radius: 3px;
+}
+
+.seat-normal {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.seat-premium {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.seat-vip {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.screen-info {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.pattern-info h6 {
+    font-size: 14px;
+}
+</style>
+{% endblock %}

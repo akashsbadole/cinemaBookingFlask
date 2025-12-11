@@ -5,13 +5,100 @@
     <h1 class="h2"><i class="fas fa-credit-card me-2"></i>Payments</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportPayments()">
                 <i class="fas fa-download me-1"></i>Export
             </button>
         </div>
     </div>
 </div>
 
+<!-- Search and Filter Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5><i class="fas fa-search me-2"></i>Search & Filter</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                {{ search_form.search_term(class="form-control", placeholder="Search payments...") }}
+            </div>
+            <div class="col-md-2">
+                {{ search_form.search_type(class="form-select") }}
+            </div>
+            <div class="col-md-2">
+                {{ search_form.status_filter(class="form-select") }}
+            </div>
+            <div class="col-md-2">
+                {{ search_form.payment_method_filter(class="form-select") }}
+            </div>
+            <div class="col-md-2">
+                <div class="input-group">
+                    {{ search_form.date_from(class="form-control", type="date") }}
+                </div>
+            </div>
+            <div class="col-md-1">
+                <div class="input-group">
+                    {{ search_form.date_to(class="form-control", type="date") }}
+                    {{ search_form.submit(class="btn btn-primary d-none") }}
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <h5 class="card-title text-info">Total</h5>
+                <h2 class="text-info">{{ summary.total_payments or 0 }}</h2>
+                <p class="text-muted">Payments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">Completed</h5>
+                <h2 class="text-success">{{ summary.completed_payments or 0 }}</h2>
+                <p class="text-muted">Payments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">Pending</h5>
+                <h2 class="text-warning">{{ summary.pending_payments or 0 }}</h2>
+                <p class="text-muted">Payments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-center border-danger">
+            <div class="card-body">
+                <h5 class="card-title text-danger">Failed</h5>
+                <h2 class="text-danger">{{ summary.failed_payments or 0 }}</h2>
+                <p class="text-muted">Payments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h5 class="card-title text-primary">Total Revenue</h5>
+                <h2 class="text-primary">₹{{ "%.2f"|format(summary.total_revenue or 0) }}</h2>
+                <p class="text-muted">All Time</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payments Table -->
 <div class="row">
     <div class="col-md-12">
         <div class="card">
@@ -24,13 +111,14 @@
                         <thead class="table-dark">
                             <tr>
                                 <th>ID</th>
-                                <th>Booking ID</th>
+                                <th>Booking</th>
                                 <th>Customer</th>
                                 <th>Movie</th>
                                 <th>Amount</th>
                                 <th>Method</th>
                                 <th>Status</th>
                                 <th>Date</th>
+                                <th>Seats</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -40,51 +128,74 @@
                                 <tr>
                                     <td>{{ payment.id }}</td>
                                     <td>
-                                        <a href="{{ url_for('bookings.view', id=payment.booking.id) }}" class="text-decoration-none">
-                                            #{{ payment.booking.id }}
+                                        <a href="{{ url_for('bookings.view', id=payment.booking_id) }}" class="text-decoration-none">
+                                            #{{ payment.booking_id }}
                                         </a>
                                     </td>
-                                    <td>{{ payment.booking.customer_name }}</td>
-                                    <td>{{ payment.booking.show.movie.title }}</td>
+                                    <td>{{ payment.customer_name }}</td>
+                                    <td>{{ payment.movie_title }}</td>
                                     <td>₹{{ "%.2f"|format(payment.amount) }}</td>
                                     <td>
-                                        {% if payment.payment_method %}
                                         <span class="badge bg-info">{{ payment.payment_method }}</span>
-                                        {% else %}
-                                        <span class="text-muted">-</span>
-                                        {% endif %}
                                     </td>
                                     <td>
-                                        {% if payment.status == 'completed' %}
-                                            <span class="badge bg-success">Completed</span>
-                                        {% elif payment.status == 'pending' %}
-                                            <span class="badge bg-warning">Pending</span>
-                                        {% elif payment.status == 'failed' %}
-                                            <span class="badge bg-danger">Failed</span>
-                                        {% elif payment.status == 'refunded' %}
-                                            <span class="badge bg-secondary">Refunded</span>
-                                        {% else %}
-                                            <span class="badge bg-light text-dark">{{ payment.status }}</span>
-                                        {% endif %}
+                                        <span class="badge bg-{{ payment.status_badge_class }}">{{ payment.status }}</span>
                                     </td>
-                                    <td>{{ payment.payment_date.strftime('%d %b %Y %H:%M') if payment.payment_date else '-' }}</td>
+                                    <td>{{ payment.payment_date }}</td>
+                                    <td>{{ payment.seats or '-' }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{{ url_for('payments.receipt', id=payment.id) }}" class="btn btn-outline-primary" title="View Receipt">
+                                            <a href="{{ url_for('payments.receipt', id=payment.id) }}" 
+                                               class="btn btn-outline-primary" 
+                                               title="View Receipt">
                                                 <i class="fas fa-receipt"></i>
                                             </a>
-                                            {% if current_user.role == 'admin' and payment.status == 'completed' %}
-                                            <button type="button" class="btn btn-outline-warning" title="Process Refund">
-                                                <i class="fas fa-undo"></i>
-                                            </button>
-                                            {% endif %}
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-outline-secondary dropdown-toggle" 
+                                                        data-bs-toggle="dropdown" 
+                                                        aria-expanded="false"
+                                                        title="More Actions">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item" 
+                                                           href="{{ url_for('payments.status_history', id=payment.id) }}">
+                                                            <i class="fas fa-history me-2"></i>View History
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" 
+                                                           href="{{ url_for('payments.audit_trail', id=payment.id) }}">
+                                                            <i class="fas fa-shield-alt me-2"></i>Audit Trail
+                                                        </a>
+                                                    </li>
+                                                    {% if current_user.role == 'admin' %}
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        {% if payment.status == 'completed' %}
+                                                        <li>
+                                                            <a class="dropdown-item text-warning" 
+                                                               href="{{ url_for('payments.refund', id=payment.id) }}">
+                                                                <i class="fas fa-undo me-2"></i>Process Refund
+                                                            </a>
+                                                        </li>
+                                                        {% endif %}
+                                                        <li>
+                                                            <a class="dropdown-item text-info" 
+                                                               href="{{ url_for('payments.update_status', id=payment.id) }}">
+                                                                <i class="fas fa-edit me-2"></i>Update Status
+                                                            </a>
+                                                        </li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
                             {% else %}
                                 <tr>
-                                    <td colspan="9" class="text-center py-4">
+                                    <td colspan="10" class="text-center py-4">
                                         <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
                                         <p class="text-muted">No payments found</p>
                                     </td>
@@ -98,42 +209,36 @@
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-3">
-        <div class="card text-center border-success">
-            <div class="card-body">
-                <h5 class="card-title text-success">Completed</h5>
-                <h2 class="text-success">{{ completed_payments or 0 }}</h2>
-                <p class="text-muted">Payments</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center border-warning">
-            <div class="card-body">
-                <h5 class="card-title text-warning">Pending</h5>
-                <h2 class="text-warning">{{ pending_payments or 0 }}</h2>
-                <p class="text-muted">Payments</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center border-danger">
-            <div class="card-body">
-                <h5 class="card-title text-danger">Failed</h5>
-                <h2 class="text-danger">{{ failed_payments or 0 }}</h2>
-                <p class="text-muted">Payments</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center border-info">
-            <div class="card-body">
-                <h5 class="card-title text-info">Total Revenue</h5>
-                <h2 class="text-info">₹{{ "%.2f"|format(total_revenue or 0) }}</h2>
-                <p class="text-muted">This Month</p>
-            </div>
-        </div>
-    </div>
-</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function exportPayments() {
+    // Get current URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Add export parameter
+    urlParams.set('export', 'csv');
+    
+    // Create download URL
+    const downloadUrl = window.location.pathname + '?' + urlParams.toString();
+    
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `payments_export_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Auto-submit form on date change
+document.querySelector('input[name="date_from"]').addEventListener('change', function() {
+    this.closest('form').submit();
+});
+
+document.querySelector('input[name="date_to"]').addEventListener('change', function() {
+    this.closest('form').submit();
+});
+</script>
 {% endblock %}

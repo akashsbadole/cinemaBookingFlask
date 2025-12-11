@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Confirm Booking</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Customer Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    <input type="hidden" name="seat_ids" value="{{ seat_ids|join(',') }}">
+                    
+                    <!-- Show Information -->
+                    <div class="alert alert-info mb-4">
+                        <h6 class="alert-heading">Booking Details</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Movie:</strong> {{ show.movie.title }}</p>
+                                <p class="mb-1"><strong>Date:</strong> {{ show.show_date.strftime('%d %b %Y') }}</p>
+                                <p class="mb-1"><strong>Time:</strong> {{ show.show_time.strftime('%I:%M %p') }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Screen:</strong> {{ show.screen.name }}</p>
+                                <p class="mb-1"><strong>Seats:</strong> 
+                                    {% for cost in seat_costs %}
+                                        <span class="badge bg-primary">{{ cost.seat_name }}</span>
+                                    {% endfor %}
+                                </p>
+                                <p class="mb-1"><strong>Seat Count:</strong> {{ seat_costs|length }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Information Fields -->
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-3">
+                            {{ form.customer_name.label(class="form-label") }}
+                            {{ form.customer_name(class="form-control", placeholder="Enter customer name") }}
+                            {% if form.customer_name.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.customer_name.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.customer_phone.label(class="form-label") }}
+                            {{ form.customer_phone(class="form-control", placeholder="Enter phone number") }}
+                            {% if form.customer_phone.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.customer_phone.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12 mb-3">
+                            {{ form.customer_email.label(class="form-label") }}
+                            {{ form.customer_email(class="form-control", placeholder="Enter email (optional)") }}
+                            {% if form.customer_email.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.customer_email.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Payment Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            {{ form.payment_method.label(class="form-label") }}
+                            {{ form.payment_method(class="form-select") }}
+                            {% if form.payment_method.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.payment_method.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.payment_reference.label(class="form-label") }}
+                            {{ form.payment_reference(class="form-control", placeholder="Reference ID (for card/UPI)") }}
+                            {% if form.payment_reference.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.payment_reference.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="row">
+                        <div class="col-12">
+                            {{ form.submit(class="btn btn-primary me-2") }}
+                            <a href="{{ url_for('bookings.select_seats', show_id=show.id) }}" class="btn btn-secondary">Back to Seat Selection</a>
+                            <a href="{{ url_for('bookings.select_show') }}" class="btn btn-outline-secondary">Start Over</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Price Summary -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Price Summary</h5>
+            </div>
+            <div class="card-body">
+                {% for cost in seat_costs %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span>{{ cost.seat_name }} ({{ cost.seat_type }})</span>
+                    <span>₹{{ "%.2f"|format(cost.price) }}</span>
+                </div>
+                {% endfor %}
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between">
+                    <h5>Total Amount</h5>
+                    <h5>₹{{ "%.2f"|format(total_amount) }}</h5>
+                </div>
+                
+                {% if show.is_weekend() %}
+                <div class="alert alert-warning mt-2 mb-0">
+                    <small><i class="fas fa-info-circle me-1"></i>Weekend surcharge applied</small>
+                </div>
+                {% endif %}
+                
+                {% if show.is_matinee() %}
+                <div class="alert alert-info mt-2 mb-0">
+                    <small><i class="fas fa-info-circle me-1"></i>Matinee discount applied</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Terms and Conditions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Terms & Conditions</h5>
+            </div>
+            <div class="card-body">
+                <ul class="small">
+                    <li>Once confirmed, bookings cannot be cancelled</li>
+                    <li>Please arrive 15 minutes before show time</li>
+                    <li>Outside food and beverages are not allowed</li>
+                    <li>Management reserves the right of admission</li>
+                    <li>Tickets are non-transferable</li>
+                </ul>
+                
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                    <label class="form-check-label" for="agreeTerms">
+                        I agree to the terms and conditions
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Information -->
+        <div class="alert alert-info mt-3">
+            <h6 class="alert-heading">Need Help?</h6>
+            <p class="mb-1"><strong>For booking issues:</strong> Contact counter staff</p>
+            <p class="mb-1"><strong>For payment issues:</strong> Check with cashier</p>
+            <p class="mb-0"><strong>For refunds:</strong> Speak to manager</p>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalLabel">Confirm Booking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to confirm this booking?</p>
+                <p><strong>Total Amount:</strong> ₹{{ "%.2f"|format(total_amount) }}</p>
+                <p><strong>Payment Method:</strong> {{ form.payment_method.data|title if form.payment_method.data else 'Not selected' }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmBookingBtn">Confirm Booking</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setupFormValidation();
+    setupModal();
+});
+
+function setupFormValidation() {
+    const form = document.querySelector('form');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const agreeCheckbox = document.getElementById('agreeTerms');
+    
+    // Disable submit button initially
+    submitBtn.disabled = true;
+    
+    // Enable/disable submit based on terms agreement
+    agreeCheckbox.addEventListener('change', function() {
+        submitBtn.disabled = !this.checked;
+    });
+    
+    // Form submission with confirmation
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!agreeCheckbox.checked) {
+            alert('Please agree to the terms and conditions');
+            return;
+        }
+        
+        // Show confirmation modal
+        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+        modal.show();
+    });
+}
+
+function setupModal() {
+    const confirmBtn = document.getElementById('confirmBookingBtn');
+    
+    confirmBtn.addEventListener('click', function() {
+        const form = document.querySelector('form');
+        form.submit();
+    });
+}
+
+// Payment reference field validation
+document.getElementById('payment_method').addEventListener('change', function() {
+    const paymentReference = document.getElementById('payment_reference');
+    const referenceField = document.querySelector('[for="payment_reference"]');
+    
+    if (this.value === 'cash') {
+        paymentReference.disabled = true;
+        paymentReference.required = false;
+        paymentReference.value = '';
+        referenceField.classList.add('text-muted');
+    } else {
+        paymentReference.disabled = false;
+        paymentReference.required = true;
+        referenceField.classList.remove('text-muted');
+    }
+});
+
+// Initialize payment reference field based on initial selection
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentMethod = document.getElementById('payment_method');
+    if (paymentMethod.value === 'cash') {
+        const paymentReference = document.getElementById('payment_reference');
+        const referenceField = document.querySelector('[for="payment_reference"]');
+        paymentReference.disabled = true;
+        referenceField.classList.add('text-muted');
+    }
+});
+</script>
+
+<style>
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.alert {
+    border-left: 4px solid;
+}
+
+.alert-info {
+    border-left-color: #0dcaf0;
+}
+
+.alert-warning {
+    border-left-color: #ffc107;
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.badge {
+    margin-right: 4px;
+    margin-bottom: 4px;
+}
+</style>
+{% endblock %}

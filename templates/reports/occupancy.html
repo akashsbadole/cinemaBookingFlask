@@ -8,37 +8,39 @@
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
                 <i class="fas fa-print me-1"></i>Print
             </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-download me-1"></i>Export
-            </button>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('pdf')">PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('excel')">Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('csv')">CSV</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row mb-4">
-    <div class="col-md-3">
-        <label for="start_date" class="form-label">Start Date</label>
-        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date or '' }}">
+<form method="GET" class="mb-4">
+    <div class="row">
+        <div class="col-md-3">
+            <label for="start_date" class="form-label">Start Date</label>
+            {{ form.start_date(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+            <label for="end_date" class="form-label">End Date</label>
+            {{ form.end_date(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+            <label for="screen_id" class="form-label">Screen</label>
+            {{ form.screen_id(class="form-select") }}
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            {{ form.submit(class="btn btn-primary w-100") }}
+        </div>
     </div>
-    <div class="col-md-3">
-        <label for="end_date" class="form-label">End Date</label>
-        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date or '' }}">
-    </div>
-    <div class="col-md-3">
-        <label for="screen_filter" class="form-label">Screen</label>
-        <select class="form-select" id="screen_filter" name="screen_filter">
-            <option value="">All Screens</option>
-            {% for screen in screens %}
-            <option value="{{ screen.id }}">{{ screen.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-3 d-flex align-items-end">
-        <button type="button" class="btn btn-primary w-100" onclick="filterReport()">
-            <i class="fas fa-filter me-2"></i>Apply Filter
-        </button>
-    </div>
-</div>
+</form>
 
 <div class="row mb-4">
     <div class="col-md-3">
@@ -209,6 +211,9 @@
                 </div>
             </div>
         </div>
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+{% endblock %}
     </div>
 </div>
 {% endblock %}
@@ -284,7 +289,11 @@ const screenPerformanceChart = new Chart(perfCtx, {
         plugins: {
             legend: {
                 position: 'bottom'
-            }
+function exportReport(format) {
+    const url = new URL(window.location);
+    url.searchParams.set('format', format);
+    window.location.href = "{{ url_for('reports.export_report_route', report_type='occupancy') }}" + url.search;
+}
         }
     }
 });

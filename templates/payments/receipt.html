@@ -8,83 +8,179 @@
                 <h4><i class="fas fa-check-circle me-2"></i>Payment Receipt</h4>
             </div>
             <div class="card-body">
-                <div class="text-center mb-4">
-                    <h2>Cinema POS</h2>
-                    <p class="text-muted">Payment Receipt</p>
+                <div class="receipt-header">
+                    <h2 class="receipt-title">Cinema POS</h2>
+                    <p class="receipt-subtitle">Payment Receipt</p>
                     <hr>
                 </div>
                 
                 <div class="row mb-4">
                     <div class="col-md-6">
-                        <h5>Payment Details</h5>
-                        <table class="table table-borderless">
-                            <tr>
-                                <td><strong>Receipt ID:</strong></td>
-                                <td>#RCP-{{ payment.id }}-{{ payment.payment_date.strftime('%Y%m%d') }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Payment Date:</strong></td>
-                                <td>{{ payment.payment_date.strftime('%d %b %Y %H:%M') }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Payment Method:</strong></td>
-                                <td>
-                                    {% if payment.payment_method %}
-                                        {% if payment.payment_method == 'cash' %}
-                                            <i class="fas fa-money-bill-wave me-1"></i> Cash
-                                        {% elif payment.payment_method == 'card' %}
-                                            <i class="fas fa-credit-card me-1"></i> Credit/Debit Card
-                                        {% elif payment.payment_method == 'upi' %}
-                                            <i class="fas fa-mobile-alt me-1"></i> UPI
-                                        {% elif payment.payment_method == 'netbanking' %}
-                                            <i class="fas fa-university me-1"></i> Net Banking
-                                        {% elif payment.payment_method == 'wallet' %}
-                                            <i class="fas fa-wallet me-1"></i> Digital Wallet
+                        <div class="receipt-section">
+                            <h5 class="receipt-section-title">Payment Details</h5>
+                            <div class="receipt-details">
+                                <div class="receipt-details-row">
+                                    <span class="receipt-details-label">Receipt ID:</span>
+                                    <span>#RCP-{{ payment.id }}-{{ payment.created_at.strftime('%Y%m%d') if payment.created_at else 'N/A' }}</span>
+                                </div>
+                                <div class="receipt-details-row">
+                                    <span class="receipt-details-label">Payment Date:</span>
+                                    <span>{{ payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A' }}</span>
+                                </div>
+                                <div class="receipt-details-row">
+                                    <span class="receipt-details-label">Payment Method:</span>
+                                    <span>
+                                        {% if payment.mode %}
+                                            {% if payment.mode == 'cash' %}
+                                                <i class="fas fa-money-bill-wave me-1"></i> Cash
+                                            {% elif payment.mode == 'card' %}
+                                                <i class="fas fa-credit-card me-1"></i> Credit/Debit Card
+                                                {% if payment.card_last_4 %} (****{{ payment.card_last_4 }}){% endif %}
+                                            {% elif payment.mode == 'upi' %}
+                                                <i class="fas fa-mobile-alt me-1"></i> UPI
+                                                {% if payment.upi_id %} ({{ payment.upi_id[:3] }}***@{{ payment.upi_id.split('@')[1] }}){% endif %}
+                                            {% elif payment.mode == 'paypal' %}
+                                                <i class="fab fa-paypal me-1"></i> PayPal
+                                            {% elif payment.mode == 'netbanking' %}
+                                                <i class="fas fa-university me-1"></i> Net Banking
+                                                {% if payment.bank_name %} ({{ payment.bank_name.title() }}){% endif %}
+                                            {% elif payment.mode == 'wallet' %}
+                                                <i class="fas fa-wallet me-1"></i> Digital Wallet
+                                                {% if payment.wallet_type %} ({{ payment.wallet_type.title() }}){% endif %}
+                                            {% else %}
+                                                {{ payment.get_payment_method_display() }}
+                                            {% endif %}
                                         {% else %}
-                                            {{ payment.payment_method.title() }}
+                                            <span class="text-muted">Not specified</span>
                                         {% endif %}
-                                    {% else %}
-                                        <span class="text-muted">Not specified</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Transaction ID:</strong></td>
-                                <td>{{ payment.transaction_id or 'N/A' }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Status:</strong></td>
-                                <td>
-                                    <span class="badge bg-success">Completed</span>
-                                </td>
-                            </tr>
-                        </table>
+                                    </span>
+                                </div>
+                                <div class="receipt-details-row">
+                                    <span class="receipt-details-label">Transaction ID:</span>
+                                    <span>{{ payment.reference_id or 'N/A' }}</span>
+                                </div>
+                                <div class="receipt-details-row">
+                                    <span class="receipt-details-label">Status:</span>
+                                    <span><span class="badge bg-{{ payment.get_status_badge_class() }}">{{ payment.get_status_display() }}</span></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <h5>Customer Information</h5>
-                        <table class="table table-borderless">
-                            <tr>
-                                <td><strong>Name:</strong></td>
-                                <td>{{ payment.booking.customer_name }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Contact:</strong></td>
-                                <td>{{ payment.booking.contact_number }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Email:</strong></td>
-                                <td>{{ payment.booking.email or 'N/A' }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Booking ID:</strong></td>
-                                <td>#{{ payment.booking.id }}</td>
-                            </tr>
-                        </table>
+                        <div class="receipt-section">
+                            <h5 class="receipt-section-title">Customer Information</h5>
+                            <div class="receipt-details">
+                                <div class="receipt-details-row">
+                                    <span class="receipt-details-label">Name:</span>
+                                    <span>{{ payment.booking.customer_name if payment.booking else 'N/A' }}</span>
+                                </div>
+                                <div class="receipt-details-row">
+                                    <span class="receipt-details-label">Contact:</span>
+                                    <span>{{ payment.booking.contact_number if payment.booking else 'N/A' }}</span>
+                                </div>
+                                <div class="receipt-details-row">
+                                    <span class="receipt-details-label">Email:</span>
+                                    <span>{{ payment.booking.email if payment.booking else 'N/A' }}</span>
+                                </div>
+                                <div class="receipt-details-row">
+                                    <span class="receipt-details-label">Booking ID:</span>
+                                    <span>#{{ payment.booking.id if payment.booking else 'N/A' }}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="mb-4">
-                    <h5>Booking Details</h5>
+                <!-- PayPal Payment Details -->
+                {% if payment.mode == 'paypal' %}
+                <div class="receipt-section mb-4">
+                    <h5 class="receipt-section-title"><i class="fab fa-paypal me-2"></i>PayPal Payment Details</h5>
+                    <div class="receipt-details">
+                        {% if payment.paypal_order_id %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">PayPal Order ID:</span>
+                            <span>{{ payment.paypal_order_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.paypal_capture_id %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">PayPal Capture ID:</span>
+                            <span>{{ payment.paypal_capture_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.paypal_payment_status %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">PayPal Status:</span>
+                            <span><span class="badge bg-success">{{ payment.paypal_payment_status }}</span></span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Card Payment Details -->
+                {% if payment.mode == 'card' %}
+                <div class="receipt-section mb-4">
+                    <h5 class="receipt-section-title"><i class="fas fa-credit-card me-2"></i>Card Payment Details</h5>
+                    <div class="receipt-details">
+                        {% if payment.card_type %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">Card Type:</span>
+                            <span>{{ payment.card_type.title() }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.card_last_4 %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">Card Number:</span>
+                            <span>****-****-****-{{ payment.card_last_4 }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.card_expiry_month and payment.card_expiry_year %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">Expiry:</span>
+                            <span>{{ payment.card_expiry_month }}/{{ payment.card_expiry_year }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.card_authorization_code %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">Auth Code:</span>
+                            <span>{{ payment.card_authorization_code }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- UPI Payment Details -->
+                {% if payment.mode == 'upi' %}
+                <div class="receipt-section mb-4">
+                    <h5 class="receipt-section-title"><i class="fas fa-mobile-alt me-2"></i>UPI Payment Details</h5>
+                    <div class="receipt-details">
+                        {% if payment.upi_id %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">UPI ID:</span>
+                            <span>{{ payment.upi_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.upi_transaction_id %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">Transaction ID:</span>
+                            <span>{{ payment.upi_transaction_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.utr_number %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">UTR Number:</span>
+                            <span>{{ payment.utr_number }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Booking Details -->
+                <div class="receipt-section mb-4">
+                    <h5 class="receipt-section-title">Booking Details</h5>
                     <div class="table-responsive">
                         <table class="table table-bordered">
                             <thead class="table-light">
@@ -98,46 +194,145 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>{{ payment.booking.show.movie.title }}</td>
-                                    <td>{{ payment.booking.show.screen.name }}</td>
-                                    <td>{{ payment.booking.show.show_date.strftime('%d %b %Y') }}<br>{{ payment.booking.show.show_time.strftime('%H:%M') }}</td>
-                                    <td>{{ payment.booking.seats }}</td>
-                                    <td class="text-end">₹{{ "%.2f"|format(payment.amount) }}</td>
+                                    <td>{{ payment.booking.show.movie.title if payment.booking and payment.booking.show and payment.booking.show.movie else 'N/A' }}</td>
+                                    <td>{{ payment.booking.show.screen.name if payment.booking and payment.booking.show and payment.booking.show.screen else 'N/A' }}</td>
+                                    <td>{{ payment.booking.show.show_date.strftime('%d %b %Y') if payment.booking and payment.booking.show and payment.booking.show.show_date else 'N/A' }}<br>{{ payment.booking.show.show_time.strftime('%H:%M') if payment.booking and payment.booking.show and payment.booking.show.show_time else 'N/A' }}</td>
+                                    <td>{{ payment.booking.seats if payment.booking and payment.booking.seats else 'N/A' }}</td>
+                                    <td class="text-end">₹{{ "%.2f"|format(payment.amount) if payment.amount else '0.00' }}</td>
                                 </tr>
                             </tbody>
                             <tfoot>
                                 <tr>
                                     <td colspan="4" class="text-end"><strong>Total Amount:</strong></td>
-                                    <td class="text-end"><strong>₹{{ "%.2f"|format(payment.amount) }}</strong></td>
+                                    <td class="text-end"><strong>₹{{ "%.2f"|format(payment.amount) if payment.amount else '0.00' }}</strong></td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
                 </div>
                 
+                <!-- Refund Information -->
+                {% if payment.is_refunded() %}
+                <div class="receipt-section mb-4">
+                    <h5 class="receipt-section-title"><i class="fas fa-undo me-2"></i>Refund Information</h5>
+                    <div class="receipt-details">
+                        {% if payment.refund_amount %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">Refund Amount:</span>
+                            <span class="text-danger">-₹{{ "%.2f"|format(payment.refund_amount) }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.refund_reason %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">Refund Reason:</span>
+                            <span>{{ payment.refund_reason.replace('_', ' ').title() }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.refund_method %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">Refund Method:</span>
+                            <span>{{ payment.refund_method.replace('_', ' ').title() }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.refund_reference_id %}
+                        <div class="receipt-details-row">
+                            <span class="receipt-details-label">Refund Reference:</span>
+                            <span>{{ payment.refund_reference_id }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Payment Notes -->
                 {% if payment.notes %}
-                <div class="mb-4">
-                    <h5>Notes</h5>
+                <div class="receipt-section mb-4">
+                    <h5 class="receipt-section-title">Notes</h5>
                     <p class="text-muted">{{ payment.notes }}</p>
                 </div>
                 {% endif %}
                 
-                <div class="text-center mb-4">
-                    <p class="text-muted">Thank you for your business!</p>
-                    <p class="small text-muted">This is a computer-generated receipt and does not require a signature.</p>
+                <!-- Payment Method Specific Messages -->
+                {% if payment.mode == 'paypal' and payment.is_completed() %}
+                <div class="receipt-section mb-4">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>PayPal Payment:</strong> Your payment has been securely processed through PayPal. 
+                        You can view the transaction details in your PayPal account.
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if payment.is_refunded() %}
+                <div class="receipt-section mb-4">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Payment Refunded:</strong> This payment has been refunded. 
+                        {% if payment.refund_notes %}{{ payment.refund_notes }}{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="receipt-footer">
+                    <div class="text-center">
+                        <p class="mb-2"><strong>Thank you for your business!</strong></p>
+                        <p class="small text-muted mb-0">This is a computer-generated receipt and does not require a signature.</p>
+                    </div>
                 </div>
                 
-                <div class="d-flex justify-content-between">
-                    <a href="{{ url_for('bookings.view', id=payment.booking.id) }}" class="btn btn-secondary">
+                <div class="d-flex justify-content-between no-print">
+                    <a href="{{ url_for('bookings.view', id=payment.booking.id) if payment.booking else '#' }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Back to Booking
                     </a>
                     <div>
                         <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
                             <i class="fas fa-print me-2"></i>Print Receipt
                         </button>
-                        <button type="button" class="btn btn-primary" onclick="window.print()">
+                        <button type="button" class="btn btn-primary" onclick="downloadReceiptPDF()">
                             <i class="fas fa-download me-2"></i>Download PDF
                         </button>
+                        <a href="{{ url_for('payments.email_receipt', id=payment.id) }}" class="btn btn-info">
+                            <i class="fas fa-envelope me-2"></i>Email Receipt
+                        </a>
+                        {% if current_user.role == 'admin' %}
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-warning dropdown-toggle" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false"
+                                        title="Admin Actions">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    {% if payment.can_be_refunded() %}
+                                    <li>
+                                        <a class="dropdown-item text-warning" 
+                                           href="{{ url_for('payments.refund', id=payment.id) }}">
+                                            <i class="fas fa-undo me-2"></i>Process Refund
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    <li>
+                                        <a class="dropdown-item text-info" 
+                                           href="{{ url_for('payments.update_status', id=payment.id) }}">
+                                            <i class="fas fa-edit me-2"></i>Update Status
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" 
+                                           href="{{ url_for('payments.status_history', id=payment.id) }}">
+                                            <i class="fas fa-history me-2"></i>View History
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" 
+                                           href="{{ url_for('payments.audit_trail', id=payment.id) }}">
+                                            <i class="fas fa-shield-alt me-2"></i>Audit Trail
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -147,28 +342,118 @@
 {% endblock %}
 
 {% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
 <style>
-@media print {
-    .no-print {
-        display: none !important;
+.receipt-header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #28a745;
+    padding-bottom: 15px;
+}
+
+.receipt-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #28a745;
+    margin-bottom: 5px;
+}
+
+.receipt-subtitle {
+    font-size: 18px;
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+.receipt-section {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #28a745;
+    margin-bottom: 15px;
+}
+
+.receipt-section-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #28a745;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 5px;
+}
+
+.receipt-details {
+    margin-bottom: 0;
+}
+
+.receipt-details-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed #dee2e6;
+}
+
+.receipt-details-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.receipt-details-label {
+    font-weight: bold;
+    color: #495057;
+}
+
+.receipt-footer {
+    margin-top: 20px;
+    border-top: 1px solid #dee2e6;
+    padding-top: 15px;
+}
+
+/* Thermal printer specific adjustments */
+@media print and (max-width: 80mm) {
+    .receipt-title {
+        font-size: 16px;
     }
     
-    .card {
-        border: none !important;
-        box-shadow: none !important;
-    }
-    
-    .btn {
-        display: none !important;
-    }
-    
-    body {
+    .receipt-subtitle {
         font-size: 12px;
     }
     
+    .receipt-section {
+        padding: 8px;
+    }
+    
+    .receipt-details-row {
+        margin-bottom: 4px;
+        padding-bottom: 2px;
+        font-size: 10px;
+    }
+    
     .table {
-        font-size: 11px;
+        font-size: 8px;
+    }
+    
+    .receipt-footer {
+        font-size: 8px;
+        margin-top: 10px;
+    }
+    
+    .no-print {
+        display: none !important;
     }
 }
 </style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function downloadReceiptPDF() {
+    window.location.href = "{{ url_for('payments.receipt_pdf', id=payment.id) }}";
+}
+
+// Auto-focus on print button when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Optional: Show print dialog automatically
+    // window.print();
+});
+</script>
 {% endblock %}

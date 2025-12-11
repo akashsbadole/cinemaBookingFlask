@@ -2,17 +2,162 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6 text-center">
+    <div class="col-md-8">
         <div class="card">
-            <div class="card-body">
-                <h1 class="display-1 text-danger">500</h1>
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <i class="fas fa-exclamation-triangle text-danger" style="font-size: 4rem;"></i>
+                </div>
+                <h1 class="display-4 text-danger">500</h1>
                 <h2>Internal Server Error</h2>
-                <p class="lead">Something went wrong on our end. Please try again later.</p>
-                <a href="{{ url_for('index') }}" class="btn btn-primary">
-                    <i class="fas fa-home me-1"></i>Go to Dashboard
-                </a>
+                <p class="lead">{{ error_message or "Something went wrong on our end. Please try again later." }}</p>
+                
+                {% if error_details %}
+                <div class="alert alert-warning mt-3">
+                    <h5><i class="fas fa-info-circle me-2"></i>Technical Details:</h5>
+                    <p>{{ error_details }}</p>
+                </div>
+                {% endif %}
+                
+                <div class="alert alert-info mt-3">
+                    <h5><i class="fas fa-lightbulb me-2"></i>What you can do:</h5>
+                    <ul class="list-unstyled text-start">
+                        <li><i class="fas fa-sync me-2"></i>Refresh the page and try again</li>
+                        <li><i class="fas fa-clock me-2"></i>Wait a few minutes and try again</li>
+                        <li><i class="fas fa-user me-2"></i>Contact support if the problem persists</li>
+                        <li><i class="fas fa-keyboard me-2"></i>Try using a different browser or device</li>
+                    </ul>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6 mb-2">
+                        <a href="{{ url_for('index') }}" class="btn btn-primary w-100">
+                            <i class="fas fa-home me-1"></i>Go to Dashboard
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <button onclick="location.reload()" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-sync me-1"></i>Refresh Page
+                        </button>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-6 mb-2">
+                        <button onclick="history.back()" class="btn btn-secondary w-100">
+                            <i class="fas fa-arrow-left me-1"></i>Go Back
+                        </button>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <button onclick="showErrorReport()" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-bug me-1"></i>Report Error
+                        </button>
+                    </div>
+                </div>
+                
+                {% if user_id %}
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6><i class="fas fa-hashtag me-1"></i>Error Reference Information</h6>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <small class="text-muted">Reference ID:</small><br>
+                            <code>{{ error_code }}-{{ user_id }}-{{ timestamp[:8] }}</code>
+                        </div>
+                        <div class="col-sm-6">
+                            <small class="text-muted">Timestamp:</small><br>
+                            <code>{{ timestamp }}</code>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            If this problem continues, please contact support with the reference ID above.
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<!-- Error Report Modal -->
+<div class="modal fade" id="errorReportModal" tabindex="-1" aria-labelledby="errorReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errorReportModalLabel">
+                    <i class="fas fa-bug me-2"></i>Report Error
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="errorReportForm">
+                    <div class="mb-3">
+                        <label for="errorDescription" class="form-label">What were you trying to do?</label>
+                        <textarea class="form-control" id="errorDescription" rows="3" 
+                                  placeholder="Please describe what you were doing when the error occurred..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userEmail" class="form-label">Your Email (optional)</label>
+                        <input type="email" class="form-control" id="userEmail" 
+                               placeholder="your.email@example.com">
+                    </div>
+                    <input type="hidden" id="errorReference" value="{{ error_code }}-{{ user_id or 'guest' }}-{{ timestamp[:8] }}">
+                    <input type="hidden" id="errorUrl" value="{{ request.url if request else 'unknown' }}">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitErrorReport()">
+                    <i class="fas fa-paper-plane me-1"></i>Submit Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showErrorReport() {
+    const modal = new bootstrap.Modal(document.getElementById('errorReportModal'));
+    modal.show();
+}
+
+function submitErrorReport() {
+    const description = document.getElementById('errorDescription').value;
+    const email = document.getElementById('userEmail').value;
+    const reference = document.getElementById('errorReference').value;
+    const url = document.getElementById('errorUrl').value;
+    
+    if (!description.trim()) {
+        alert('Please describe what you were trying to do.');
+        return;
+    }
+    
+    // In a real application, this would send data to the server
+    console.log('Error Report:', {
+        description: description,
+        email: email,
+        reference: reference,
+        url: url,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+    });
+    
+    alert('Thank you for reporting this error. We will investigate the issue.');
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('errorReportModal'));
+    modal.hide();
+    
+    // Clear form
+    document.getElementById('errorDescription').value = '';
+    document.getElementById('userEmail').value = '';
+}
+
+// Auto-refresh after 30 seconds
+setTimeout(function() {
+    if (confirm('The page has encountered an error. Would you like to refresh?')) {
+        location.reload();
+    }
+}, 30000);
+</script>
 {% endblock %}

@@ -1,33 +1,1055 @@
 """
 Bookings Routes
 """
-from flask import render_template, redirect, url_for, flash, request
-from flask_login import login_required
+from flask import render_template, redirect, url_for, flash, request, make_response, send_file, jsonify, abort
+from flask_login import login_required, current_user
 from app.bookings import bp
 from app.auth.decorators import admin_required
+from app.shows.models import Show
+from app.screens.models import Screen, Seat
+from app.bookings.models import Booking, BookingSeat
+from app.bookings.forms import BookingForm, SeatSelectionForm, ShowSelectionForm, BookingSearchForm, SeatLockForm
+from app.bookings.utils import SeatManager, BookingCalculator
+from app.movies.models import Movie
+from app.database import db
+from app.utils import generate_ticket_pdf
+from app.validators import InputSanitizer, DataValidators, SecurityValidator, BusinessValidators, ValidationError
+from app.error_handlers import ErrorLogger, ErrorHandler
+from app.data_integrity import ConcurrentAccessChecker, IntegrityChecker
+import qrcode
+import io
+from datetime import datetime, timedelta
 
 @bp.route('/')
 @login_required
 def index():
-    """Bookings listing page"""
-    return render_template('bookings/index.html', title='Bookings')
+    """Bookings listing page with enhanced validation"""
+    try:
+        # Get search parameters
+        search_form = BookingSearchForm()
+        
+        # Sanitize and validate search parameters
+        search_term = InputSanitizer.sanitize_string(request.args.get('search', ''), max_length=100)
+        search_type = InputSanitizer.sanitize_string(request.args.get('search_type', 'all'), max_length=20)
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+        
+        # Security check for injection attempts
+        if SecurityValidator.detect_sql_injection([search_term, search_type]):
+            ErrorLogger.log_security_event(
+                'sql_injection_attempt',
+                f'SQL injection attempt detected in booking search: {search_term}',
+                request,
+                user_id=current_user.id,
+                severity='high'
+            )
+            abort(400, "Invalid input detected")
+        
+        # Validate search type
+        valid_search_types = ['all', 'customer', 'movie', 'booking_id']
+        if search_type not in valid_search_types:
+            search_type = 'all'
+        
+        # Start with base query
+        query = Booking.query
+        
+        # Apply search filters with validation
+        if search_term:
+            if search_type == 'customer':
+                # Validate customer name format
+                if DataValidators.validate_name_format(search_term):
+                    query = query.filter(Booking.customer_name.ilike(f'%{search_term}%'))
+                else:
+                    flash('Invalid customer name format', 'warning')
+            elif search_type == 'movie':
+                query = query.join(Show).join(Movie).filter(Movie.title.ilike(f'%{search_term}%'))
+            elif search_type == 'booking_id':
+                try:
+                    if search_term.startswith('BK'):
+                        # Search by reference number
+                        query = query.filter(Booking.reference_number.ilike(f'%{search_term}%'))
+                    else:
+                        # Search by ID
+                        booking_id = int(search_term)
+                        if booking_id > 0:
+                            query = query.filter(Booking.id == booking_id)
+                except ValueError:
+                    flash('Invalid booking ID format', 'warning')
+        
+        # Apply date filters with validation
+        if date_from:
+            try:
+                date_int = int(date_from)
+                date_obj = datetime.strptime(str(date_int), '%Y%m%d').date()
+                if date_obj <= datetime.now().date():
+                    query = query.filter(Booking.booking_time >= date_obj)
+                else:
+                    flash('Start date cannot be in the future', 'warning')
+            except ValueError:
+                flash('Invalid start date format', 'warning')
+        
+        if date_to:
+            try:
+                date_int = int(date_to)
+                date_obj = datetime.strptime(str(date_int), '%Y%m%d').date()
+                query = query.filter(Booking.booking_time <= date_obj + timedelta(days=1))
+            except ValueError:
+                flash('Invalid end date format', 'warning')
+        
+        # Get filtered bookings
+        bookings = query.order_by(Booking.booking_time.desc()).all()
+        
+        # Format booking data for template
+        formatted_bookings = []
+        for booking in bookings:
+            try:
+                # Get seats for this booking
+                seats = booking.get_seats_list()
+                
+                formatted_bookings.append({
+                    'id': booking.id,
+                    'reference_number': booking.reference_number,
+                    'customer_name': booking.customer_name,
+                    'movie_title': booking.show.movie.title if booking.show.movie else 'N/A',
+                    'screen_name': booking.show.screen.name if booking.show.screen else 'N/A',
+                    'show_date': booking.show.show_date.strftime('%d %b %Y') if booking.show.show_date else 'N/A',
+                    'show_time': booking.show.show_time.strftime('%I:%M %p') if booking.show.show_time else 'N/A',
+                    'seats': ', '.join(seats),
+                    'total_amount': float(booking.total_amount) if booking.total_amount else 0,
+                    'booking_time': booking.booking_time.strftime('%d %b %Y %I:%M %p'),
+                    'status': booking.status,
+                    'payment_method': booking.payment_method
+                })
+            except Exception as e:
+                ErrorLogger.log_error(e, request, context={'booking_id': booking.id})
+                continue
+        
+        return render_template('bookings/index.html', title='Bookings', 
+                             bookings=formatted_bookings, search_form=search_form)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while loading bookings', 'danger')
+        return render_template('bookings/index.html', title='Bookings', 
+                             bookings=[], search_form=BookingSearchForm())
 
 @bp.route('/new')
 @login_required
 def new():
-    """Create new booking"""
-    return render_template('bookings/new.html', title='New Booking')
+    """Create new booking - first step: select show"""
+    try:
+        # Clean up expired locks first
+        SeatManager.cleanup_expired_locks()
+        
+        # Get form for show selection
+        form = ShowSelectionForm()
+        
+        return render_template('bookings/select_show.html', title='Select Show', form=form)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while initializing booking', 'danger')
+        return redirect(url_for('index'))
+
+@bp.route('/select_show', methods=['POST'])
+@login_required
+def select_show():
+    """Process show selection and redirect to seat selection"""
+    form = ShowSelectionForm()
+    
+    try:
+        if form.validate_on_submit():
+            # Validate and sanitize form inputs
+            movie_id = int(form.movie_id.data) if form.movie_id.data and form.movie_id.data != 0 else None
+            screen_id = int(form.screen_id.data) if form.screen_id.data and form.screen_id.data != 0 else None
+            
+            date_int = form.show_date.data
+            show_date = None
+            if date_int and date_int != 0:
+                try:
+                    show_date = datetime.strptime(str(date_int), '%Y%m%d').date()
+                except ValueError:
+                    raise ValidationError("Invalid date format")
+            
+            # Build show query based on filters
+            query = Show.query.join(Movie).filter(Movie.status == 'active').join(Screen)
+            
+            if movie_id:
+                query = query.filter(Show.movie_id == movie_id)
+            
+            if screen_id:
+                query = query.filter(Show.screen_id == screen_id)
+            
+            if show_date:
+                query = query.filter(Show.show_date == show_date)
+            
+            # Only get future shows
+            query = query.filter(
+                Show.show_date >= datetime.now().date(),
+                Show.status == 'scheduled'
+            ).order_by(Show.show_date, Show.show_time)
+            
+            shows = query.all()
+            
+            if not shows:
+                flash('No shows found matching your criteria', 'info')
+                return render_template('bookings/show_list.html', title='Available Shows', 
+                                     shows=[], form=form)
+            
+            return render_template('bookings/show_list.html', title='Available Shows', 
+                                 shows=shows, form=form)
+        
+        # Form validation failed
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f'{getattr(form, field).label.text}: {error}', 'danger')
+        
+        return redirect(url_for('bookings.new'))
+    
+    except ValidationError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('bookings.new'))
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while searching for shows', 'danger')
+        return redirect(url_for('bookings.new'))
+
+@bp.route('/show/<int:show_id>/seats')
+@login_required
+def select_seats(show_id):
+    """Seat selection page with enhanced validation"""
+    try:
+        # Validate show_id
+        if show_id <= 0:
+            flash('Invalid show ID', 'danger')
+            return redirect(url_for('bookings.new'))
+        
+        # Clean up expired locks
+        SeatManager.cleanup_expired_locks()
+        
+        # Get show details
+        show = Show.query.get(show_id)
+        if not show:
+            flash('Show not found', 'danger')
+            return redirect(url_for('bookings.new'))
+        
+        # Validate show is in the future and not ended
+        now = datetime.now()
+        show_datetime = datetime.combine(show.show_date, 
+                                       datetime.strptime(str(show.show_time), '%H:%M:%S').time())
+        
+        if show_datetime <= now:
+            flash('This show has already started or is in the past', 'danger')
+            return redirect(url_for('bookings.new'))
+        
+        # Validate show status
+        if show.status != 'scheduled':
+            flash('This show is not currently available for booking', 'danger')
+            return redirect(url_for('bookings.new'))
+        
+        # Get seat layout with availability
+        seat_layout = SeatManager.get_seat_layout(show_id)
+        
+        # Validate seat layout
+        if not seat_layout or 'layout' not in seat_layout:
+            flash('Unable to load seat layout', 'danger')
+            return redirect(url_for('bookings.new'))
+        
+        # Get pricing information with validation
+        try:
+            base_price = float(show.base_price) if show.base_price else 0
+            weekend_surcharge = float(show.weekend_surcharge or 0) if show.is_weekend() else 0
+            matinee_discount = float(show.matinee_discount or 0) if show.is_matinee() else 0
+            
+            price_info = {
+                'base_price': base_price,
+                'weekend_surcharge': weekend_surcharge,
+                'matinee_discount': matinee_discount,
+                'is_weekend': show.is_weekend(),
+                'is_matinee': show.is_matinee()
+            }
+            
+            # Validate pricing
+            if base_price < 0:
+                raise ValidationError("Invalid base price")
+            if weekend_surcharge < 0:
+                raise ValidationError("Invalid weekend surcharge")
+            if matinee_discount < 0:
+                raise ValidationError("Invalid matinee discount")
+            
+        except (ValueError, ValidationError) as e:
+            ErrorLogger.log_error(e, request, context={'show_id': show_id})
+            flash('Invalid pricing information for this show', 'danger')
+            return redirect(url_for('bookings.new'))
+        
+        return render_template('bookings/select_seats.html', title='Select Seats',
+                             show=show, seat_layout=seat_layout, price_info=price_info)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'show_id': show_id})
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while loading seat selection', 'danger')
+        return redirect(url_for('bookings.new'))
+
+@bp.route('/api/show/<int:show_id>/seat_status')
+@login_required
+def api_seat_status(show_id):
+    """API endpoint to get current seat status with validation"""
+    try:
+        # Validate show_id
+        if show_id <= 0:
+            return jsonify({'success': False, 'error': 'Invalid show ID'})
+        
+        # Clean up expired locks first
+        SeatManager.cleanup_expired_locks()
+        
+        # Validate show exists and is bookable
+        show = Show.query.get(show_id)
+        if not show:
+            return jsonify({'success': False, 'error': 'Show not found'})
+        
+        if show.status != 'scheduled':
+            return jsonify({'success': False, 'error': 'Show is not available for booking'})
+        
+        # Check if show is still in the future
+        show_datetime = datetime.combine(show.show_date, 
+                                       datetime.strptime(str(show.show_time), '%H:%M:%S').time())
+        if show_datetime <= datetime.now():
+            return jsonify({'success': False, 'error': 'Show has already started'})
+        
+        seat_layout = SeatManager.get_seat_layout(show_id)
+        
+        # Validate seat layout
+        if not seat_layout or 'layout' not in seat_layout:
+            return jsonify({'success': False, 'error': 'Unable to load seat layout'})
+        
+        return jsonify({'success': True, 'seat_layout': seat_layout})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'show_id': show_id})
+        return jsonify({'success': False, 'error': 'Failed to get seat status'})
+
+@bp.route('/api/lock_seats', methods=['POST'])
+@login_required
+def api_lock_seats():
+    """API endpoint to lock seats temporarily with enhanced validation"""
+    try:
+        # Get and validate JSON data
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON data'})
+        
+        # Sanitize and validate inputs
+        show_id = int(data.get('show_id', 0))
+        seat_ids = data.get('seat_ids', [])
+        duration = int(data.get('duration_minutes', 5))
+        
+        # Validate inputs
+        if show_id <= 0:
+            return jsonify({'success': False, 'error': 'Invalid show ID'})
+        
+        if not seat_ids or not isinstance(seat_ids, list) or len(seat_ids) == 0:
+            return jsonify({'success': False, 'error': 'Seat IDs are required'})
+        
+        # Validate seat IDs
+        try:
+            seat_ids = [int(sid) for sid in seat_ids]
+            if any(sid <= 0 for sid in seat_ids):
+                return jsonify({'success': False, 'error': 'Invalid seat ID format'})
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid seat ID format'})
+        
+        # Validate duration
+        if duration <= 0 or duration > 30:  # Max 30 minutes
+            return jsonify({'success': False, 'error': 'Lock duration must be between 1 and 30 minutes'})
+        
+        # Validate show exists and is bookable
+        show = Show.query.get(show_id)
+        if not show:
+            return jsonify({'success': False, 'error': 'Show not found'})
+        
+        if show.status != 'scheduled':
+            return jsonify({'success': False, 'error': 'Show is not available for booking'})
+        
+        # Check for concurrent access conflicts
+        conflict_check = ConcurrentAccessChecker.check_booking_conflicts(show_id, seat_ids, current_user.id)
+        if conflict_check['has_conflict']:
+            ErrorLogger.log_security_event(
+                'seat_lock_conflict',
+                f'Seat lock conflict detected for show {show_id}',
+                request,
+                user_id=current_user.id,
+                context={'seat_ids': seat_ids, 'conflicts': conflict_check['conflicts']}
+            )
+            return jsonify({'success': False, 'error': 'Seats are already being booked by other users'})
+        
+        # Validate seat availability
+        is_available, message = SeatManager.validate_seat_availability(show_id, seat_ids)
+        if not is_available:
+            return jsonify({'success': False, 'error': message})
+        
+        # Lock seats
+        locked_seats = SeatManager.lock_seats(show_id, seat_ids, duration, current_user.id)
+        
+        if not locked_seats:
+            return jsonify({'success': False, 'error': 'Failed to lock seats'})
+        
+        ErrorLogger.log_security_event(
+            'seats_locked',
+            f'User {current_user.username} locked {len(locked_seats)} seats for show {show_id}',
+            request,
+            user_id=current_user.id,
+            context={'show_id': show_id, 'seat_ids': seat_ids, 'duration': duration}
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'{len(locked_seats)} seats locked for {duration} minutes',
+            'lock_expiry': (datetime.utcnow() + timedelta(minutes=duration)).isoformat()
+        })
+    
+    except ValueError as e:
+        return jsonify({'success': False, 'error': 'Invalid data format'})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'success': False, 'error': 'Failed to lock seats'})
+
+@bp.route('/api/release_seats', methods=['POST'])
+@login_required
+def api_release_seats():
+    """API endpoint to release seat locks with validation"""
+    try:
+        # Get and validate JSON data
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON data'})
+        
+        # Sanitize and validate inputs
+        show_id = int(data.get('show_id', 0))
+        seat_ids = data.get('seat_ids', [])
+        
+        # Validate inputs
+        if show_id <= 0:
+            return jsonify({'success': False, 'error': 'Invalid show ID'})
+        
+        if not seat_ids or not isinstance(seat_ids, list) or len(seat_ids) == 0:
+            return jsonify({'success': False, 'error': 'Seat IDs are required'})
+        
+        # Validate seat IDs
+        try:
+            seat_ids = [int(sid) for sid in seat_ids]
+            if any(sid <= 0 for sid in seat_ids):
+                return jsonify({'success': False, 'error': 'Invalid seat ID format'})
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid seat ID format'})
+        
+        # Validate show exists
+        show = Show.query.get(show_id)
+        if not show:
+            return jsonify({'success': False, 'error': 'Show not found'})
+        
+        released_count = SeatManager.release_seat_locks(show_id, seat_ids)
+        
+        ErrorLogger.log_security_event(
+            'seats_released',
+            f'User {current_user.username} released {released_count} seats for show {show_id}',
+            request,
+            user_id=current_user.id,
+            context={'show_id': show_id, 'seat_ids': seat_ids}
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'{released_count} seats released'
+        })
+    
+    except ValueError as e:
+        return jsonify({'success': False, 'error': 'Invalid data format'})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'success': False, 'error': 'Failed to release seats'})
+
+@bp.route('/api/calculate_price', methods=['POST'])
+@login_required
+def api_calculate_price():
+    """API endpoint to calculate booking price with enhanced validation"""
+    try:
+        # Get and validate JSON data
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON data'})
+        
+        # Sanitize and validate inputs
+        show_id = int(data.get('show_id', 0))
+        seat_ids = data.get('seat_ids', [])
+        
+        # Validate inputs
+        if show_id <= 0:
+            return jsonify({'success': False, 'error': 'Invalid show ID'})
+        
+        if not seat_ids or not isinstance(seat_ids, list) or len(seat_ids) == 0:
+            return jsonify({'success': False, 'error': 'Seat IDs are required'})
+        
+        # Validate seat IDs
+        try:
+            seat_ids = [int(sid) for sid in seat_ids]
+            if any(sid <= 0 for sid in seat_ids):
+                return jsonify({'success': False, 'error': 'Invalid seat ID format'})
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid seat ID format'})
+        
+        # Validate maximum seats per booking
+        if len(seat_ids) > 10:  # Max 10 seats per booking
+            return jsonify({'success': False, 'error': 'Maximum 10 seats allowed per booking'})
+        
+        # Validate show exists
+        show = Show.query.get(show_id)
+        if not show:
+            return jsonify({'success': False, 'error': 'Show not found'})
+        
+        # Validate show is bookable
+        if show.status != 'scheduled':
+            return jsonify({'success': False, 'error': 'Show is not available for booking'})
+        
+        # Calculate total cost
+        total_cost, seat_costs = BookingCalculator.calculate_booking_cost(show_id, seat_ids)
+        
+        # Validate pricing
+        if total_cost < 0:
+            return jsonify({'success': False, 'error': 'Invalid price calculation'})
+        
+        price_details = BookingCalculator.get_price_breakdown(show_id, seat_ids)
+        
+        return jsonify({
+            'success': True,
+            'total_cost': float(total_cost),
+            'seat_count': len(seat_ids),
+            'breakdown': price_details
+        })
+    
+    except ValueError as e:
+        return jsonify({'success': False, 'error': 'Invalid data format'})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'success': False, 'error': 'Failed to calculate price'})
+
+@bp.route('/confirm_booking', methods=['GET', 'POST'])
+@login_required
+def confirm_booking():
+    """Confirm and create booking with enhanced validation"""
+    if request.method == 'GET':
+        try:
+            # Get and sanitize booking details from query parameters
+            show_id = request.args.get('show_id', type=int)
+            seat_ids_str = request.args.get('seat_ids', '')
+            
+            # Validate inputs
+            if not show_id or show_id <= 0:
+                flash('Invalid show ID', 'danger')
+                return redirect(url_for('bookings.new'))
+            
+            if not seat_ids_str:
+                flash('Invalid seat selection', 'danger')
+                return redirect(url_for('bookings.new'))
+            
+            # Validate and parse seat IDs
+            try:
+                seat_ids = [int(sid) for sid in seat_ids_str.split(',') if sid.strip()]
+                if not seat_ids or any(sid <= 0 for sid in seat_ids):
+                    raise ValueError("Invalid seat ID format")
+            except ValueError:
+                flash('Invalid seat IDs', 'danger')
+                return redirect(url_for('bookings.new'))
+            
+            # Validate maximum seats per booking
+            if len(seat_ids) > 10:
+                flash('Maximum 10 seats allowed per booking', 'danger')
+                return redirect(url_for('bookings.select_seats', show_id=show_id))
+            
+            # Validate show exists
+            show = Show.query.get(show_id)
+            if not show:
+                flash('Show not found', 'danger')
+                return redirect(url_for('bookings.new'))
+            
+            # Validate show is bookable
+            if show.status != 'scheduled':
+                flash('This show is not available for booking', 'danger')
+                return redirect(url_for('bookings.select_seats', show_id=show_id))
+            
+            # Validate show is still in the future
+            show_datetime = datetime.combine(show.show_date, 
+                                           datetime.strptime(str(show.show_time), '%H:%M:%S').time())
+            if show_datetime <= datetime.now():
+                flash('This show has already started', 'danger')
+                return redirect(url_for('bookings.new'))
+            
+            # Validate seat availability with concurrent access check
+            conflict_check = ConcurrentAccessChecker.check_booking_conflicts(show_id, seat_ids, current_user.id)
+            if conflict_check['has_conflict']:
+                flash('Some seats are no longer available', 'danger')
+                return redirect(url_for('bookings.select_seats', show_id=show_id))
+            
+            is_available, message = SeatManager.validate_seat_availability(show_id, seat_ids)
+            if not is_available:
+                flash(message, 'danger')
+                return redirect(url_for('bookings.select_seats', show_id=show_id))
+            
+            # Calculate and validate total cost
+            total_cost, seat_costs = BookingCalculator.calculate_booking_cost(show_id, seat_ids)
+            if total_cost < 0:
+                flash('Invalid price calculation', 'danger')
+                return redirect(url_for('bookings.new'))
+            
+            # Create booking form
+            form = BookingForm()
+            form.show_id.data = show_id
+            form.total_amount.data = total_cost
+            
+            return render_template('bookings/confirm_booking.html',
+                                 title='Confirm Booking', form=form,
+                                 show=show, seat_costs=seat_costs,
+                                 total_amount=total_cost, seat_ids=seat_ids)
+        
+        except Exception as e:
+            ErrorLogger.log_error(e, request, user_id=current_user.id)
+            ErrorHandler.handle_error(e, request)
+            flash('An error occurred while preparing the booking', 'danger')
+            return redirect(url_for('bookings.new'))
+    
+    else:  # POST
+        form = BookingForm()
+        
+        try:
+            if form.validate_on_submit():
+                # Get and sanitize seat IDs from form
+                seat_ids_str = request.form.get('seat_ids', '')
+                if not seat_ids_str:
+                    flash('No seats selected', 'danger')
+                    return redirect(url_for('bookings.new'))
+                
+                # Validate and parse seat IDs
+                try:
+                    seat_ids = [int(sid) for sid in seat_ids_str.split(',') if sid.strip()]
+                    if not seat_ids or any(sid <= 0 for sid in seat_ids):
+                        raise ValueError("Invalid seat ID format")
+                except ValueError:
+                    flash('Invalid seat IDs', 'danger')
+                    return redirect(url_for('bookings.new'))
+                
+                # Sanitize customer data
+                customer_name = InputSanitizer.sanitize_string(form.customer_name.data, max_length=100)
+                customer_phone = InputSanitizer.sanitize_string(form.customer_phone.data, max_length=20)
+                customer_email = InputSanitizer.sanitize_email(form.customer_email.data)
+                payment_method = InputSanitizer.sanitize_string(form.payment_method.data, max_length=20)
+                payment_reference = InputSanitizer.sanitize_string(form.payment_reference.data, max_length=100)
+                
+                # Security checks
+                if SecurityValidator.detect_sql_injection([customer_name, customer_phone, customer_email]):
+                    ErrorLogger.log_security_event(
+                        'sql_injection_attempt',
+                        f'SQL injection attempt detected in booking confirmation',
+                        request,
+                        user_id=current_user.id,
+                        severity='high'
+                    )
+                    abort(400, "Invalid input detected")
+                
+                # Validate customer data
+                if not DataValidators.validate_name_format(customer_name):
+                    raise ValidationError("Invalid customer name format")
+                
+                if customer_phone and not DataValidators.validate_phone_format(customer_phone):
+                    raise ValidationError("Invalid phone number format")
+                
+                if customer_email and not DataValidators.validate_email_format(customer_email):
+                    raise ValidationError("Invalid email format")
+                
+                # Validate payment method
+                valid_payment_methods = ['cash', 'card', 'upi', 'net_banking']
+                if payment_method not in valid_payment_methods:
+                    raise ValidationError("Invalid payment method")
+                
+                # Validate show and final availability
+                show_id = int(form.show_id.data)
+                show = Show.query.get(show_id)
+                if not show:
+                    raise ValidationError("Show not found")
+                
+                # Final validation with concurrent access check
+                conflict_check = ConcurrentAccessChecker.check_booking_conflicts(show_id, seat_ids, current_user.id)
+                if conflict_check['has_conflict']:
+                    raise ValidationError("Some seats are no longer available")
+                
+                is_available, message = SeatManager.validate_seat_availability(show_id, seat_ids)
+                if not is_available:
+                    raise ValidationError(message)
+                
+                # Calculate final cost
+                total_cost, seat_costs = BookingCalculator.calculate_booking_cost(show_id, seat_ids)
+                
+                # Validate amount consistency
+                if abs(float(total_cost) - float(form.total_amount.data)) > 0.01:
+                    ErrorLogger.log_security_event(
+                        'booking_price_mismatch',
+                        f'Price mismatch in booking confirmation. Expected: {total_cost}, Received: {form.total_amount.data}',
+                        request,
+                        user_id=current_user.id,
+                        severity='high'
+                    )
+                    raise ValidationError("Price mismatch detected")
+                
+                # Create booking with validation
+                booking = Booking(
+                    show_id=show_id,
+                    user_id=current_user.id,
+                    customer_name=customer_name,
+                    customer_phone=customer_phone,
+                    customer_email=customer_email,
+                    total_amount=total_cost,
+                    payment_method=payment_method,
+                    payment_reference=payment_reference,
+                    booking_time=datetime.utcnow()
+                )
+                
+                # Generate reference number
+                booking.generate_reference_number()
+                
+                # Add to session
+                db.session.add(booking)
+                db.session.flush()  # Get the booking ID
+                
+                # Create booking seats and release any existing locks
+                for i, seat_id in enumerate(seat_ids):
+                    # Find and remove any existing locks for this seat
+                    existing_locks = db.session.query(BookingSeat).join(Booking).filter(
+                        BookingSeat.seat_id == seat_id,
+                        Booking.show_id == show_id,
+                        BookingSeat.status == 'locked',
+                        Booking.status == 'pending'
+                    ).all()
+                    
+                    for lock in existing_locks:
+                        db.session.delete(lock)
+                    
+                    # Create the actual booking seat with validation
+                    seat_price = seat_costs[i]['price'] if i < len(seat_costs) else 0
+                    if seat_price < 0:
+                        raise ValidationError("Invalid seat price")
+                    
+                    booking_seat = BookingSeat(
+                        booking_id=booking.id,
+                        seat_id=seat_id,
+                        status='booked',
+                        price=seat_price
+                    )
+                    db.session.add(booking_seat)
+                
+                # Confirm the booking
+                booking.confirm_booking()
+                
+                # Create payment record
+                from app.payments.models import Payment
+                payment = Payment(
+                    booking_id=booking.id,
+                    amount=total_cost,
+                    mode=payment_method,
+                    reference_id=payment_reference,
+                    status='completed',
+                    completed_at=datetime.utcnow()
+                )
+                db.session.add(payment)
+                
+                # Commit transaction
+                db.session.commit()
+                
+                ErrorLogger.log_security_event(
+                    'booking_created',
+                    f'User {current_user.username} created booking {booking.reference_number}',
+                    request,
+                    user_id=current_user.id,
+                    context={
+                        'booking_id': booking.id,
+                        'show_id': show_id,
+                        'seat_ids': seat_ids,
+                        'amount': total_cost
+                    }
+                )
+                
+                flash(f'Booking confirmed! Reference: {booking.reference_number}', 'success')
+                return redirect(url_for('payments.process', booking_id=booking.id))
+            
+            # Form validation failed
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f'{getattr(form, field).label.text}: {error}', 'danger')
+            
+            # Re-render form with data
+            show_id = int(form.show_id.data) if form.show_id.data else 0
+            seat_ids_str = request.form.get('seat_ids', '')
+            
+            try:
+                seat_ids = [int(sid) for sid in seat_ids_str.split(',') if sid.strip()]
+                if show_id > 0 and seat_ids:
+                    total_cost, seat_costs = BookingCalculator.calculate_booking_cost(show_id, seat_ids)
+                    show = Show.query.get(show_id)
+                    
+                    return render_template('bookings/confirm_booking.html', 
+                                         title='Confirm Booking', form=form, 
+                                         show=show, seat_costs=seat_costs,
+                                         total_amount=total_cost, seat_ids=seat_ids)
+            except Exception:
+                pass
+            
+            return redirect(url_for('bookings.new'))
+        
+        except ValidationError as e:
+            db.session.rollback()
+            ErrorLogger.log_security_event(
+                'booking_validation_error',
+                f'Validation error in booking confirmation: {str(e)}',
+                request,
+                user_id=current_user.id,
+                severity='medium'
+            )
+            flash(str(e), 'danger')
+            return redirect(url_for('bookings.new'))
+        
+        except Exception as e:
+            db.session.rollback()
+            ErrorLogger.log_error(e, request, user_id=current_user.id)
+            ErrorHandler.handle_error(e, request)
+            flash('An error occurred while creating the booking', 'danger')
+            return redirect(url_for('bookings.new'))
 
 @bp.route('/view/<int:id>')
 @login_required
 def view(id):
-    """View booking details"""
-    return render_template('bookings/view.html', title='Booking Details')
+    """View booking details with validation"""
+    try:
+        if id <= 0:
+            flash('Invalid booking ID', 'danger')
+            return redirect(url_for('bookings.index'))
+        
+        booking = Booking.query.get(id)
+        if not booking:
+            flash('Booking not found', 'danger')
+            return redirect(url_for('bookings.index'))
+        
+        # Get seats for this booking
+        booking.seats_list = booking.get_seats_list()
+        booking.seats = ', '.join(booking.seats_list)
+        
+        return render_template('bookings/view.html', title='Booking Details', booking=booking)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while loading booking details', 'danger')
+        return redirect(url_for('bookings.index'))
+
+@bp.route('/ticket/<int:id>')
+@login_required
+def ticket(id):
+    """View ticket for printing with validation"""
+    try:
+        if id <= 0:
+            flash('Invalid booking ID', 'danger')
+            return redirect(url_for('bookings.index'))
+        
+        booking = Booking.query.get(id)
+        if not booking:
+            flash('Booking not found', 'danger')
+            return redirect(url_for('bookings.index'))
+        
+        # Get seats for this booking
+        booking.seats_list = booking.get_seats_list()
+        booking.seats = ', '.join(booking.seats_list)
+        
+        return render_template('bookings/ticket.html', title='Movie Ticket', booking=booking)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while generating ticket', 'danger')
+        return redirect(url_for('bookings.index'))
+
+@bp.route('/ticket/<int:id>/qr')
+@login_required
+def ticket_qr(id):
+    """Generate QR code for ticket with validation"""
+    try:
+        if id <= 0:
+            return jsonify({'error': 'Invalid booking ID'}), 400
+        
+        booking = Booking.query.get(id)
+        if not booking:
+            return jsonify({'error': 'Booking not found'}), 404
+        
+        # Sanitize QR code data
+        customer_name = InputSanitizer.sanitize_string(booking.customer_name, max_length=50)
+        movie_title = InputSanitizer.sanitize_string(booking.show.movie.title, max_length=100)
+        seats_list = booking.get_seats_list()
+        
+        # Generate QR code with booking information
+        qr_data = f"Booking Ref: {booking.reference_number}\nCustomer: {customer_name}\nMovie: {movie_title}\nDate: {booking.show.show_date}\nTime: {booking.show.show_time}\nSeats: {', '.join(seats_list)}"
+        
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(qr_data)
+        qr.make(fit=True)
+        
+        # Create QR code image
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Save to bytes
+        img_io = io.BytesIO()
+        img.save(img_io, 'PNG')
+        img_io.seek(0)
+        
+        return send_file(img_io, mimetype='image/png')
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        return jsonify({'error': 'Failed to generate QR code'}), 500
+
+@bp.route('/ticket/<int:id>/pdf')
+@login_required
+def ticket_pdf(id):
+    """Generate PDF ticket with validation"""
+    try:
+        if id <= 0:
+            return jsonify({'error': 'Invalid booking ID'}), 400
+        
+        booking = Booking.query.get(id)
+        if not booking:
+            return jsonify({'error': 'Booking not found'}), 404
+        
+        # Prepare and sanitize booking data for PDF generation
+        booking_data = {
+            'id': booking.id,
+            'reference_number': booking.reference_number,
+            'customer_name': InputSanitizer.sanitize_string(booking.customer_name, max_length=100),
+            'movie_title': InputSanitizer.sanitize_string(booking.show.movie.title, max_length=200) if booking.show.movie else 'N/A',
+            'screen_name': InputSanitizer.sanitize_string(booking.show.screen.name, max_length=100) if booking.show.screen else 'N/A',
+            'show_date': booking.show.show_date.strftime('%d %b %Y') if booking.show.show_date else 'N/A',
+            'show_time': booking.show.show_time.strftime('%I:%M %p') if booking.show.show_time else 'N/A',
+            'seats': ', '.join(booking.get_seats_list()),
+            'total_amount': float(booking.total_amount) if booking.total_amount else 0
+        }
+        
+        # Generate PDF
+        pdf_data = generate_ticket_pdf(booking_data)
+        
+        # Create response
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=ticket_{booking.reference_number}.pdf'
+        
+        return response
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorHandler.handle_error(e, request)
+        return jsonify({'error': 'Failed to generate PDF ticket'}), 500
+
+@bp.route('/cancel/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def cancel(id):
+    """Cancel booking with validation and audit logging"""
+    try:
+        if id <= 0:
+            flash('Invalid booking ID', 'danger')
+            return redirect(url_for('bookings.index'))
+        
+        booking = Booking.query.get(id)
+        if not booking:
+            flash('Booking not found', 'danger')
+            return redirect(url_for('bookings.index'))
+        
+        if booking.status == 'cancelled':
+            flash('Booking is already cancelled', 'warning')
+            return redirect(url_for('bookings.view', id=id))
+        
+        # Validate booking can be cancelled (not too old)
+        if booking.booking_time < datetime.utcnow() - timedelta(days=7):
+            flash('Bookings older than 7 days cannot be cancelled', 'danger')
+            return redirect(url_for('bookings.view', id=id))
+        
+        booking.cancel_booking()
+        db.session.commit()
+        
+        ErrorLogger.log_security_event(
+            'booking_cancelled',
+            f'Admin {current_user.username} cancelled booking {booking.reference_number}',
+            request,
+            user_id=current_user.id,
+            context={'booking_id': booking.id, 'customer_name': booking.customer_name}
+        )
+        
+        flash(f'Booking {booking.reference_number} has been cancelled', 'success')
+        return redirect(url_for('bookings.view', id=id))
+    
+    except Exception as e:
+        db.session.rollback()
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while cancelling the booking', 'danger')
+        return redirect(url_for('bookings.view', id=id))
 
 @bp.route('/delete/<int:id>', methods=['POST'])
 @login_required
 @admin_required
 def delete(id):
-    """Delete booking"""
-    flash('Booking deleted successfully', 'success')
-    return redirect(url_for('bookings.index'))
+    """Delete booking with validation and audit logging"""
+    try:
+        if id <= 0:
+            flash('Invalid booking ID', 'danger')
+            return redirect(url_for('bookings.index'))
+        
+        booking = Booking.query.get(id)
+        if not booking:
+            flash('Booking not found', 'danger')
+            return redirect(url_for('bookings.index'))
+        
+        # Store booking info for logging
+        booking_info = {
+            'id': booking.id,
+            'reference_number': booking.reference_number,
+            'customer_name': booking.customer_name,
+            'amount': float(booking.total_amount) if booking.total_amount else 0
+        }
+        
+        # Delete related booking seats first (cascade should handle this)
+        db.session.delete(booking)
+        db.session.commit()
+        
+        ErrorLogger.log_security_event(
+            'booking_deleted',
+            f'Admin {current_user.username} deleted booking {booking_info["reference_number"]}',
+            request,
+            user_id=current_user.id,
+            context=booking_info
+        )
+        
+        flash('Booking deleted successfully', 'success')
+        return redirect(url_for('bookings.index'))
+    
+    except Exception as e:
+        db.session.rollback()
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while deleting the booking', 'danger')
+        return redirect(url_for('bookings.index'))

@@ -8,3 +8,11 @@ SQLAlchemy==2.0.21
 python-dotenv==1.0.0
 Flask-Migrate==4.0.5
 email-validator==2.0.0
+reportlab==4.0.4
+qrcode[pil]==7.4.2
+paypal-checkout-serversdk==1.0.1
+openpyxl==3.1.2
+pandas==2.1.1
+flask-talisman==1.1.0
+bleach==6.3.0
+flask_mail

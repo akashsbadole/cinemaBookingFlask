@@ -2,15 +2,61 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6 text-center">
+    <div class="col-md-8">
         <div class="card">
-            <div class="card-body">
-                <h1 class="display-1 text-warning">403</h1>
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <i class="fas fa-lock text-warning" style="font-size: 4rem;"></i>
+                </div>
+                <h1 class="display-4 text-warning">403</h1>
                 <h2>Access Forbidden</h2>
-                <p class="lead">You don't have permission to access this page.</p>
-                <a href="{{ url_for('index') }}" class="btn btn-primary">
-                    <i class="fas fa-home me-1"></i>Go to Dashboard
-                </a>
+                <p class="lead">{{ error_message or "You don't have permission to access this page." }}</p>
+                
+                {% if error_details and error_details.security_error %}
+                <div class="alert alert-warning mt-3">
+                    <h5><i class="fas fa-shield-alt me-2"></i>Security Check:</h5>
+                    <p>This page requires special permissions to access.</p>
+                    
+                    {% if error_details.security_error == 'unauthorized_access' %}
+                    <p><strong>Reason:</strong> Your account doesn't have the required role for this action.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <div class="alert alert-info mt-3">
+                    <h5><i class="fas fa-info-circle me-2"></i>What you can do:</h5>
+                    <ul class="list-unstyled text-start">
+                        <li><i class="fas fa-user me-2"></i>Contact your administrator for access permissions</li>
+                        <li><i class="fas fa-key me-2"></i>Log in with an account that has appropriate permissions</li>
+                        <li><i class="fas fa-home me-2"></i>Return to the dashboard and access authorized areas</li>
+                    </ul>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-home me-1"></i>Go to Dashboard
+                    </a>
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.profile') }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-user me-1"></i>My Profile
+                    </a>
+                    {% endif %}
+                    <button onclick="history.back()" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Go Back
+                    </button>
+                </div>
+                
+                {% if user_id %}
+                <div class="mt-3">
+                    <small class="text-muted">
+                        Reference ID: {{ error_code }}-{{ user_id }}-{{ timestamp[:8] }}
+                    </small>
+                    <br>
+                    <small class="text-muted">
+                        If you believe this is an error, please contact support with the reference ID above.
+                    </small>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

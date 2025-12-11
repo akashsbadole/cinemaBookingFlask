@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-users-cog me-2"></i>Cashier Performance Summary</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                <i class="fas fa-print me-1"></i>Print
+            </button>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('pdf')">PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('excel')">Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('csv')">CSV</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="GET" class="mb-4">
+    <div class="row">
+        <div class="col-md-3">
+            <label for="start_date" class="form-label">Start Date</label>
+            {{ form.start_date(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+            <label for="end_date" class="form-label">End Date</label>
+            {{ form.end_date(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+            <label for="cashier_id" class="form-label">Cashier</label>
+            {{ form.cashier_id(class="form-select") }}
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            {{ form.submit(class="btn btn-primary w-100") }}
+        </div>
+    </div>
+</form>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">Total Revenue</h5>
+                <h2 class="text-success">₹{{ "%.2f"|format(total_revenue or 0) }}</h2>
+                <p class="text-muted">All cashiers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <h5 class="card-title text-info">Total Bookings</h5>
+                <h2 class="text-info">{{ total_bookings or 0 }}</h2>
+                <p class="text-muted">All cashiers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">Avg Transaction</h5>
+                <h2 class="text-warning">₹{{ "%.2f"|format(average_transaction or 0) }}</h2>
+                <p class="text-muted">Per booking</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h5 class="card-title text-primary">Top Performer</h5>
+                <h2 class="text-primary">{{ top_performer or 'N/A' }}</h2>
+                <p class="text-muted">₹{{ "%.2f"|format(top_performer_revenue or 0) }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-table me-2"></i>Cashier Performance Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Cashier</th>
+                                <th>Bookings</th>
+                                <th>Tickets Sold</th>
+                                <th>Revenue</th>
+                                <th>Avg Transaction</th>
+                                <th>Refunds</th>
+                                <th>Net Revenue</th>
+                                <th>Performance</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if cashier_data %}
+                                {% for cashier in cashier_data %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                {{ cashier.username[0]|upper }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ cashier.username }}</div>
+                                                <small class="text-muted">{{ cashier.full_name or '' }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ cashier.bookings_count }}</td>
+                                    <td>{{ cashier.tickets_sold }}</td>
+                                    <td>₹{{ "%.2f"|format(cashier.revenue) }}</td>
+                                    <td>₹{{ "%.2f"|format(cashier.average_transaction) }}</td>
+                                    <td>{{ cashier.refunds_count }}</td>
+                                    <td class="fw-bold">₹{{ "%.2f"|format(cashier.net_revenue) }}</td>
+                                    <td>
+                                        {% if cashier.performance_score >= 90 %}
+                                            <span class="badge bg-success">Excellent</span>
+                                        {% elif cashier.performance_score >= 75 %}
+                                            <span class="badge bg-info">Good</span>
+                                        {% elif cashier.performance_score >= 60 %}
+                                            <span class="badge bg-warning">Average</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Needs Improvement</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-outline-primary" title="View Details" 
+                                                    onclick="viewCashierDetails('{{ cashier.id }}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-info" title="View Transactions" 
+                                                    onclick="viewCashierTransactions('{{ cashier.id }}')">
+                                                <i class="fas fa-list"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-4">
+                                        <i class="fas fa-users-cog fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No cashier data found for the selected period</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar me-2"></i>Revenue Comparison</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie me-2"></i>Market Share</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="marketShareChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-trophy me-2"></i>Performance Rankings</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>Top Performers - Revenue</h6>
+                        <ol class="list-group list-group-numbered">
+                            {% for cashier in top_revenue_performers %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ cashier.username }}
+                                <span>₹{{ "%.2f"|format(cashier.revenue) }}</span>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Top Performers - Bookings</h6>
+                        <ol class="list-group list-group-numbered">
+                            {% for cashier in top_booking_performers %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ cashier.username }}
+                                <span>{{ cashier.bookings_count }} bookings</span>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Top Performers - Customer Satisfaction</h6>
+                        <ol class="list-group list-group-numbered">
+                            {% for cashier in top_satisfaction_performers %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ cashier.username }}
+                                <span>{{ "%.1f"|format(cashier.satisfaction_score) }}/5.0</span>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+{% endblock %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function filterReport() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    const cashier = document.getElementById('cashier_filter').value;
+    
+    let url = new URL(window.location);
+    if (startDate) url.searchParams.set('start_date', startDate);
+    if (endDate) url.searchParams.set('end_date', endDate);
+    if (cashier) url.searchParams.set('cashier', cashier);
+    
+    window.location.href = url.toString();
+}
+
+function viewCashierDetails(cashierId) {
+    // Implementation for viewing cashier details
+    window.location.href = `/auth/profile/` + cashierId;
+}
+
+function viewCashierTransactions(cashierId) {
+    // Implementation for viewing cashier transactions
+    window.location.href = `/payments?cashier=` + cashierId;
+}
+
+// Revenue Comparison Chart
+const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+const revenueChart = new Chart(revenueCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ cashier_names|tojson|safe }},
+        datasets: [{
+            label: 'Revenue',
+            data: {{ cashier_revenues|tojson|safe }},
+            backgroundColor: '#36A2EB'
+        }, {
+            label: 'Net Revenue',
+            data: {{ cashier_net_revenues|tojson|safe }},
+            backgroundColor: '#4BC0C0'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₹' + value;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Market Share Chart
+const shareCtx = document.getElementById('marketShareChart').getContext('2d');
+const marketShareChart = new Chart(shareCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ cashier_names|tojson|safe }},
+        datasets: [{
+            data: {{ cashier_revenues|tojson|safe }},
+            backgroundColor: [
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#4BC0C0',
+                '#9966FF'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+function exportReport(format) {
+    const url = new URL(window.location);
+    url.searchParams.set('format', format);
+    window.location.href = "{{ url_for('reports.export_report_route', report_type='cashier_summary') }}" + url.search;
+}
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">New Booking - Select Show</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Find Shows</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('bookings.select_show') }}">
+                    {{ form.hidden_tag() }}
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            {{ form.movie_id.label(class="form-label") }}
+                            {{ form.movie_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.screen_id.label(class="form-label") }}
+                            {{ form.screen_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.show_date.label(class="form-label") }}
+                            {{ form.show_date(class="form-select") }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            {{ form.submit(class="btn btn-primary") }}
+                            <a href="{{ url_for('bookings.index') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Help</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>How to book:</strong></p>
+                <ol>
+                    <li>Select a movie (optional)</li>
+                    <li>Select a screen (optional)</li>
+                    <li>Select a date (optional)</li>
+                    <li>Click "Find Shows" to see available shows</li>
+                    <li>Click "Select Seats" to choose seats</li>
+                </ol>
+                <hr>
+                <p><strong>Legend:</strong></p>
+                <ul>
+                    <li>Leave fields empty to see all shows</li>
+                    <li>Only future shows are displayed</li>
+                    <li>Shows can be booked up to showtime</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mt-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form when any selection changes (optional enhancement)
+    const form = document.querySelector('form');
+    const selects = form.querySelectorAll('select');
+    
+    // You can uncomment this if you want auto-submission
+    /*
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            form.submit();
+        });
+    });
+    */
+});
+</script>
+{% endblock %}

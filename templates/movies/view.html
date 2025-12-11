@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-film me-2"></i>{{ movie.name }}</h4>
+                <div>
+                    <span class="badge bg-{{ 'success' if movie.status == 'active' else 'secondary' }} me-2">
+                        {{ movie.status.title() }}
+                    </span>
+                    {% if current_user.is_admin() %}
+                    <a href="{{ url_for('movies.edit', id=movie.id) }}" class="btn btn-sm btn-outline-warning">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center">
+                        {% if movie.poster_url %}
+                        <img src="{{ movie.poster_url }}" alt="{{ movie.name }}" class="img-fluid rounded mb-3">
+                        {% else %}
+                        <div class="bg-primary text-white p-5 rounded mb-3">
+                            <i class="fas fa-film fa-5x"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-8">
+                        <h5>Movie Details</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Title:</strong></td>
+                                <td>{{ movie.name }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Duration:</strong></td>
+                                <td>{{ movie.duration }} minutes</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Genre:</strong></td>
+                                <td>{{ movie.genre or 'Not specified' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Language:</strong></td>
+                                <td>{{ movie.language }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Rating:</strong></td>
+                                <td>{{ movie.rating or 'Not rated' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Release Date:</strong></td>
+                                <td>{{ movie.release_date.strftime('%B %d, %Y') if movie.release_date else 'Not specified' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if movie.status == 'active' else 'secondary' }}">
+                                        {{ movie.status.title() }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        {% if movie.description %}
+                        <h5 class="mt-4">Description</h5>
+                        <p>{{ movie.description }}</p>
+                        {% endif %}
+                        
+                        <div class="mt-4">
+                            <a href="{{ url_for('movies.index') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Movies
+                            </a>
+                            {% if current_user.is_admin() %}
+                            <a href="{{ url_for('movies.edit', id=movie.id) }}" class="btn btn-warning ms-2">
+                                <i class="fas fa-edit me-2"></i>Edit Movie
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-calendar-alt me-2"></i>Related Shows</h5>
+            </div>
+            <div class="card-body">
+                {% if movie.shows %}
+                <div class="list-group">
+                    {% for show in movie.shows[:5] %}
+                    <a href="{{ url_for('shows.view', id=show.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ show.screen.name }}</h6>
+                            <small>{{ show.show_date.strftime('%b %d, %Y') }}</small>
+                        </div>
+                        <p class="mb-1">{{ show.show_time.strftime('%I:%M %p') }} - ₹{{ show.base_price }}</p>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% if movie.shows|length > 5 %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">And {{ movie.shows|length - 5 }} more shows...</small>
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted">No shows scheduled for this movie yet.</p>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('shows.add') }}" class="btn btn-sm btn-primary">Add Show</a>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

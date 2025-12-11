@@ -8,42 +8,39 @@
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
                 <i class="fas fa-print me-1"></i>Print
             </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-download me-1"></i>Export
-            </button>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('pdf')">PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('excel')">Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('csv')">CSV</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row mb-4">
-    <div class="col-md-3">
-        <label for="report_date" class="form-label">Select Date</label>
-        <input type="date" class="form-control" id="report_date" name="report_date" value="{{ report_date or '' }}">
+<form method="GET" class="mb-4">
+    <div class="row">
+        <div class="col-md-3">
+            <label for="report_date" class="form-label">Select Date</label>
+            {{ form.report_date(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+            <label for="screen_id" class="form-label">Screen</label>
+            {{ form.screen_id(class="form-select") }}
+        </div>
+        <div class="col-md-3">
+            <label for="movie_id" class="form-label">Movie</label>
+            {{ form.movie_id(class="form-select") }}
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            {{ form.submit(class="btn btn-primary w-100") }}
+        </div>
     </div>
-    <div class="col-md-3">
-        <label for="screen_filter" class="form-label">Screen</label>
-        <select class="form-select" id="screen_filter" name="screen_filter">
-            <option value="">All Screens</option>
-            {% for screen in screens %}
-            <option value="{{ screen.id }}">{{ screen.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-3">
-        <label for="movie_filter" class="form-label">Movie</label>
-        <select class="form-select" id="movie_filter" name="movie_filter">
-            <option value="">All Movies</option>
-            {% for movie in movies %}
-            <option value="{{ movie.id }}">{{ movie.title }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-3 d-flex align-items-end">
-        <button type="button" class="btn btn-primary w-100" onclick="filterReport()">
-            <i class="fas fa-filter me-2"></i>Apply Filter
-        </button>
-    </div>
-</div>
+</form>
 
 <div class="row">
     <div class="col-md-12">
@@ -166,6 +163,40 @@
         </div>
     </div>
 </div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb me-2"></i>Business Insights</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if insights %}
+                        {% for insight in insights %}
+                        <div class="col-md-6">
+                            <div class="alert alert-{{ 'success' if insight.type == 'success' else 'warning' if insight.type == 'warning' else 'info' }}">
+                                <i class="fas fa-{{ 'check-circle' if insight.type == 'success' else 'exclamation-triangle' if insight.type == 'warning' else 'info-circle' }} me-2"></i>
+                                {{ insight.message }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                No insights available for the selected period
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+{% endblock %}
 {% endblock %}
 
 {% block scripts %}
@@ -173,15 +204,21 @@
 <script>
 function filterReport() {
     const date = document.getElementById('report_date').value;
-    const screen = document.getElementById('screen_filter').value;
-    const movie = document.getElementById('movie_filter').value;
+    const screen = document.getElementById('screen_id').value;
+    const movie = document.getElementById('movie_id').value;
     
     let url = new URL(window.location);
     if (date) url.searchParams.set('date', date);
-    if (screen) url.searchParams.set('screen', screen);
-    if (movie) url.searchParams.set('movie', movie);
+    if (screen && screen !== '0') url.searchParams.set('screen', screen);
+    if (movie && movie !== '0') url.searchParams.set('movie', movie);
     
     window.location.href = url.toString();
+}
+
+function exportReport(format) {
+    const url = new URL(window.location);
+    url.searchParams.set('format', format);
+    window.location.href = "{{ url_for('reports.export_report_route', report_type='daily_sales') }}" + url.search;
 }
 
 // Movie Sales Chart
@@ -189,9 +226,9 @@ const movieCtx = document.getElementById('movieSalesChart').getContext('2d');
 const movieSalesChart = new Chart(movieCtx, {
     type: 'pie',
     data: {
-        labels: {{ movie_sales_labels|tojson }},
+        labels: {{ movie_sales_labels|tojson|safe }},
         datasets: [{
-            data: {{ movie_sales_data|tojson }},
+            data: {{ movie_sales_data|tojson|safe }},
             backgroundColor: [
                 '#FF6384',
                 '#36A2EB',
@@ -218,10 +255,10 @@ const screenCtx = document.getElementById('screenSalesChart').getContext('2d');
 const screenSalesChart = new Chart(screenCtx, {
     type: 'bar',
     data: {
-        labels: {{ screen_sales_labels|tojson }},
+        labels: {{ screen_sales_labels|tojson|safe }},
         datasets: [{
             label: 'Revenue',
-            data: {{ screen_sales_data|tojson }},
+            data: {{ screen_sales_data|tojson|safe }},
             backgroundColor: '#36A2EB'
         }]
     },

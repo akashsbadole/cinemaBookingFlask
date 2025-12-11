@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-tv me-2"></i>Screen Utilization Report</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                <i class="fas fa-print me-1"></i>Print
+            </button>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('pdf')">PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('excel')">Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('csv')">CSV</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="GET" class="mb-4">
+    <div class="row">
+        <div class="col-md-3">
+            <label for="start_date" class="form-label">Start Date</label>
+            {{ form.start_date(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+            <label for="end_date" class="form-label">End Date</label>
+            {{ form.end_date(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+            <label for="screen_id" class="form-label">Screen</label>
+            {{ form.screen_id(class="form-select") }}
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-filter me-2"></i>Filter
+            </button>
+        </div>
+    </div>
+</form>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">Total Shows</h5>
+                <h2 class="text-success">{{ total_shows or 0 }}</h2>
+                <p class="text-muted">{{ screen_data|length }} screens</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <h5 class="card-title text-info">Total Bookings</h5>
+                <h2 class="text-info">{{ total_bookings or 0 }}</h2>
+                <p class="text-muted">All screens</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">Tickets Sold</h5>
+                <h2 class="text-warning">{{ total_tickets or 0 }}</h2>
+                <p class="text-muted">All screens</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h5 class="card-title text-primary">Total Revenue</h5>
+                <h2 class="text-primary">₹{{ "%.2f"|format(total_revenue or 0) }}</h2>
+                <p class="text-muted">All screens</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-table me-2"></i>Screen Utilization Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Screen Name</th>
+                                <th>Total Shows</th>
+                                <th>Total Bookings</th>
+                                <th>Tickets Sold</th>
+                                <th>Revenue</th>
+                                <th>Avg Occupancy</th>
+                                <th>Tickets per Show</th>
+                                <th>Revenue per Show</th>
+                                <th>Utilization</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if screen_data %}
+                                {% for screen in screen_data %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                {{ screen.name[0]|upper }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ screen.name }}</div>
+                                                <small class="text-muted">ID: {{ screen.id }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ screen.total_shows }}</td>
+                                    <td>{{ screen.total_bookings }}</td>
+                                    <td>{{ screen.total_tickets_sold }}</td>
+                                    <td>₹{{ "%.2f"|format(screen.total_revenue) }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress me-2" style="width: 100px; height: 20px;">
+                                                <div class="progress-bar" role="progressbar" 
+                                                     style="width: {{ screen.average_occupancy }}%"
+                                                     aria-valuenow="{{ screen.average_occupancy }}" 
+                                                     aria-valuemin="0" aria-valuemax="100">
+                                                </div>
+                                            </div>
+                                            <span>{{ "%.1f"|format(screen.average_occupancy) }}%</span>
+                                        </div>
+                                    </td>
+                                    <td>{{ "%.1f"|format(screen.tickets_per_show) }}</td>
+                                    <td>₹{{ "%.2f"|format(screen.revenue_per_show) }}</td>
+                                    <td>
+                                        {% if screen.average_occupancy >= 80 %}
+                                            <span class="badge bg-success">Excellent</span>
+                                        {% elif screen.average_occupancy >= 60 %}
+                                            <span class="badge bg-info">Good</span>
+                                        {% elif screen.average_occupancy >= 40 %}
+                                            <span class="badge bg-warning">Average</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Poor</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-outline-primary" title="View Details" 
+                                                    onclick="viewScreenDetails('{{ screen.id }}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-info" title="View Schedule" 
+                                                    onclick="viewScreenSchedule('{{ screen.id }}')">
+                                                <i class="fas fa-calendar"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">
+                                        <i class="fas fa-tv fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No screen utilization data found for the selected period</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar me-2"></i>Screen Revenue Comparison</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="screenRevenueChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie me-2"></i>Screen Utilization Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="screenUtilizationChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb me-2"></i>Recommendations</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>High Utilization Screens</h6>
+                        <ul class="list-group">
+                            {% for screen in screen_data[:5] if screen.average_occupancy >= 70 %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ screen.name }}
+                                <span class="badge bg-success">{{ "%.1f"|format(screen.average_occupancy) }}% occupancy</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Screens Needing Attention</h6>
+                        <ul class="list-group">
+                            {% for screen in screen_data if screen.average_occupancy < 40 %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ screen.name }}
+                                <span class="badge bg-danger">{{ "%.1f"|format(screen.average_occupancy) }}% occupancy</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+{% endblock %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Screen Revenue Chart
+const revenueCtx = document.getElementById('screenRevenueChart').getContext('2d');
+const screenRevenueChart = new Chart(revenueCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ screen_names|tojson|safe }},
+        datasets: [{
+            label: 'Revenue (₹)',
+            data: {{ screen_revenues|tojson|safe }},
+            backgroundColor: '#36A2EB'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₹' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Screen Utilization Chart
+const utilizationCtx = document.getElementById('screenUtilizationChart').getContext('2d');
+const screenUtilizationChart = new Chart(utilizationCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ screen_names|tojson|safe }},
+        datasets: [{
+            data: {{ screen_occupancies|tojson|safe }},
+            backgroundColor: [
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#4BC0C0',
+                '#9966FF',
+                '#FF9F40'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ' + context.parsed + '%';
+                    }
+                }
+            }
+        }
+    }
+});
+
+function exportReport(format) {
+    const url = new URL(window.location);
+    url.searchParams.set('format', format);
+    window.location.href = "{{ url_for('reports.export_report_route', report_type='screen_utilization') }}" + url.search;
+}
+
+function viewScreenDetails(screenId) {
+    // Implementation for viewing screen details
+    window.location.href = `/screens/edit/` + screenId;
+}
+
+function viewScreenSchedule(screenId) {
+    // Implementation for viewing screen schedule
+    window.location.href = `/shows?screen=` + screenId;
+}
+</script>
+{% endblock %}

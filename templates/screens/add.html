@@ -65,6 +65,45 @@
                         </div>
                     </div>
                     
+                    <div class="mt-4">
+                        <h6>Seat Generation Options</h6>
+                        <div class="border p-3 bg-light">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="auto_generate_seats" checked>
+                                <label class="form-check-label" for="auto_generate_seats">
+                                    Automatically generate seats after creating screen
+                                </label>
+                            </div>
+                            
+                            <div id="seat_options">
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label">Seat Pattern</label>
+                                        <select class="form-select form-select-sm" id="seat_pattern">
+                                            <option value="regular">Regular Layout</option>
+                                            <option value="stadium">Stadium Layout</option>
+                                            <option value="mixed">Mixed Types</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label">Normal Price (₹)</label>
+                                        <input type="number" class="form-control form-control-sm" id="normal_price" value="100" min="0">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label">Premium Price (₹)</label>
+                                        <input type="number" class="form-control form-control-sm" id="premium_price" value="150" min="0">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label">VIP Price (₹)</label>
+                                        <input type="number" class="form-control form-control-sm" id="vip_price" value="250" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="d-flex justify-content-between mt-4">
                         <a href="{{ url_for('screens.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>Cancel
@@ -85,17 +124,68 @@ document.addEventListener('DOMContentLoaded', function() {
     const colsInput = document.getElementById('total_columns');
     const preview = document.getElementById('seat-preview');
     const totalSeats = document.getElementById('total-seats');
+    const autoGenerateCheckbox = document.getElementById('auto_generate_seats');
+    const seatOptionsDiv = document.getElementById('seat_options');
+    const seatPatternSelect = document.getElementById('seat_pattern');
+    
+    // Toggle seat options visibility
+    autoGenerateCheckbox.addEventListener('change', function() {
+        seatOptionsDiv.style.display = this.checked ? 'block' : 'none';
+    });
     
     function generateSeatPreview() {
         const rows = parseInt(rowsInput.value) || 0;
         const cols = parseInt(colsInput.value) || 0;
+        const pattern = seatPatternSelect.value;
+        const normalPrice = parseFloat(document.getElementById('normal_price').value) || 100;
+        const premiumPrice = parseFloat(document.getElementById('premium_price').value) || 150;
+        const vipPrice = parseFloat(document.getElementById('vip_price').value) || 250;
         
         if (rows > 0 && cols > 0) {
             let html = '<div class="seat-grid">';
+            
+            // Add pattern legend if auto-generation is enabled
+            if (autoGenerateCheckbox.checked) {
+                html += '<div class="pattern-legend mb-2">';
+                html += '<span><div class="seat-preview seat-normal"></div> Normal: ₹' + normalPrice + '</span>';
+                html += '<span><div class="seat-preview seat-premium"></div> Premium: ₹' + premiumPrice + '</span>';
+                html += '<span><div class="seat-preview seat-vip"></div> VIP: ₹' + vipPrice + '</span>';
+                html += '</div>';
+            }
+            
             for (let r = 0; r < rows; r++) {
                 html += '<div class="seat-row">';
                 for (let c = 0; c < cols; c++) {
-                    html += '<div class="seat-preview-seat">A' + (c + 1) + '</div>';
+                    let seatClass = 'seat-normal';
+                    let seatName = String.fromCharCode(65 + r) + (c + 1);
+                    
+                    if (autoGenerateCheckbox.checked) {
+                        if (pattern === 'stadium') {
+                            // Back 25% are VIP
+                            if (r >= rows * 0.75) {
+                                seatClass = 'seat-vip';
+                            }
+                            // 25% before that are premium
+                            else if (r >= rows * 0.5) {
+                                seatClass = 'seat-premium';
+                            }
+                        } else if (pattern === 'mixed') {
+                            const centerStart = cols * 0.25;
+                            const centerEnd = cols * 0.75;
+                            
+                            // Center seats are premium/vip
+                            if (centerStart <= c < centerEnd) {
+                                // Middle 50% of center are VIP
+                                if (c < (centerStart + centerEnd) / 2) {
+                                    seatClass = 'seat-vip';
+                                } else {
+                                    seatClass = 'seat-premium';
+                                }
+                            }
+                        }
+                    }
+                    
+                    html += '<div class="seat-preview-seat ' + seatClass + '">' + seatName + '</div>';
                 }
                 html += '</div>';
             }
@@ -111,6 +201,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     rowsInput.addEventListener('input', generateSeatPreview);
     colsInput.addEventListener('input', generateSeatPreview);
+    seatPatternSelect.addEventListener('change', generateSeatPreview);
+    document.getElementById('normal_price').addEventListener('input', generateSeatPreview);
+    document.getElementById('premium_price').addEventListener('input', generateSeatPreview);
+    document.getElementById('vip_price').addEventListener('input', generateSeatPreview);
     
     // Generate initial preview if values exist
     generateSeatPreview();
@@ -133,14 +227,53 @@ document.addEventListener('DOMContentLoaded', function() {
 .seat-preview-seat {
     width: 25px;
     height: 25px;
-    border: 1px solid #ccc;
+    border: 1px solid;
     margin: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
-    background-color: #e8f5e8;
+    font-size: 8px;
+    font-weight: bold;
     border-radius: 3px;
+}
+
+.seat-normal {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.seat-premium {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.seat-vip {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.pattern-legend {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+
+.pattern-legend span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pattern-legend .seat-preview {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    font-size: 8px;
 }
 </style>
 {% endblock %}

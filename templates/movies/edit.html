@@ -8,47 +8,147 @@
                 <h4><i class="fas fa-film me-2"></i>Edit Movie</h4>
             </div>
             <div class="card-body">
-                <form method="POST">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    
                     <div class="mb-3">
-                        <label for="title" class="form-label">Movie Title</label>
-                        <input type="text" class="form-control" id="title" name="title" value="{{ movie.title }}" required>
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                        {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.name.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
+                    
                     <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="3">{{ movie.description or '' }}</textarea>
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows="3") }}
+                        {% if form.description.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.description.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Optional: Brief plot summary of the movie</div>
                     </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.duration.label(class="form-label") }}
+                                {{ form.duration(class="form-control" + (" is-invalid" if form.duration.errors else "")) }}
+                                {% if form.duration.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.duration.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Duration in minutes (e.g., 120 for 2 hours)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.release_date.label(class="form-label") }}
+                                {{ form.release_date(class="form-control" + (" is-invalid" if form.release_date.errors else "")) }}
+                                {% if form.release_date.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.release_date.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.genre.label(class="form-label") }}
+                                {{ form.genre(class="form-select" + (" is-invalid" if form.genre.errors else "")) }}
+                                {% if form.genre.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.genre.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.rating.label(class="form-label") }}
+                                {{ form.rating(class="form-select" + (" is-invalid" if form.rating.errors else "")) }}
+                                {% if form.rating.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.rating.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.language.label(class="form-label") }}
+                                {{ form.language(class="form-select" + (" is-invalid" if form.language.errors else "")) }}
+                                {% if form.language.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.language.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.status.label(class="form-label") }}
+                                {{ form.status(class="form-select" + (" is-invalid" if form.status.errors else "")) }}
+                                {% if form.status.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.status.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Only active movies will appear in show scheduling</div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="mb-3">
-                        <label for="duration" class="form-label">Duration (minutes)</label>
-                        <input type="number" class="form-control" id="duration" name="duration" value="{{ movie.duration }}" required>
+                        {{ form.poster_url.label(class="form-label") }}
+                        {{ form.poster_url(class="form-control" + (" is-invalid" if form.poster_url.errors else ""), placeholder="https://example.com/poster.jpg") }}
+                        {% if form.poster_url.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.poster_url.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Optional: URL to movie poster image</div>
                     </div>
-                    <div class="mb-3">
-                        <label for="genre" class="form-label">Genre</label>
-                        <select class="form-control" id="genre" name="genre" required>
-                            <option value="">Select Genre</option>
-                            <option value="Action" {% if movie.genre == 'Action' %}selected{% endif %}>Action</option>
-                            <option value="Comedy" {% if movie.genre == 'Comedy' %}selected{% endif %}>Comedy</option>
-                            <option value="Drama" {% if movie.genre == 'Drama' %}selected{% endif %}>Drama</option>
-                            <option value="Horror" {% if movie.genre == 'Horror' %}selected{% endif %}>Horror</option>
-                            <option value="Romance" {% if movie.genre == 'Romance' %}selected{% endif %}>Romance</option>
-                            <option value="Sci-Fi" {% if movie.genre == 'Sci-Fi' %}selected{% endif %}>Sci-Fi</option>
-                            <option value="Thriller" {% if movie.genre == 'Thriller' %}selected{% endif %}>Thriller</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="release_date" class="form-label">Release Date</label>
-                        <input type="date" class="form-control" id="release_date" name="release_date" value="{{ movie.release_date }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="rating" class="form-label">Rating</label>
-                        <select class="form-control" id="rating" name="rating" required>
-                            <option value="">Select Rating</option>
-                            <option value="G" {% if movie.rating == 'G' %}selected{% endif %}>G</option>
-                            <option value="PG" {% if movie.rating == 'PG' %}selected{% endif %}>PG</option>
-                            <option value="PG-13" {% if movie.rating == 'PG-13' %}selected{% endif %}>PG-13</option>
-                            <option value="R" {% if movie.rating == 'R' %}selected{% endif %}>R</option>
-                            <option value="NC-17" {% if movie.rating == 'NC-17' %}selected{% endif %}>NC-17</option>
-                        </select>
-                    </div>
+                    
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('movies.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Back to Movies
@@ -57,9 +157,7 @@
                             <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
                                 <i class="fas fa-trash me-2"></i>Delete
                             </button>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Update Movie
-                            </button>
+                            {{ form.submit(class="btn btn-primary") }}
                         </div>
                     </div>
                 </form>
@@ -95,7 +193,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                Are you sure you want to delete "{{ movie.title }}"? This action cannot be undone.
+                Are you sure you want to delete "{{ movie.name }}"? This action cannot be undone.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

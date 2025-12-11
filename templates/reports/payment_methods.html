@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-credit-card me-2"></i>Payment Methods Report</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                <i class="fas fa-print me-1"></i>Print
+            </button>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('pdf')">PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('excel')">Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('csv')">CSV</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="GET" class="mb-4">
+    <div class="row">
+        <div class="col-md-4">
+            <label for="start_date" class="form-label">Start Date</label>
+            <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date or '' }}">
+        </div>
+        <div class="col-md-4">
+            <label for="end_date" class="form-label">End Date</label>
+            <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date or '' }}">
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-filter me-2"></i>Filter
+            </button>
+        </div>
+    </div>
+</form>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">Total Transactions</h5>
+                <h2 class="text-success">{{ total_count or 0 }}</h2>
+                <p class="text-muted">All methods</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <h5 class="card-title text-info">Total Revenue</h5>
+                <h2 class="text-info">₹{{ "%.2f"|format(total_amount or 0) }}</h2>
+                <p class="text-muted">All methods</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">Average Transaction</h5>
+                <h2 class="text-warning">₹{{ "%.2f"|format((total_amount or 0) / (total_count or 1)) }}</h2>
+                <p class="text-muted">Per transaction</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h5 class="card-title text-primary">Most Used</h5>
+                <h2 class="text-primary">{{ payment_data[0].mode.title() if payment_data else 'N/A' }}</h2>
+                <p class="text-muted">{{ "%.1f"|format(payment_data[0].percentage) if payment_data else 0 }}% usage</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie me-2"></i>Payment Method Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="paymentChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar me-2"></i>Transaction Count by Method</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="transactionChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-doughnut me-2"></i>Payment Status Breakdown</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statusChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-table me-2"></i>Payment Method Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Payment Method</th>
+                                <th>Transaction Count</th>
+                                <th>Total Amount</th>
+                                <th>Percentage</th>
+                                <th>Average Amount</th>
+                                <th>Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if payment_data %}
+                                {% for payment in payment_data %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if payment.mode == 'cash' else 'info' if payment.mode == 'card' else 'warning' }}">
+                                            {{ payment.mode.title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ payment.count }}</td>
+                                    <td>₹{{ "%.2f"|format(payment.total_amount) }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress me-2" style="width: 100px; height: 20px;">
+                                                <div class="progress-bar" role="progressbar" 
+                                                     style="width: {{ payment.percentage }}%"
+                                                     aria-valuenow="{{ payment.percentage }}" 
+                                                     aria-valuemin="0" aria-valuemax="100">
+                                                </div>
+                                            </div>
+                                            <span>{{ "%.1f"|format(payment.percentage) }}%</span>
+                                        </div>
+                                    </td>
+                                    <td>₹{{ "%.2f"|format(payment.total_amount / payment.count) }}</td>
+                                    <td>
+                                        <span class="badge bg-success">Stable</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No payment method data found for the selected period</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb me-2"></i>Payment Insights</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Payment Method Preferences</h6>
+                        <ul class="list-group">
+                            {% for payment in payment_data[:3] %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ payment.mode.title() }}
+                                <span class="badge bg-primary">{{ "%.1f"|format(payment.percentage) }}% of transactions</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Recommendations</h6>
+                        <ul class="list-group">
+                            <li class="list-group-item">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Digital payments (Card/UPI) are preferred by customers
+                            </li>
+                            <li class="list-group-item">
+                                <i class="fas fa-info-circle text-info me-2"></i>
+                                Consider offering discounts for digital payments
+                            </li>
+                            <li class="list-group-item">
+                                <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                Maintain sufficient cash for cash transactions
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+{% endblock %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Payment Method Pie Chart
+const ctx = document.getElementById('paymentChart').getContext('2d');
+const paymentChart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+        labels: {{ payment_labels|tojson|safe }},
+        datasets: [{
+            data: {{ payment_counts|tojson|safe }},
+            backgroundColor: [
+                '#28a745', // Green for Cash
+                '#17a2b8', // Blue for Card
+                '#ffc107'  // Yellow for UPI
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return label + ': ' + value + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Transaction Count Bar Chart
+const barCtx = document.getElementById('transactionChart').getContext('2d');
+const transactionChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ payment_labels|tojson|safe }},
+        datasets: [{
+            label: 'Transaction Count',
+            data: {{ payment_counts|tojson|safe }},
+            backgroundColor: '#36A2EB'
+        }, {
+            label: 'Revenue (₹)',
+            data: {{ payment_amounts|tojson|safe }},
+            backgroundColor: '#4BC0C0',
+            yAxisID: 'y1'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: {
+                    display: true,
+                    text: 'Transaction Count'
+                }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: {
+                    display: true,
+                    text: 'Revenue (₹)'
+                },
+                grid: {
+                    drawOnChartArea: false
+                },
+                ticks: {
+                    callback: function(value) {
+                        return '₹' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Payment Status Doughnut Chart
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+const statusChart = new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ status_labels|tojson|safe }},
+        datasets: [{
+            data: {{ status_counts|tojson|safe }},
+            backgroundColor: [
+                '#ffc107', // Yellow for Pending
+                '#17a2b8', // Blue for Processing
+                '#28a745', // Green for Completed
+                '#dc3545', // Red for Failed
+                '#6c757d', // Grey for Refunded
+                '#343a40'  // Dark for Cancelled
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return label + ': ' + value + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+
+function exportReport(format) {
+    const url = new URL(window.location);
+    url.searchParams.set('format', format);
+    window.location.href = "{{ url_for('reports.export_report_route', report_type='payment_methods') }}" + url.search;
+}
+</script>
+{% endblock %}

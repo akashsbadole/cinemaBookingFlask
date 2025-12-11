@@ -27,6 +27,13 @@
               >
                 <i class="fas fa-edit"></i>
               </a>
+              <a
+                href="{{ url_for('screens.manage_seats', screen_id=screen.id) }}"
+                class="btn btn-sm btn-outline-success"
+                title="Manage Seats"
+              >
+                <i class="fas fa-th"></i>
+              </a>
             </div>
             {% endif %}
           </div>
@@ -47,8 +54,10 @@
               <div class="col-4">
                 <h6>View</h6>
                 <button
-                  class="btn btn-sm btn-info"
-                  onclick="showSeatLayout({{ screen.total_rows }}, {{ screen.total_columns }}, '{{ screen.name }}')"
+                  class="btn btn-sm btn-info seat-layout-btn"
+                  data-rows="{{ screen.total_rows }}"
+                  data-cols="{{ screen.total_columns }}"
+                  data-name="{{ screen.name|e }}"
                 >
                   <i class="fas fa-th"></i> Seats
                 </button>
@@ -112,6 +121,21 @@
 </div>
 {% endblock %} {% block scripts %}
 <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add click event listeners to all seat layout buttons
+    const seatLayoutButtons = document.querySelectorAll('.seat-layout-btn');
+    
+    seatLayoutButtons.forEach(function(button) {
+      button.addEventListener('click', function() {
+        const rows = parseInt(this.getAttribute('data-rows'));
+        const cols = parseInt(this.getAttribute('data-cols'));
+        const screenName = this.getAttribute('data-name');
+        
+        showSeatLayout(rows, cols, screenName);
+      });
+    });
+  });
+
   function showSeatLayout(rows, cols, screenName) {
     document.getElementById("modalScreenName").textContent = screenName;
     const modalSeatLayout = document.getElementById("modalSeatLayout");
@@ -128,7 +152,7 @@
 
     modalSeatLayout.innerHTML = html;
 
-    // Show the modal
+    // Show modal
     const modal = new bootstrap.Modal(
       document.getElementById("seatLayoutModal")
     );

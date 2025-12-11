@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Add New Show</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="showForm">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.movie_id.label(class="form-label") }}
+                            {{ form.movie_id(class="form-select") }}
+                            {% if form.movie_id.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.movie_id.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.screen_id.label(class="form-label") }}
+                            {{ form.screen_id(class="form-select", id="screenSelect") }}
+                            {% if form.screen_id.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.screen_id.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.show_date.label(class="form-label") }}
+                            {{ form.show_date(class="form-control", id="showDate") }}
+                            {% if form.show_date.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.show_date.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.show_time.label(class="form-label") }}
+                            {{ form.show_time(class="form-control", id="showTime") }}
+                            {% if form.show_time.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.show_time.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.show_type.label(class="form-label") }}
+                            {{ form.show_type(class="form-select") }}
+                            {% if form.show_type.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.show_type.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.base_price.label(class="form-label") }}
+                            {{ form.base_price(class="form-control", step="0.01") }}
+                            {% if form.base_price.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.base_price.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.weekend_surcharge.label(class="form-label") }}
+                            {{ form.weekend_surcharge(class="form-control", step="0.01") }}
+                            {% if form.weekend_surcharge.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.weekend_surcharge.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Additional charge for weekend shows</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.matinee_discount.label(class="form-label") }}
+                            {{ form.matinee_discount(class="form-control", step="0.01") }}
+                            {% if form.matinee_discount.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.matinee_discount.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Discount for shows before 12 PM</small>
+                        </div>
+                    </div>
+                    
+                    <div id="conflictAlert" class="alert alert-danger d-none">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="conflictMessage"></span>
+                    </div>
+                    
+                    <div id="movieInfo" class="alert alert-info d-none">
+                        <h6><i class="fas fa-film me-2"></i>Movie Information</h6>
+                        <div id="movieDetails"></div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('shows.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Shows
+                        </a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('showForm');
+        const movieSelect = document.getElementById('movie_id');
+        const screenSelect = document.getElementById('screenSelect');
+        const showDateInput = document.getElementById('showDate');
+        const showTimeInput = document.getElementById('showTime');
+        const conflictAlert = document.getElementById('conflictAlert');
+        const conflictMessage = document.getElementById('conflictMessage');
+        const movieInfo = document.getElementById('movieInfo');
+        const movieDetails = document.getElementById('movieDetails');
+        const submitButton = form.querySelector('button[type="submit"]');
+        
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        showDateInput.min = today;
+        
+        // Function to display movie information
+        function displayMovieInfo() {
+            const selectedOption = movieSelect.options[movieSelect.selectedIndex];
+            if (movieSelect.value) {
+                // Get movie duration from the option text or fetch from API
+                // For now, we'll use a placeholder
+                movieDetails.innerHTML = `
+                    <p><strong>Duration:</strong> <span id="movieDuration">Loading...</span></p>
+                    <p><strong>Language:</strong> <span id="movieLanguage">Loading...</span></p>
+                `;
+                movieInfo.classList.remove('d-none');
+                
+                // In a real implementation, you would fetch this data from an API
+                // For now, we'll simulate it
+                fetch(`/api/movies/${movieSelect.value}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('movieDuration').textContent = `${data.duration} minutes`;
+                        document.getElementById('movieLanguage').textContent = data.language;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching movie details:', error);
+                        movieDetails.innerHTML = '<p class="text-muted">Movie information unavailable</p>';
+                    });
+            } else {
+                movieInfo.classList.add('d-none');
+            }
+        }
+        
+        // Function to check for conflicts
+        async function checkConflicts() {
+            if (!movieSelect.value || !screenSelect.value || !showDateInput.value || !showTimeInput.value) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/shows/api/check_conflicts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': form.querySelector('input[name="csrf_token"]').value
+                    },
+                    body: JSON.stringify({
+                        movie_id: movieSelect.value,
+                        screen_id: screenSelect.value,
+                        show_date: showDateInput.value,
+                        show_time: showTimeInput.value
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.conflict) {
+                    conflictMessage.textContent = data.message;
+                    conflictAlert.classList.remove('d-none');
+                    submitButton.disabled = true;
+                } else {
+                    conflictAlert.classList.add('d-none');
+                    submitButton.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error checking conflicts:', error);
+            }
+        }
+        
+        // Add event listeners
+        movieSelect.addEventListener('change', function() {
+            displayMovieInfo();
+            checkConflicts();
+        });
+        screenSelect.addEventListener('change', checkConflicts);
+        showDateInput.addEventListener('change', checkConflicts);
+        showTimeInput.addEventListener('change', function() {
+            checkConflicts();
+            // Auto-set show type based on time
+            const time = this.value.split(':');
+            const hour = parseInt(time[0]);
+            
+            if (hour < 12) {
+                document.querySelector('#show_type option[value="matinee"]').selected = true;
+            } else if (hour >= 18) {
+                document.querySelector('#show_type option[value="evening"]').selected = true;
+            } else {
+                document.querySelector('#show_type option[value="regular"]').selected = true;
+            }
+        });
+    });
+</script>
+{% endblock %}

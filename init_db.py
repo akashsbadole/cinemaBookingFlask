@@ -7,7 +7,7 @@ from app.database import db
 from app.auth.models import User
 from app.movies.models import Movie
 from app.screens.models import Screen, Seat
-from app.models import Show
+from app.shows.models import Show
 from app.bookings.models import Booking, BookingSeat
 from app.payments.models import Payment
 from datetime import datetime, date, time

@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header text-center bg-primary text-white">
+                <h4><i class="fas fa-ticket-alt me-2"></i>Movie Ticket</h4>
+            </div>
+            <div class="card-body">
+                <div class="ticket-header">
+                    <h2 class="ticket-title">CINEMA POS</h2>
+                    <h3 class="ticket-subtitle">MOVIE TICKET</h3>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="ticket-details">
+                            <div class="ticket-details-row">
+                                <span class="ticket-details-label">Booking Ref:</span>
+                                <span>{{ booking.reference_number }}</span>
+                            </div>
+                            <div class="ticket-details-row">
+                                <span class="ticket-details-label">Customer:</span>
+                                <span>{{ booking.customer_name }}</span>
+                            </div>
+                            <div class="ticket-details-row">
+                                <span class="ticket-details-label">Movie:</span>
+                                <span>{{ booking.show.movie.title }}</span>
+                            </div>
+                            <div class="ticket-details-row">
+                                <span class="ticket-details-label">Screen:</span>
+                                <span>{{ booking.show.screen.name }}</span>
+                            </div>
+                            <div class="ticket-details-row">
+                                <span class="ticket-details-label">Date:</span>
+                                <span>{{ booking.show.show_date.strftime('%d %b %Y') }}</span>
+                            </div>
+                            <div class="ticket-details-row">
+                                <span class="ticket-details-label">Time:</span>
+                                <span>{{ booking.show.show_time.strftime('%H:%M') }}</span>
+                            </div>
+                            <div class="ticket-details-row">
+                                <span class="ticket-details-label">Seats:</span>
+                                <span>{{ booking.seats }}</span>
+                            </div>
+                            <div class="ticket-details-row">
+                                <span class="ticket-details-label">Amount:</span>
+                                <span>₹{{ "%.2f"|format(booking.total_amount) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="qr-code">
+                            <img src="{{ url_for('bookings.ticket_qr', id=booking.id) }}" alt="QR Code" class="img-fluid">
+                            <p class="mt-2 small text-muted">Scan for verification</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ticket-footer">
+                    <p><strong>Terms & Conditions:</strong></p>
+                    <p>1. Please arrive 15 minutes before the show starts.</p>
+                    <p>2. This ticket is non-refundable and non-transferable.</p>
+                    <p>3. Outside food and beverages are not allowed.</p>
+                    <p>4. Please present this ticket at the entrance.</p>
+                    <p>5. Management reserves the right of admission.</p>
+                    <hr>
+                    <p class="mb-0">Thank you for choosing Cinema POS!</p>
+                </div>
+                
+                <div class="d-flex justify-content-between no-print">
+                    <a href="{{ url_for('bookings.view', id=booking.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Booking
+                    </a>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+                            <i class="fas fa-print me-2"></i>Print Ticket
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="downloadTicketPDF()">
+                            <i class="fas fa-download me-2"></i>Download PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+<style>
+.ticket-header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 15px;
+}
+
+.ticket-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 5px;
+}
+
+.ticket-subtitle {
+    font-size: 18px;
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+.ticket-details {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.ticket-details-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed #dee2e6;
+}
+
+.ticket-details-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.ticket-details-label {
+    font-weight: bold;
+    color: #495057;
+}
+
+.qr-code {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.ticket-footer {
+    margin-top: 20px;
+    font-size: 11px;
+    color: #6c757d;
+    border-top: 1px solid #dee2e6;
+    padding-top: 15px;
+}
+
+.ticket-footer p {
+    margin-bottom: 5px;
+}
+
+.ticket-footer strong {
+    color: #495057;
+}
+
+/* Thermal printer specific adjustments */
+@media print and (max-width: 80mm) {
+    .ticket-title {
+        font-size: 16px;
+    }
+    
+    .ticket-subtitle {
+        font-size: 12px;
+    }
+    
+    .ticket-details {
+        padding: 8px;
+    }
+    
+    .ticket-details-row {
+        margin-bottom: 4px;
+        padding-bottom: 2px;
+        font-size: 10px;
+    }
+    
+    .qr-code {
+        padding: 8px;
+    }
+    
+    .qr-code img {
+        max-width: 80px !important;
+        max-height: 80px !important;
+    }
+    
+    .ticket-footer {
+        font-size: 8px;
+        margin-top: 10px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function downloadTicketPDF() {
+    window.location.href = "{{ url_for('bookings.ticket_pdf', id=booking.id) }}";
+}
+
+// Auto-focus on print button when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Optional: Show print dialog automatically
+    // window.print();
+});
+</script>
+{% endblock %}

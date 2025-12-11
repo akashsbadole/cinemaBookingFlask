@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <i class="fas fa-clock text-warning" style="font-size: 4rem;"></i>
+                </div>
+                <h1 class="display-4 text-warning">429</h1>
+                <h2>Too Many Requests</h2>
+                <p class="lead">{{ error_message or "You've made too many requests. Please wait before trying again." }}</p>
+                
+                {% if error_details %}
+                <div class="alert alert-info mt-3">
+                    <h5><i class="fas fa-info-circle me-2"></i>Details:</h5>
+                    <p>{{ error_details }}</p>
+                </div>
+                {% endif %}
+                
+                <div class="alert alert-warning mt-3">
+                    <h5><i class="fas fa-lightbulb me-2"></i>Why this happened:</h5>
+                    <ul class="list-unstyled text-start">
+                        <li><i class="fas fa-exclamation-triangle me-2"></i>You made too many requests in a short time</li>
+                        <li><i class="fas fa-exclamation-triangle me-2"></i>This helps prevent abuse and ensures fair usage</li>
+                        <li><i class="fas fa-exclamation-triangle me-2"></i>The limit will reset automatically</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <h5><i class="fas fa-lightbulb me-2"></i>What you can do:</h5>
+                    <ul class="list-unstyled text-start">
+                        <li><i class="fas fa-clock me-2"></i>Wait a few minutes before trying again</li>
+                        <li><i class="fas fa-tasks me-2"></i>Use fewer requests by combining actions</li>
+                        <li><i class="fas fa-home me-2"></i>Return to dashboard and navigate normally</li>
+                        <li><i class="fas fa-envelope me-2"></i>Contact support if you need higher limits</li>
+                    </ul>
+                </div>
+                
+                <div class="mt-4">
+                    <div id="countdown" class="mb-3">
+                        <div class="progress" style="height: 25px;">
+                            <div id="progress-bar" class="progress-bar bg-warning progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 100%">
+                                <span id="countdown-text">Please wait...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <a href="{{ url_for('index') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-home me-1"></i>Go to Dashboard
+                    </a>
+                    <button onclick="location.reload()" class="btn btn-outline-primary me-2" id="retryBtn" disabled>
+                        <i class="fas fa-redo me-1"></i>Try Again
+                    </button>
+                    <button onclick="history.back()" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Go Back
+                    </button>
+                </div>
+                
+                {% if user_id %}
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6><i class="fas fa-hashtag me-1"></i>Rate Limit Information</h6>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <small class="text-muted">Reference ID:</small><br>
+                            <code>{{ error_code }}-{{ user_id }}-{{ timestamp[:8] }}</code>
+                        </div>
+                        <div class="col-sm-6">
+                            <small class="text-muted">Reset Time:</small><br>
+                            <span id="reset-time">Calculating...</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Countdown timer for rate limit reset
+let waitTime = 60; // Default 60 seconds
+let startTime = Date.now();
+
+function updateCountdown() {
+    const elapsed = (Date.now() - startTime) / 1000;
+    const remaining = Math.max(0, waitTime - elapsed);
+    
+    const minutes = Math.floor(remaining / 60);
+    const seconds = Math.floor(remaining % 60);
+    const percentComplete = ((waitTime - remaining) / waitTime) * 100;
+    
+    // Update progress bar
+    document.getElementById('progress-bar').style.width = percentComplete + '%';
+    
+    // Update text
+    if (remaining > 0) {
+        document.getElementById('countdown-text').textContent = 
+            `Please wait ${minutes}m ${seconds}s to try again`;
+        document.getElementById('retryBtn').disabled = true;
+        
+        // Update reset time
+        const resetTime = new Date(Date.now() + remaining * 1000);
+        document.getElementById('reset-time').textContent = 
+            resetTime.toLocaleTimeString();
+    } else {
+        document.getElementById('countdown-text').textContent = 'You can try again now!';
+        document.getElementById('retryBtn').disabled = false;
+        document.getElementById('progress-bar').classList.remove('progress-bar-striped', 'progress-bar-animated');
+        document.getElementById('progress-bar').classList.add('bg-success');
+    }
+}
+
+// Update countdown every second
+const countdownInterval = setInterval(updateCountdown, 1000);
+
+// Initial update
+updateCountdown();
+
+// Clean up interval when page unloads
+window.addEventListener('beforeunload', function() {
+    clearInterval(countdownInterval);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Analysis Report{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Payment Analysis Report</h2>
+        <div>
+            <a href="{{ url_for('reports.payment_analysis_pdf', start_date=start_date, end_date=end_date) }}" class="btn btn-primary">
+                <i class="fas fa-file-pdf"></i> Export PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- Date Filter Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Transactions</h5>
+                    <h3>{{ total_transactions }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Amount</h5>
+                    <h3>₹{{ "%.2f"|format(total_amount) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Refunds</h5>
+                    <h3>₹{{ "%.2f"|format(total_refunds) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Failures</h5>
+                    <h3>₹{{ "%.2f"|format(total_failures) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Success Rate</h5>
+                    <h3>{{ "%.1f"|format(success_rate) }}%</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Refund Rate</h5>
+                    <h3>{{ "%.1f"|format(refund_rate) }}%</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Trends Chart -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Payment Trends Over Time</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="paymentTrendsChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <!-- Daily Summary Table -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Daily Payment Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Transactions</th>
+                            <th>Total Amount</th>
+                            <th>Completed</th>
+                            <th>Failed</th>
+                            <th>Refunded</th>
+                            <th>Success Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day in daily_summary %}
+                        <tr>
+                            <td>{{ day.date.strftime('%d %b %Y') }}</td>
+                            <td>{{ day.total_transactions }}</td>
+                            <td>₹{{ "%.2f"|format(day.total_amount) }}</td>
+                            <td>₹{{ "%.2f"|format(day.completed_amount) }}</td>
+                            <td>₹{{ "%.2f"|format(day.failed_amount) }}</td>
+                            <td>₹{{ "%.2f"|format(day.refunded_amount) }}</td>
+                            <td>
+                                {% set success_rate = ((day.completed_amount / day.total_amount * 100) if day.total_amount > 0 else 0) %}
+                                <span class="badge bg-{{ 'success' if success_rate > 90 else 'warning' if success_rate > 70 else 'danger' }}">
+                                    {{ "%.1f"|format(success_rate) }}%
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refund Analysis -->
+    {% if refund_data %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Refund Analysis</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Payment ID</th>
+                            <th>Amount</th>
+                            <th>Refund Amount</th>
+                            <th>Reason</th>
+                            <th>Method</th>
+                            <th>Refund Date</th>
+                            <th>Movie</th>
+                            <th>Cashier</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for refund in refund_data %}
+                        <tr>
+                            <td>{{ refund.id }}</td>
+                            <td>₹{{ "%.2f"|format(refund.amount) }}</td>
+                            <td>₹{{ "%.2f"|format(refund.refund_amount) }}</td>
+                            <td>{{ refund.refund_reason }}</td>
+                            <td>{{ refund.refund_method }}</td>
+                            <td>{{ refund.refunded_at.strftime('%d %b %Y %H:%M') if refund.refunded_at else 'N/A' }}</td>
+                            <td>{{ refund.movie_title }}</td>
+                            <td>{{ refund.cashier_name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Payment Failure Analysis -->
+    {% if failure_data %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Payment Failure Analysis</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Payment ID</th>
+                            <th>Amount</th>
+                            <th>Payment Method</th>
+                            <th>Failed At</th>
+                            <th>Movie</th>
+                            <th>Cashier</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for failure in failure_data %}
+                        <tr>
+                            <td>{{ failure.id }}</td>
+                            <td>₹{{ "%.2f"|format(failure.amount) }}</td>
+                            <td>{{ failure.mode.title() }}</td>
+                            <td>{{ failure.failed_at.strftime('%d %b %Y %H:%M') if failure.failed_at else 'N/A' }}</td>
+                            <td>{{ failure.movie_title }}</td>
+                            <td>{{ failure.cashier_name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Payment Trends Chart
+    const ctx = document.getElementById('paymentTrendsChart').getContext('2d');
+    const paymentTrendsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ dates|tojson }},
+            datasets: [
+                {
+                    label: 'Total Amount',
+                    data: {{ daily_amounts|tojson }},
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Refunds',
+                    data: {{ daily_refunds|tojson }},
+                    borderColor: 'rgb(255, 205, 86)',
+                    backgroundColor: 'rgba(255, 205, 86, 0.2)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Failures',
+                    data: {{ daily_failures|tojson }},
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ₹' + context.parsed.y.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

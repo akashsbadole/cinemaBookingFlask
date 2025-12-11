@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Custom Layout - {{ screen.name }}</h1>
+            <a href="{{ url_for('screens.manage_seats', screen_id=screen.id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Seat Management
+            </a>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Custom Layout Definition</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('screens.custom_layout', screen_id=screen.id) }}">
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="mb-3">
+                                {{ form.layout_definition.label(class="form-label") }}
+                                {{ form.layout_definition(class="form-control", rows="15", placeholder="Enter layout definition...") }}
+                                {% if form.layout_definition.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.layout_definition.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Define seat types per row using the format: ROW:TYPE_PATTERN
+                                </small>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('screens.manage_seats', screen_id=screen.id) }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Cancel
+                                </a>
+                                {{ form.submit(class="btn btn-info") }}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Layout Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="instructions">
+                            <h6>Format:</h6>
+                            <code>ROW:TYPE_PATTERN</code>
+                            
+                            <h6 class="mt-3">Seat Type Codes:</h6>
+                            <ul class="list-unstyled">
+                                <li><code>N</code> - Normal Seat</li>
+                                <li><code>P</code> - Premium Seat</li>
+                                <li><code>V</code> - VIP Seat</li>
+                            </ul>
+                            
+                            <h6 class="mt-3">Example:</h6>
+                            <pre class="bg-light p-2 rounded">A:NNNNNNNNNN
+B:NNNNNNNNNN
+C:NNPPPPNNNN
+D:NNPPPPNNNN
+E:VVVVVVVVVV
+F:VVVVVVVVVV</pre>
+                            
+                            <h6 class="mt-3">Rules:</h6>
+                            <ul>
+                                <li>Each line represents one row</li>
+                                <li>Row letters (A, B, C...) must match screen dimensions</li>
+                                <li>Type pattern length should match screen columns</li>
+                                <li>Only N, P, V characters are valid</li>
+                                <li>This will replace all existing seats</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Example Layouts</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="accordion" id="exampleAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingRegular">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRegular">
+                                        Regular Layout
+                                    </button>
+                                </h2>
+                                <div id="collapseRegular" class="accordion-collapse collapse" data-bs-parent="#exampleAccordion">
+                                    <div class="accordion-body">
+                                        <pre class="bg-light p-2 rounded">{{ example_text }}</pre>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="useExample('regular')">Use This Example</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingStadium">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStadium">
+                                        Stadium Layout
+                                    </button>
+                                </h2>
+                                <div id="collapseStadium" class="accordion-collapse collapse" data-bs-parent="#exampleAccordion">
+                                    <div class="accordion-body">
+                                        <pre class="bg-light p-2 rounded" id="stadium-example"></pre>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="useExample('stadium')">Use This Example</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingMixed">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMixed">
+                                        Mixed Layout
+                                    </button>
+                                </h2>
+                                <div id="collapseMixed" class="accordion-collapse collapse" data-bs-parent="#exampleAccordion">
+                                    <div class="accordion-body">
+                                        <pre class="bg-light p-2 rounded" id="mixed-example"></pre>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="useExample('mixed')">Use This Example</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Screen Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="screen-info">
+                            <p><strong>Screen:</strong> {{ screen.name }}</p>
+                            <p><strong>Dimensions:</strong> {{ screen.total_rows }} × {{ screen.total_columns }}</p>
+                            <p><strong>Total Capacity:</strong> {{ screen.total_rows * screen.total_columns }} seats</p>
+                            <p><strong>Current Seats:</strong> {{ screen.seats|length }} seats</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    generateExamples();
+});
+
+function generateExamples() {
+    const rows = {{ screen.total_rows }};
+    const cols = {{ screen.total_columns }};
+    
+    // Stadium example
+    let stadiumExample = '';
+    for (let i = 0; i < rows; i++) {
+        const rowLetter = String.fromCharCode(65 + i);
+        let pattern = '';
+        
+        if (i >= rows * 0.75) {
+            pattern = 'V'.repeat(cols);
+        } else if (i >= rows * 0.5) {
+            pattern = 'P'.repeat(cols);
+        } else {
+            pattern = 'N'.repeat(cols);
+        }
+        
+        stadiumExample += `${rowLetter}:${pattern}\n`;
+    }
+    document.getElementById('stadium-example').textContent = stadiumExample.trim();
+    
+    // Mixed example
+    let mixedExample = '';
+    const centerStart = Math.floor(cols * 0.25);
+    const centerEnd = Math.floor(cols * 0.75);
+    
+    for (let i = 0; i < rows; i++) {
+        const rowLetter = String.fromCharCode(65 + i);
+        let pattern = '';
+        
+        for (let j = 0; j < cols; j++) {
+            if (centerStart <= j < centerEnd) {
+                // Center 50% are VIP, rest are premium
+                if (j < (centerStart + centerEnd) / 2) {
+                    pattern += 'V';
+                } else {
+                    pattern += 'P';
+                }
+            } else {
+                pattern += 'N';
+            }
+        }
+        
+        mixedExample += `${rowLetter}:${pattern}\n`;
+    }
+    document.getElementById('mixed-example').textContent = mixedExample.trim();
+}
+
+function useExample(type) {
+    const layoutDefinition = document.getElementById('layout_definition');
+    const rows = {{ screen.total_rows }};
+    const cols = {{ screen.total_columns }};
+    
+    let example = '';
+    
+    if (type === 'regular') {
+        for (let i = 0; i < rows; i++) {
+            const rowLetter = String.fromCharCode(65 + i);
+            example += `${rowLetter}:${'N'.repeat(cols)}\n`;
+        }
+    } else if (type === 'stadium') {
+        example = document.getElementById('stadium-example').textContent;
+    } else if (type === 'mixed') {
+        example = document.getElementById('mixed-example').textContent;
+    }
+    
+    layoutDefinition.value = example;
+}
+</script>
+
+<style>
+.screen-info {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.instructions code {
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.instructions pre {
+    font-size: 12px;
+    margin-bottom: 10px;
+}
+
+.accordion-button {
+    font-size: 14px;
+}
+
+.accordion-body {
+    font-size: 13px;
+}
+</style>
+{% endblock %}

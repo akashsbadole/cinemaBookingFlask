@@ -274,3 +274,50 @@ Your MVP will include:
 ✔ Daily reports
 
 ---
+
+## phase 2
+
+Here is a revised list of **necessary features, strictly limited to the Counter/Desktop POS environment**, removing any features that imply a customer-facing online system (like SMS/Email slips, Booking History for the end-user, QR scanning _on entry_):
+
+---
+
+## ✅ **Refined MVP Features (Strictly Counter POS Focused)**
+
+This list prioritizes what a cashier **must** do at the counter to process a sale efficiently and accurately.
+
+### 1. 👥 **User & Access Control**
+
+- **Cashier/Admin Login:** Session-based authentication.
+- **Role-Based Access Control (RBAC):** Admin (configuration, reporting) vs. Cashier (sales, basic reports).
+- **Action Audit Log:** Logging cashier activities (Refunds, Price Overrides) for security/dispute resolution.
+
+### 2. 🎟️ **Ticketing Workflow**
+
+- **Show Selection:** Select movie, date, and showtime.
+- **Visual Seat Map:** Real-time visual display of seat availability/status.
+- **Seat Hold Timer:** Lock selected seats for 3-5 minutes while the cashier processes the transaction.
+- **Ticket Printing:** Generate a physical, thermal-printable receipt with ticket details (Movie, Seat, Time, Total) and a Ticket ID/QR Code.
+- **Booking Lookup & Management:** Ability to search for an existing booking (by ID or customer name) for re-print or refund.
+- **Refund/Cancellation Process:** Workflow for marking a booking as cancelled and processing a refund.
+
+### 3. 🍿 **Integrated Concessions (Crucial for a Counter POS)**
+
+- **Concession Catalog:** Display list of available snacks/drinks with pricing.
+- **Combined Transaction:** Add both tickets and concession items to a single cart.
+- **Stock Deduction:** Simple inventory tracking—deduct items sold from a configured stock count.
+
+### 4. 💰 **Pricing, Discounts, & Payments**
+
+- **Dynamic Pricing Application:** System automatically applies configured pricing rules (Weekend, Matinee, Peak/Off-Peak).
+- **Voucher/Discount Input:** Input field for the cashier to validate and apply a pre-set code/voucher against the total.
+- **Multiple Payment Types:** Handling for Cash, Card (manual entry/note), and UPI (reference ID capture).
+- **Cash Tender Calculation:** Calculate change due to the customer for cash payments.
+
+### 5. 📊 **Reporting (End-of-Day Focus)**
+
+- **End-of-Day Summary:** Report broken down by cashier, showing total cash collected, card sales, discounts given, and refunds processed.
+- **Sales Report:** Daily/Show-wise breakdown of revenue from Tickets and Concessions.
+
+This list keeps the functionality strictly inside the theater's operational needs.
+
+Would you like to focus on the **Database Design** for the crucial **Seat Hold Timer** feature next?

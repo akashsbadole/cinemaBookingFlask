@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-shield-alt me-2"></i>Payment Audit Trail</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5>Payment Details</h5>
+                    <div class="table-responsive">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Payment ID:</strong></td>
+                                <td>#{{ payment.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Booking ID:</strong></td>
+                                <td>#{{ payment.booking.id if payment.booking else 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Customer:</strong></td>
+                                <td>{{ payment.booking.customer_name if payment.booking else 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Amount:</strong></td>
+                                <td class="text-primary">₹{{ "%.2f"|format(payment.amount) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Current Status:</strong></td>
+                                <td>
+                                    <span class="badge bg-{{ payment.get_status_badge_class() }}">
+                                        {{ payment.get_status_display() }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Payment Method:</strong></td>
+                                <td>{{ payment.get_payment_method_display() }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <h5>Audit Trail</h5>
+                {% if audit_trail %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Operation</th>
+                                    <th>User</th>
+                                    <th>IP Address</th>
+                                    <th>Changes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for audit in audit_trail %}
+                                <tr>
+                                    <td>{{ audit.timestamp.strftime('%d %b %Y %H:%M:%S') if audit.timestamp else '-' }}</td>
+                                    <td>
+                                        {% if audit.operation == 'CREATE' %}
+                                            <span class="badge bg-success">Created</span>
+                                        {% elif audit.operation == 'UPDATE' %}
+                                            <span class="badge bg-info">Updated</span>
+                                        {% elif audit.operation == 'UPDATE_STATUS' %}
+                                            <span class="badge bg-warning">Status Updated</span>
+                                        {% elif audit.operation == 'REFUND' %}
+                                            <span class="badge bg-secondary">Refunded</span>
+                                        {% elif audit.operation == 'DELETE' %}
+                                            <span class="badge bg-danger">Deleted</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">{{ audit.operation }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if audit.user_id %}
+                                            <span class="badge bg-info">User ID: {{ audit.user_id }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">System</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <code class="small">{{ audit.ip_address or '-' }}</code>
+                                    </td>
+                                    <td>
+                                        {% if audit.new_values_dict %}
+                                            <div class="changes-container">
+                                                {% for key, value in audit.new_values_dict.items() %}
+                                                    <div class="change-item">
+                                                        <strong>{{ key.replace('_', ' ').title() }}:</strong> 
+                                                        {% if 'amount' in key.lower() or 'revenue' in key.lower() %}
+                                                            ₹{{ "%.2f"|format(value) if value is number else value }}
+                                                        {% else %}
+                                                            {{ value }}
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                                
+                                                {% if audit.old_values_dict %}
+                                                    <details class="mt-2">
+                                                        <summary class="text-muted small">Previous Values</summary>
+                                                        {% for key, value in audit.old_values_dict.items() %}
+                                                            <div class="change-item text-muted">
+                                                                <strong>{{ key.replace('_', ' ').title() }}:</strong> 
+                                                                {% if 'amount' in key.lower() or 'revenue' in key.lower() %}
+                                                                    ₹{{ "%.2f"|format(value) if value is number else value }}
+                                                                {% else %}
+                                                                    {{ value }}
+                                                                {% endif %}
+                                                            </div>
+                                                        {% endfor %}
+                                                    </details>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">No data changes recorded</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-shield-alt fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No audit trail found for this payment</p>
+                    </div>
+                {% endif %}
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('payments.receipt', id=payment.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Receipt
+                    </a>
+                    <a href="{{ url_for('payments.status_history', id=payment.id) }}" class="btn btn-outline-primary">
+                        <i class="fas fa-history me-2"></i>View Status History
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.changes-container {
+    max-width: 300px;
+}
+
+.change-item {
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+details summary {
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+details summary:hover {
+    color: #007bff;
+}
+</style>
+{% endblock %}

@@ -50,9 +50,32 @@
             <div class="card-body">
                 <h5 class="card-title">Payment Methods</h5>
                 <p class="card-text">Payment method breakdown</p>
-                <button class="btn btn-light" onclick="showPaymentReport()">
+                <a href="{{ url_for('reports.payment_methods') }}" class="btn btn-light">
                     <i class="fas fa-credit-card me-1"></i>View Report
-                </button>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Additional Reports</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('reports.movie_performance') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-film me-2"></i>Movie Performance
+                    </a>
+                    <a href="{{ url_for('reports.screen_utilization') }}" class="btn btn-outline-success">
+                        <i class="fas fa-tv me-2"></i>Screen Utilization
+                    </a>
+                    <a href="{{ url_for('reports.payment_analysis') }}" class="btn btn-outline-warning">
+                        <i class="fas fa-chart-line me-2"></i>Payment Analysis
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -67,19 +90,20 @@
             <div class="card-body">
                 <div class="row text-center">
                     <div class="col-6 mb-3">
-                        <h3 class="text-primary">$2,450</h3>
+                        <h3 class="text-primary">₹{{ "%.2f"|format(today_sales or 0) }}</h3>
                         <p class="text-muted">Today's Revenue</p>
                     </div>
                     <div class="col-6 mb-3">
-                        <h3 class="text-success">85%</h3>
+                        {% set total_seats = 200 %} {# Assume 200 total seats for calculation #}
+                        <h3 class="text-success">{{ "%.1f"|format((today_tickets or 0) / total_seats * 100) }}%</h3>
                         <p class="text-muted">Occupancy Rate</p>
                     </div>
                     <div class="col-6 mb-3">
-                        <h3 class="text-info">142</h3>
+                        <h3 class="text-info">{{ today_bookings or 0 }}</h3>
                         <p class="text-muted">Today's Bookings</p>
                     </div>
                     <div class="col-6 mb-3">
-                        <h3 class="text-warning">4.8</h3>
+                        <h3 class="text-warning">{{ "%.1f"|format(avg_tickets) }}</h3>
                         <p class="text-muted">Avg. Tickets/Booking</p>
                     </div>
                 </div>
@@ -143,51 +167,26 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>2023-12-10</td>
-                                <td>14:30</td>
-                                <td>Avatar 2</td>
-                                <td>Screen 1</td>
-                                <td>4</td>
-                                <td>$48.00</td>
-                                <td>admin</td>
-                            </tr>
-                            <tr>
-                                <td>2023-12-10</td>
-                                <td>13:45</td>
-                                <td>Oppenheimer</td>
-                                <td>Screen 2</td>
-                                <td>2</td>
-                                <td>$24.00</td>
-                                <td>cashier1</td>
-                            </tr>
-                            <tr>
-                                <td>2023-12-10</td>
-                                <td>12:15</td>
-                                <td>Jawan</td>
-                                <td>Screen 3</td>
-                                <td>6</td>
-                                <td>$72.00</td>
-                                <td>cashier2</td>
-                            </tr>
-                            <tr>
-                                <td>2023-12-10</td>
-                                <td>11:30</td>
-                                <td>Avatar 2</td>
-                                <td>Screen 1</td>
-                                <td>3</td>
-                                <td>$36.00</td>
-                                <td>admin</td>
-                            </tr>
-                            <tr>
-                                <td>2023-12-10</td>
-                                <td>10:45</td>
-                                <td>Fast X</td>
-                                <td>Screen 4</td>
-                                <td>2</td>
-                                <td>$24.00</td>
-                                <td>cashier1</td>
-                            </tr>
+                            {% if recent_activity %}
+                                {% for activity in recent_activity %}
+                                <tr>
+                                    <td>{{ activity.booking_time.strftime('%Y-%m-%d') if activity.booking_time else '' }}</td>
+                                    <td>{{ activity.show_time.strftime('%H:%M') if activity.show_time else '' }}</td>
+                                    <td>{{ activity.title }}</td>
+                                    <td>{{ activity.name }}</td>
+                                    <td>{{ activity.seats }}</td>
+                                    <td>₹{{ "%.2f"|format(activity.amount) if activity.amount else 0 }}</td>
+                                    <td>{{ activity.username }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No recent activity found for today</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>
