@@ -213,7 +213,7 @@ Which cities are performing best?
 
 ---
 
-# 🧩 **11. Mobile App Version (Optional)**
+# 🧩 **11. Mobile responsive Version**
 
 Features same as web:
 

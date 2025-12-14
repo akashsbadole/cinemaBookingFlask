@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}Seat Utilization Report{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Seat Utilization Report</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('reports.seat_utilization_pdf', start_date=start_date, end_date=end_date, screen=screen_id) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-file-pdf"></i> Export PDF
+            </a>
+            <a href="{{ url_for('reports.export_report_route', report_type='seat_utilization', format='excel', start_date=start_date, end_date=end_date, screen=screen_id) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-file-excel"></i> Export Excel
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Filter Options</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">End Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+            </div>
+            <div class="col-md-3">
+                <label for="screen" class="form-label">Screen</label>
+                <select class="form-select" id="screen" name="screen">
+                    <option value="0">All Screens</option>
+                    {% for screen in screens %}
+                    <option value="{{ screen.id }}" {% if screen_id == screen.id %}selected{% endif %}>{{ screen.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+                <a href="{{ url_for('reports.seat_utilization') }}" class="btn btn-outline-secondary ms-2">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Seats</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_seats }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chair fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Booked Seats</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_booked }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Available Seats</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_available }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Overall Utilization</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ "%.1f"|format(overall_utilization) }}%</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Screen Utilization</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="screenUtilizationChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Seat Type Performance</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="seatTypeChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Utilization Data Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Screen Utilization Details</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="utilizationTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Screen Name</th>
+                        <th>Total Seats</th>
+                        <th>Booked Seats</th>
+                        <th>Available Seats</th>
+                        <th>Utilization Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in utilization_data %}
+                    <tr>
+                        <td>{{ row.screen_name }}</td>
+                        <td>{{ row.total_seats }}</td>
+                        <td>{{ row.booked_seats }}</td>
+                        <td>{{ row.available_seats }}</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: {{ row.utilization_rate }}%"
+                                    aria-valuenow="{{ row.utilization_rate }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ "%.1f"|format(row.utilization_rate) }}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Seat Type Data Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Seat Type Performance</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="seatTypeTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Seat Type</th>
+                        <th>Total Seats</th>
+                        <th>Booked Seats</th>
+                        <th>Available Seats</th>
+                        <th>Utilization Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in seat_type_data %}
+                    <tr>
+                        <td>{{ row.seat_type|title }}</td>
+                        <td>{{ row.total_seats }}</td>
+                        <td>{{ row.booked_seats }}</td>
+                        <td>{{ row.available_seats }}</td>
+                        <td>
+                            {% set utilization = (row.booked_seats / row.total_seats * 100) if row.total_seats > 0 else 0 %}
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: {{ utilization }}%"
+                                    aria-valuenow="{{ utilization }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ "%.1f"|format(utilization) }}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Screen Utilization Chart
+    const screenCtx = document.getElementById('screenUtilizationChart').getContext('2d');
+    const screenUtilizationChart = new Chart(screenCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ screen_names | tojson }},
+            datasets: [{
+                label: 'Utilization Rate (%)',
+                data: {{ utilization_rates | tojson }},
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+
+    // Seat Type Chart
+    const seatTypeCtx = document.getElementById('seatTypeChart').getContext('2d');
+    const seatTypeChart = new Chart(seatTypeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ seat_types | tojson }},
+            datasets: [{
+                label: 'Seat Distribution',
+                data: {{ seat_type_counts | tojson }},
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 206, 86, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Seat Type Distribution'
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

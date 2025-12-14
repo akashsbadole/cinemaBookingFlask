@@ -897,11 +897,139 @@ def export_report_route(report_type):
                 'performance_score': performance_score
             })
     
+    elif report_type == 'screen_utilization':
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        screen_id = request.args.get('screen')
+        
+        if not start_date_str:
+            start_date = datetime.now() - timedelta(days=30)
+        else:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                start_date = datetime.now() - timedelta(days=30)
+        
+        if not end_date_str:
+            end_date = datetime.now().date()
+        else:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                end_date = datetime.now().date()
+        
+        screen_id = int(screen_id) if screen_id and screen_id != '0' else None
+        
+        screen_data = ReportQueries.get_screen_utilization_data(start_date, end_date, screen_id)
+        
+        report_data = {
+            'summary': {
+                'Period': f"{start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}",
+                'Total Shows': sum([row.total_shows or 0 for row in screen_data]),
+                'Total Bookings': sum([row.total_bookings or 0 for row in screen_data]),
+                'Total Revenue': f"₹{sum([row.total_revenue or 0 for row in screen_data]):.2f}"
+            },
+            'data': []
+        }
+        
+        for row in screen_data:
+            report_data['data'].append({
+                'screen_name': row.name,
+                'total_shows': row.total_shows,
+                'total_bookings': row.total_bookings,
+                'total_tickets_sold': row.total_tickets_sold,
+                'total_revenue': float(row.total_revenue or 0),
+                'average_occupancy': float(row.average_occupancy or 0)
+            })
+    
+    elif report_type == 'movie_performance':
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        movie_id = request.args.get('movie')
+        
+        if not start_date_str:
+            start_date = datetime.now() - timedelta(days=30)
+        else:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                start_date = datetime.now() - timedelta(days=30)
+        
+        if not end_date_str:
+            end_date = datetime.now().date()
+        else:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                end_date = datetime.now().date()
+        
+        movie_id = int(movie_id) if movie_id and movie_id != '0' else None
+        
+        movie_data = ReportQueries.get_movie_performance_data(start_date, end_date, movie_id)
+        
+        report_data = {
+            'summary': {
+                'Period': f"{start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}",
+                'Total Movies': len(movie_data),
+                'Total Revenue': f"₹{sum([row.revenue or 0 for row in movie_data]):.2f}"
+            },
+            'data': []
+        }
+        
+        for row in movie_data:
+            report_data['data'].append({
+                'title': row.title,
+                'bookings_count': row.bookings_count,
+                'tickets_sold': row.tickets_sold,
+                'revenue': float(row.revenue or 0),
+                'average_ticket_price': float(row.average_ticket_price or 0),
+                'days_running': row.days_running
+            })
+    
+    elif report_type == 'payment_methods':
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        
+        if not start_date_str:
+            start_date = datetime.now() - timedelta(days=30)
+        else:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                start_date = datetime.now() - timedelta(days=30)
+        
+        if not end_date_str:
+            end_date = datetime.now().date()
+        else:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                end_date = datetime.now().date()
+        
+        payment_data = ReportQueries.get_payment_method_breakdown(start_date, end_date)
+        
+        report_data = {
+            'summary': {
+                'Period': f"{start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}",
+                'Total Transactions': sum([row.count for row in payment_data]),
+                'Total Revenue': f"₹{sum([row.total_amount for row in payment_data]):.2f}"
+            },
+            'data': []
+        }
+        
+        for row in payment_data:
+            report_data['data'].append({
+                'payment_method': row.mode.title(),
+                'transaction_count': row.count,
+                'total_amount': float(row.total_amount),
+                'average_amount': float(row.total_amount / row.count) if row.count > 0 else 0
+            })
+    
     else:
         flash('Invalid report type', 'error')
         return redirect(url_for('reports.index'))
     
-    # Export the report
+    # Export report
     return export_report(report_data, report_type, export_format)
 
 @bp.route('/payment_methods')

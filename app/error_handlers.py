@@ -85,7 +85,7 @@ class ErrorLogger:
         
         Args:
             error: Exception or error message
-            context: Additional context information
+            context: Additional context information (can be dict, ErrorContext, or None)
             severity: Log level (error, warning, info)
             **kwargs: Additional context information
         """
@@ -249,6 +249,34 @@ class ErrorRenderer:
 
 class ErrorHandler:
     """Main error handling class with specific handlers for different error types"""
+    
+    @staticmethod
+    def handle_error(error, request, is_json=False):
+        """
+        Handle general errors
+        
+        Args:
+            error: Exception instance
+            request: Flask request object
+            is_json: Whether to return JSON response
+        """
+        # Log the error
+        ErrorLogger.log_error(error)
+        
+        # Determine error type and handle accordingly
+        if isinstance(error, ValidationError):
+            return ErrorHandler.handle_validation_error(error, is_json)
+        elif isinstance(error, SQLAlchemyError):
+            return ErrorHandler.handle_database_error(error, is_json)
+        else:
+            # Handle general exceptions
+            error_message = str(error) if error else "An unexpected error occurred"
+            
+            if is_json:
+                return ErrorRenderer.render_json_error(500, error_message, {'general_error': True})
+            else:
+                flash(error_message, 'danger')
+                return redirect(request.referrer or url_for('index'))
     
     @staticmethod
     def handle_validation_error(error, is_json=False):

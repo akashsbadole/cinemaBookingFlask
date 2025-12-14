@@ -83,6 +83,9 @@
                                             <option value="regular">Regular Layout</option>
                                             <option value="stadium">Stadium Layout</option>
                                             <option value="mixed">Mixed Types</option>
+                                            <option value="vip_center">VIP Center Layout</option>
+                                            <option value="aisle">Aisle Layout</option>
+                                            <option value="luxury">Luxury Layout</option>
                                         </select>
                                     </div>
                                     <div class="col-md-6 mb-2">
@@ -181,6 +184,56 @@ document.addEventListener('DOMContentLoaded', function() {
                                 } else {
                                     seatClass = 'seat-premium';
                                 }
+                            }
+                        } else if (pattern === 'vip_center') {
+                            const centerStart = cols * 0.3;
+                            const centerEnd = cols * 0.7;
+                            const centerWidth = centerEnd - centerStart;
+                            
+                            // Center 40% are VIP
+                            if (centerStart <= c < centerEnd) {
+                                seatClass = 'seat-vip';
+                            }
+                            // Seats adjacent to center are premium
+                            else if (Math.abs(c - (centerStart + centerEnd) / 2) <= centerWidth / 2 + 2) {
+                                seatClass = 'seat-premium';
+                            }
+                        } else if (pattern === 'aisle') {
+                            const aisle1 = Math.floor(cols * 0.33);
+                            const aisle2 = Math.floor(cols * 0.67);
+                            
+                            // Skip aisles (no seats)
+                            if (c === aisle1 || c === aisle2) {
+                                html += '<div class="seat-empty"></div>';
+                                continue;
+                            }
+                            
+                            // Seats next to aisles are premium
+                            if (Math.abs(c - aisle1) <= 1 || Math.abs(c - aisle2) <= 1) {
+                                seatClass = 'seat-premium';
+                            }
+                            // Back rows are VIP
+                            else if (r >= rows * 0.7) {
+                                seatClass = 'seat-vip';
+                            }
+                        } else if (pattern === 'luxury') {
+                            // Back 30% are VIP
+                            if (r >= rows * 0.7) {
+                                seatClass = 'seat-vip';
+                                // Skip some seats for luxury feel
+                                if (c % 4 === 0) {
+                                    html += '<div class="seat-empty"></div>';
+                                    continue;
+                                }
+                                // Couples seating
+                                if (c % 2 === 0 && c < cols - 1) {
+                                    html += '<div class="seat-empty"></div>';
+                                    continue;
+                                }
+                            }
+                            // Middle 40% are premium
+                            else if (r >= rows * 0.3) {
+                                seatClass = 'seat-premium';
                             }
                         }
                     }

@@ -16,7 +16,40 @@
                 <a href="{{ url_for('screens.custom_layout', screen_id=screen.id) }}" class="btn btn-info">
                     <i class="fas fa-paint-brush me-1"></i>Custom Layout
                 </a>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-warning dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="fas fa-edit me-1"></i>Bulk Operations
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{{ url_for('screens.bulk_update_seat_types', screen_id=screen.id) }}">
+                            <i class="fas fa-exchange-alt me-2"></i>Update Seat Types
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('screens.bulk_update_prices', screen_id=screen.id) }}">
+                            <i class="fas fa-rupee-sign me-2"></i>Update Prices
+                        </a></li>
+                    </ul>
+                </div>
                 {% endif %}
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="fas fa-chart-bar me-1"></i>Reports
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{{ url_for('screens.seat_availability') }}">
+                            <i class="fas fa-chair me-2"></i>Seat Availability
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('screens.seat_utilization') }}">
+                            <i class="fas fa-chart-line me-2"></i>Seat Utilization
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('screens.pricing_matrix', screen_id=screen.id) }}">
+                            <i class="fas fa-rupee-sign me-2"></i>Pricing Matrix
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('screens.dynamic_pricing', screen_id=screen.id) }}">
+                            <i class="fas fa-percentage me-2"></i>Dynamic Pricing
+                        </a></li>
+                    </ul>
+                </div>
                 <a href="{{ url_for('screens.index') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-1"></i>Back to Screens
                 </a>

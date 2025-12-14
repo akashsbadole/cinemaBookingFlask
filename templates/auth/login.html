@@ -2,56 +2,381 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-        <div class="card">
-            <div class="card-header text-center">
-                <h3><i class="fas fa-film me-2"></i>{{ app_name }}</h3>
-                <p class="mb-0">Sign in to your account</p>
+    <div class="col-md-6 col-lg-5">
+        <div class="card border-0 shadow-lg animate__animated animate__fadeInUp">
+            <div class="card-header bg-gradient-primary text-white text-center py-4">
+                <h3 class="mb-2">
+                    <i class="fas fa-film me-2"></i>{{ app_name }}
+                </h3>
+                <p class="mb-0 opacity-75">Sign in to your account</p>
             </div>
-            <div class="card-body">
-                <form method="POST" action="">
+            <div class="card-body p-4">
+                <form method="POST" action="" id="loginForm" novalidate>
                     {{ form.hidden_tag() }}
                     
-                    <div class="mb-3">
-                        {{ form.username.label(class="form-label") }}
-                        {{ form.username(class="form-control") }}
+                    <div class="mb-4">
+                        <label for="username" class="form-label fw-semibold">
+                            <i class="fas fa-user me-2 text-primary"></i>Username
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0">
+                                <i class="fas fa-user text-muted"></i>
+                            </span>
+                            {{ form.username(class="form-control border-start-0", placeholder="Enter your username") }}
+                        </div>
                         {% if form.username.errors %}
-                            <div class="text-danger">
+                            <div class="invalid-feedback d-block animate__animated animate__fadeInDown">
                                 {% for error in form.username.errors %}
-                                    <small>{{ error }}</small>
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
                                 {% endfor %}
                             </div>
                         {% endif %}
                     </div>
                     
-                    <div class="mb-3">
-                        {{ form.password.label(class="form-label") }}
-                        {{ form.password(class="form-control") }}
+                    <div class="mb-4">
+                        <label for="password" class="form-label fw-semibold">
+                            <i class="fas fa-lock me-2 text-primary"></i>Password
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0">
+                                <i class="fas fa-lock text-muted"></i>
+                            </span>
+                            {{ form.password(class="form-control border-start-0", placeholder="Enter your password") }}
+                            <button class="btn btn-outline-secondary border-start-0" type="button" id="togglePassword">
+                                <i class="fas fa-eye" id="passwordIcon"></i>
+                            </button>
+                        </div>
                         {% if form.password.errors %}
-                            <div class="text-danger">
+                            <div class="invalid-feedback d-block animate__animated animate__fadeInDown">
                                 {% for error in form.password.errors %}
-                                    <small>{{ error }}</small>
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
                                 {% endfor %}
                             </div>
                         {% endif %}
                     </div>
                     
-                    <div class="mb-3 form-check">
-                        {{ form.remember_me(class="form-check-input") }}
-                        {{ form.remember_me.label(class="form-check-label") }}
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.remember_me(class="form-check-input") }}
+                            {{ form.remember_me.label(class="form-check-label") }}
+                        </div>
                     </div>
                     
-                    <div class="d-grid">
-                        {{ form.submit(class="btn btn-primary") }}
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-primary btn-lg" id="loginBtn">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                        </button>
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="#" class="text-muted text-decoration-none" onclick="showForgotPassword()">
+                            <i class="fas fa-question-circle me-1"></i>Forgot your password?
+                        </a>
                     </div>
                 </form>
             </div>
-            <div class="card-footer text-center">
+            <div class="card-footer bg-light text-center py-3">
                 <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
                     Demo: admin/Admin123! or cashier/Cashier123!
                 </small>
             </div>
         </div>
+        
+        <!-- Quick Access Cards -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <h5 class="card-title mb-3">
+                            <i class="fas fa-bolt me-2 text-warning"></i>Quick Access
+                        </h5>
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <button class="btn btn-outline-primary w-100" onclick="quickLogin('admin')">
+                                    <i class="fas fa-user-shield me-1"></i>Admin Demo
+                                </button>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <button class="btn btn-outline-success w-100" onclick="quickLogin('cashier')">
+                                    <i class="fas fa-user-tie me-1"></i>Cashier Demo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Forgot Password Modal -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-key me-2"></i>Reset Password
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Enter your email address and we'll send you instructions to reset your password.</p>
+                <form id="forgotPasswordForm">
+                    <div class="mb-3">
+                        <label for="resetEmail" class="form-label fw-semibold">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0">
+                                <i class="fas fa-envelope text-muted"></i>
+                            </span>
+                            <input type="email" class="form-control border-start-0" id="resetEmail" placeholder="Enter your email" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="resetPassword()">
+                    <i class="fas fa-paper-plane me-1"></i>Send Reset Link
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle password visibility
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const passwordIcon = document.getElementById('passwordIcon');
+    
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        if (type === 'text') {
+            passwordIcon.classList.remove('fa-eye');
+            passwordIcon.classList.add('fa-eye-slash');
+        } else {
+            passwordIcon.classList.remove('fa-eye-slash');
+            passwordIcon.classList.add('fa-eye');
+        }
+    });
+    
+    // Form validation
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        const originalContent = loginBtn.innerHTML;
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing in...';
+        loginBtn.disabled = true;
+        
+        // Simulate authentication (in real app, this would be an AJAX call)
+        setTimeout(() => {
+            // Reset button state
+            loginBtn.innerHTML = originalContent;
+            loginBtn.disabled = false;
+            
+            // Submit the form normally for now
+            loginForm.submit();
+        }, 1500);
+    });
+    
+    // Add input validation feedback
+    const inputs = document.querySelectorAll('input[required]');
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            validateField(this);
+        });
+        
+        input.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid')) {
+                validateField(this);
+            }
+        });
+    });
+});
+
+function validateField(field) {
+    const value = field.value.trim();
+    let isValid = true;
+    
+    if (value === '') {
+        isValid = false;
+    }
+    
+    // Specific validation for username
+    if (field.id === 'username' && value.length < 3) {
+        isValid = false;
+    }
+    
+    // Specific validation for password
+    if (field.id === 'password' && value.length < 6) {
+        isValid = false;
+    }
+    
+    if (isValid) {
+        field.classList.remove('is-invalid');
+        field.classList.add('is-valid');
+    } else {
+        field.classList.remove('is-valid');
+        field.classList.add('is-invalid');
+    }
+    
+    return isValid;
+}
+
+function quickLogin(role) {
+    const usernameField = document.getElementById('username');
+    const passwordField = document.getElementById('password');
+    
+    if (role === 'admin') {
+        usernameField.value = 'admin';
+        passwordField.value = 'Admin123!';
+    } else if (role === 'cashier') {
+        usernameField.value = 'cashier';
+        passwordField.value = 'Cashier123!';
+    }
+    
+    // Add animation
+    usernameField.classList.add('animate__animated', 'animate__pulse');
+    passwordField.classList.add('animate__animated', 'animate__pulse');
+    
+    setTimeout(() => {
+        usernameField.classList.remove('animate__animated', 'animate__pulse');
+        passwordField.classList.remove('animate__animated', 'animate__pulse');
+    }, 1000);
+    
+    // Show notification
+    showNotification('Demo credentials filled. Click Sign In to continue.', 'info');
+}
+
+function showForgotPassword() {
+    const modal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
+    modal.show();
+}
+
+function resetPassword() {
+    const email = document.getElementById('resetEmail').value;
+    
+    if (!email) {
+        showNotification('Please enter your email address', 'warning');
+        return;
+    }
+    
+    // Show loading state
+    const btn = event.target;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sending...';
+    btn.disabled = true;
+    
+    // Simulate API call
+    setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('forgotPasswordModal')).hide();
+        
+        // Show success message
+        showNotification('Password reset link has been sent to your email', 'success');
+        
+        // Clear form
+        document.getElementById('resetEmail').value = '';
+    }, 2000);
+}
+
+function showNotification(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show animate__animated animate__fadeInDown position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.input-group-text {
+    border-radius: var(--border-radius-lg) 0 0 var(--border-radius-lg);
+}
+
+.form-control.border-start-0 {
+    border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
+}
+
+.form-control.is-valid {
+    border-color: var(--success-color);
+    background-image: none;
+}
+
+.form-control.is-invalid {
+    border-color: var(--danger-color);
+    background-image: none;
+}
+
+.invalid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: var(--danger-color);
+}
+
+.valid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: var(--success-color);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-content {
+    border: none;
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-xl);
+}
+
+.modal-header {
+    border-radius: var(--border-radius-xl) var(--border-radius-xl) 0 0;
+}
+
+.form-label {
+    color: var(--gray-700);
+    font-weight: 600;
+}
+
+.card {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+}
+</style>
 {% endblock %}

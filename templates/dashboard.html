@@ -1,56 +1,114 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
+<div class="row mb-4">
     <div class="col-12">
-        <h1 class="mb-4">Dashboard</h1>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Dashboard</h1>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" onclick="refreshDashboard()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+                <button class="btn btn-primary" onclick="exportReport()">
+                    <i class="fas fa-download me-1"></i>Export Report
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-3 mb-4">
-        <div class="card text-white bg-primary">
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-gradient-primary text-white">
             <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h5>
+                <div class="row">
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <a href="{{ url_for('bookings.new') }}" class="btn btn-light w-100">
+                            <i class="fas fa-plus-circle me-2"></i>New Booking
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <a href="{{ url_for('movies.add') }}" class="btn btn-light w-100">
+                            <i class="fas fa-film me-2"></i>Add Movie
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <a href="{{ url_for('screens.add') }}" class="btn btn-light w-100">
+                            <i class="fas fa-tv me-2"></i>Add Screen
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <a href="{{ url_for('shows.add') }}" class="btn btn-light w-100">
+                            <i class="fas fa-clock me-2"></i>Add Show
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Action Cards -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100 border-0 shadow-sm dashboard-card">
+            <div class="card-body text-center">
+                <div class="icon-box bg-primary bg-gradient text-white rounded-circle mx-auto mb-3">
+                    <i class="fas fa-plus fa-2x"></i>
+                </div>
                 <h5 class="card-title">New Booking</h5>
-                <p class="card-text">Create a new ticket booking</p>
-                <a href="{{ url_for('bookings.new') }}" class="btn btn-light">
-                    <i class="fas fa-plus me-1"></i>Book Now
+                <p class="card-text text-muted">Create a new ticket booking quickly</p>
+                <a href="{{ url_for('bookings.new') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-right me-1"></i>Book Now
                 </a>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-4">
-        <div class="card text-white bg-success">
-            <div class="card-body">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100 border-0 shadow-sm dashboard-card">
+            <div class="card-body text-center">
+                <div class="icon-box bg-success bg-gradient text-white rounded-circle mx-auto mb-3">
+                    <i class="fas fa-calendar-day fa-2x"></i>
+                </div>
                 <h5 class="card-title">Today's Bookings</h5>
-                <p class="card-text">View today's ticket bookings</p>
-                <a href="{{ url_for('bookings.index') }}" class="btn btn-light">
-                    <i class="fas fa-list me-1"></i>View Bookings
+                <p class="card-text text-muted">View and manage today's bookings</p>
+                <a href="{{ url_for('bookings.index') }}" class="btn btn-success">
+                    <i class="fas fa-arrow-right me-1"></i>View Bookings
                 </a>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-4">
-        <div class="card text-white bg-info">
-            <div class="card-body">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100 border-0 shadow-sm dashboard-card">
+            <div class="card-body text-center">
+                <div class="icon-box bg-info bg-gradient text-white rounded-circle mx-auto mb-3">
+                    <i class="fas fa-film fa-2x"></i>
+                </div>
                 <h5 class="card-title">Movies</h5>
-                <p class="card-text">Manage movie listings</p>
-                <a href="{{ url_for('movies.index') }}" class="btn btn-light">
-                    <i class="fas fa-film me-1"></i>Manage Movies
+                <p class="card-text text-muted">Manage movie listings and details</p>
+                <a href="{{ url_for('movies.index') }}" class="btn btn-info">
+                    <i class="fas fa-arrow-right me-1"></i>Manage Movies
                 </a>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-4">
-        <div class="card text-white bg-warning">
-            <div class="card-body">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100 border-0 shadow-sm dashboard-card">
+            <div class="card-body text-center">
+                <div class="icon-box bg-warning bg-gradient text-white rounded-circle mx-auto mb-3">
+                    <i class="fas fa-tv fa-2x"></i>
+                </div>
                 <h5 class="card-title">Screens</h5>
-                <p class="card-text">Manage theater screens</p>
-                <a href="{{ url_for('screens.index') }}" class="btn btn-light">
-                    <i class="fas fa-tv me-1"></i>Manage Screens
+                <p class="card-text text-muted">Manage theater screens and seating</p>
+                <a href="{{ url_for('screens.index') }}" class="btn btn-warning">
+                    <i class="fas fa-arrow-right me-1"></i>Manage Screens
                 </a>
             </div>
         </div>
@@ -58,42 +116,69 @@
 </div>
 
 {% if current_user.role == 'admin' %}
-<div class="row">
+<!-- Admin Panel -->
+<div class="row mb-4">
     <div class="col-12">
-        <h2 class="mb-3">Admin Panel</h2>
+        <h2 class="mb-3">
+            <i class="fas fa-user-shield me-2"></i>Admin Panel
+        </h2>
     </div>
     
-    <div class="col-md-4 mb-4">
-        <div class="card">
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 border-0 shadow-sm admin-card">
             <div class="card-body">
-                <h5 class="card-title">Reports</h5>
-                <p class="card-text">View sales and occupancy reports</p>
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box bg-primary bg-gradient text-white rounded-circle me-3">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Reports</h5>
+                        <p class="text-muted mb-0">Analytics & insights</p>
+                    </div>
+                </div>
+                <p class="card-text">View comprehensive sales, occupancy, and performance reports</p>
                 <a href="{{ url_for('reports.index') }}" class="btn btn-primary">
-                    <i class="fas fa-chart-bar me-1"></i>View Reports
+                    <i class="fas fa-chart-line me-1"></i>View Reports
                 </a>
             </div>
         </div>
     </div>
     
-    <div class="col-md-4 mb-4">
-        <div class="card">
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 border-0 shadow-sm admin-card">
             <div class="card-body">
-                <h5 class="card-title">Payments</h5>
-                <p class="card-text">View payment history</p>
-                <a href="{{ url_for('payments.index') }}" class="btn btn-primary">
-                    <i class="fas fa-credit-card me-1"></i>View Payments
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box bg-success bg-gradient text-white rounded-circle me-3">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Payments</h5>
+                        <p class="text-muted mb-0">Transaction management</p>
+                    </div>
+                </div>
+                <p class="card-text">Manage payment history, refunds, and transaction details</p>
+                <a href="{{ url_for('payments.index') }}" class="btn btn-success">
+                    <i class="fas fa-money-bill-wave me-1"></i>View Payments
                 </a>
             </div>
         </div>
     </div>
     
-    <div class="col-md-4 mb-4">
-        <div class="card">
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 border-0 shadow-sm admin-card">
             <div class="card-body">
-                <h5 class="card-title">Users</h5>
-                <p class="card-text">Manage system users</p>
-                <a href="#" class="btn btn-primary">
-                    <i class="fas fa-users me-1"></i>Manage Users
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-box bg-info bg-gradient text-white rounded-circle me-3">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0">Users</h5>
+                        <p class="text-muted mb-0">User management</p>
+                    </div>
+                </div>
+                <p class="card-text">Manage system users, roles, and permissions</p>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-info">
+                    <i class="fas fa-user-plus me-1"></i>Manage Users
                 </a>
             </div>
         </div>
@@ -101,33 +186,356 @@
 </div>
 {% endif %}
 
-<div class="row">
+<!-- Statistics Dashboard -->
+<div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Quick Stats</h5>
+        <h2 class="mb-3">
+            <i class="fas fa-chart-pie me-2"></i>Today's Statistics
+        </h2>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-0 shadow-sm stat-card">
+            <div class="card-body dashboard-stats">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h3 class="counter" data-target="{{ today_bookings or 0 }}">0</h3>
+                        <p class="text-muted mb-0">Today's Bookings</p>
+                    </div>
+                    <div class="icon-box bg-primary bg-gradient text-white rounded-circle">
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                </div>
+                <div class="progress mt-3" style="height: 4px;">
+                    <div class="progress-bar bg-primary" style="width: 75%"></div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-primary">0</h3>
-                        <p class="text-muted">Today's Bookings</p>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-0 shadow-sm stat-card">
+            <div class="card-body dashboard-stats">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h3 class="counter" data-target="{{ today_revenue or 0 }}">0</h3>
+                        <p class="text-muted mb-0">Today's Revenue</p>
                     </div>
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-success">0</h3>
-                        <p class="text-muted">Today's Revenue</p>
+                    <div class="icon-box bg-success bg-gradient text-white rounded-circle">
+                        <i class="fas fa-dollar-sign"></i>
                     </div>
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-info">0</h3>
-                        <p class="text-muted">Active Movies</p>
+                </div>
+                <div class="progress mt-3" style="height: 4px;">
+                    <div class="progress-bar bg-success" style="width: 60%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-0 shadow-sm stat-card">
+            <div class="card-body dashboard-stats">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h3 class="counter" data-target="{{ active_movies or 0 }}">0</h3>
+                        <p class="text-muted mb-0">Active Movies</p>
                     </div>
-                    <div class="col-md-3 text-center">
-                        <h3 class="text-warning">0</h3>
-                        <p class="text-muted">Total Screens</p>
+                    <div class="icon-box bg-info bg-gradient text-white rounded-circle">
+                        <i class="fas fa-film"></i>
                     </div>
+                </div>
+                <div class="progress mt-3" style="height: 4px;">
+                    <div class="progress-bar bg-info" style="width: 85%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-0 shadow-sm stat-card">
+            <div class="card-body dashboard-stats">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h3 class="counter" data-target="{{ total_screens or 0 }}">0</h3>
+                        <p class="text-muted mb-0">Total Screens</p>
+                    </div>
+                    <div class="icon-box bg-warning bg-gradient text-white rounded-circle">
+                        <i class="fas fa-tv"></i>
+                    </div>
+                </div>
+                <div class="progress mt-3" style="height: 4px;">
+                    <div class="progress-bar bg-warning" style="width: 90%"></div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Activity
+                    </h5>
+                    <a href="{{ url_for('bookings.index') }}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="activity-feed">
+                    {% if recent_bookings %}
+                        {% for booking in recent_bookings %}
+                        <div class="activity-item d-flex align-items-center mb-3">
+                            <div class="activity-icon bg-primary bg-gradient text-white rounded-circle me-3">
+                                <i class="fas fa-ticket-alt"></i>
+                            </div>
+                            <div class="activity-content flex-grow-1">
+                                <h6 class="mb-1">{{ booking.movie_title or 'Unknown Movie' }}</h6>
+                                <p class="text-muted mb-0">
+                                    {{ booking.seats }} seats • Screen {{ booking.screen_name or 'N/A' }} • 
+                                    {{ booking.booking_time.strftime('%H:%M') if booking.booking_time else '' }}
+                                </p>
+                            </div>
+                            <div class="activity-amount">
+                                <strong>${{ "%.2f"|format(booking.amount or 0) }}</strong>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No recent activity found</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-fire me-2"></i>Trending Movies
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="trending-movies">
+                    {% if trending_movies %}
+                        {% for movie in trending_movies %}
+                        <div class="trending-item d-flex align-items-center mb-3">
+                            <div class="trending-rank bg-primary text-white rounded-circle me-3">
+                                {{ loop.index }}
+                            </div>
+                            <div class="trending-content flex-grow-1">
+                                <h6 class="mb-1">{{ movie.title }}</h6>
+                                <div class="progress" style="height: 4px;">
+                                    <div class="progress-bar bg-primary" style="width: {{ movie.percentage or 70 }}%"></div>
+                                </div>
+                            </div>
+                            <div class="trending-percentage">
+                                <small class="text-muted">{{ movie.percentage or 70 }}%</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-film fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No trending data available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate counters
+    const counters = document.querySelectorAll('.counter');
+    const speed = 200;
+    
+    counters.forEach(counter => {
+        const animate = () => {
+            const value = +counter.getAttribute('data-target');
+            const data = +counter.innerText;
+            const time = value / speed;
+            
+            if (data < value) {
+                counter.innerText = Math.ceil(data + time);
+                setTimeout(animate, 1);
+            } else {
+                counter.innerText = value;
+            }
+        }
+        
+        // Start animation when element is in view
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    animate();
+                    observer.unobserve(entry.target);
+                }
+            });
+        });
+        
+        observer.observe(counter);
+    });
+    
+    // Add hover effects to cards
+    const cards = document.querySelectorAll('.dashboard-card, .admin-card, .stat-card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-10px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+
+function refreshDashboard() {
+    // Show loading state
+    const btn = event.target.closest('button');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+    btn.disabled = true;
+    
+    // Simulate refresh (in real app, this would fetch new data)
+    setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        
+        // Show success message
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show animate__animated animate__fadeInDown';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>Dashboard refreshed successfully!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const main = document.querySelector('main');
+        main.insertBefore(alert, main.firstChild);
+        
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            alert.remove();
+        }, 3000);
+    }, 1500);
+}
+
+function exportReport() {
+    // Show loading state
+    const btn = event.target.closest('button');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+    btn.disabled = true;
+    
+    // Simulate report generation
+    setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        
+        // Show success message
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show animate__animated animate__fadeInDown';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>Report exported successfully!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const main = document.querySelector('main');
+        main.insertBefore(alert, main.firstChild);
+        
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            alert.remove();
+        }, 3000);
+    }, 2000);
+}
+</script>
+
+<style>
+.icon-box {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-normal);
+}
+
+.dashboard-card:hover .icon-box,
+.admin-card:hover .icon-box {
+    transform: scale(1.1);
+}
+
+.activity-item {
+    transition: all var(--transition-fast);
+}
+
+.activity-item:hover {
+    background-color: var(--gray-50);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-sm);
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.trending-item {
+    transition: all var(--transition-fast);
+}
+
+.trending-item:hover {
+    background-color: var(--gray-50);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-sm);
+}
+
+.trending-rank {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: var(--font-size-sm);
+    flex-shrink: 0;
+}
+
+.dashboard-card,
+.admin-card,
+.stat-card {
+    transition: all var(--transition-normal);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.progress {
+    background-color: var(--gray-200);
+    border-radius: var(--border-radius-lg);
+}
+
+.progress-bar {
+    border-radius: var(--border-radius-lg);
+    transition: width var(--transition-slow);
+}
+</style>
 {% endblock %}

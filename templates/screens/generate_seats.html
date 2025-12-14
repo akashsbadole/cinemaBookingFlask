@@ -146,11 +146,35 @@
                                 </p>
                             </div>
                             
-                            <div class="mb-0">
+                            <div class="mb-3">
                                 <h6><i class="fas fa-th-large me-2 text-info"></i>Mixed Layout</h6>
                                 <p class="text-muted small mb-0">
-                                    Center seats are premium/VIP while side seats are normal. 
+                                    Center seats are premium/VIP while side seats are normal.
                                     This provides better viewing experience for center seats.
+                                </p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6><i class="fas fa-gem me-2 text-danger"></i>VIP Center Layout</h6>
+                                <p class="text-muted small mb-0">
+                                    Center 40% of seats are VIP, surrounded by premium seats.
+                                    This creates a premium experience with best viewing positions.
+                                </p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6><i class="fas fa-columns me-2 text-secondary"></i>Aisle Layout</h6>
+                                <p class="text-muted small mb-0">
+                                    Two aisles divide theater with premium seats next to aisles.
+                                    This provides easy access with premium seating near walkways.
+                                </p>
+                            </div>
+                            
+                            <div class="mb-0">
+                                <h6><i class="fas fa-crown me-2 text-warning"></i>Luxury Layout</h6>
+                                <p class="text-muted small mb-0">
+                                    VIP section with couples seating and gaps for luxury feel.
+                                    This creates an exclusive experience with spacious seating.
                                 </p>
                             </div>
                         </div>
@@ -232,6 +256,62 @@ document.addEventListener('DOMContentLoaded', function() {
                             seatClass = 'seat-premium';
                             seatPrice = pPrice;
                         }
+                    }
+                } else if (pattern === 'vip_center') {
+                    const centerStart = cols * 0.3;
+                    const centerEnd = cols * 0.7;
+                    const centerWidth = centerEnd - centerStart;
+                    
+                    // Center 40% are VIP
+                    if (centerStart <= c < centerEnd) {
+                        seatClass = 'seat-vip';
+                        seatPrice = vPrice;
+                    }
+                    // Seats adjacent to center are premium
+                    else if (Math.abs(c - (centerStart + centerEnd) / 2) <= centerWidth / 2 + 2) {
+                        seatClass = 'seat-premium';
+                        seatPrice = pPrice;
+                    }
+                } else if (pattern === 'aisle') {
+                    const aisle1 = Math.floor(cols * 0.33);
+                    const aisle2 = Math.floor(cols * 0.67);
+                    
+                    // Skip aisles (no seats)
+                    if (c === aisle1 || c === aisle2) {
+                        html += '<div class="seat-preview seat-empty"></div>';
+                        continue;
+                    }
+                    
+                    // Seats next to aisles are premium
+                    if (Math.abs(c - aisle1) <= 1 || Math.abs(c - aisle2) <= 1) {
+                        seatClass = 'seat-premium';
+                        seatPrice = pPrice;
+                    }
+                    // Back rows are VIP
+                    else if (r >= rows * 0.7) {
+                        seatClass = 'seat-vip';
+                        seatPrice = vPrice;
+                    }
+                } else if (pattern === 'luxury') {
+                    // Back 30% are VIP
+                    if (r >= rows * 0.7) {
+                        seatClass = 'seat-vip';
+                        seatPrice = vPrice;
+                        // Skip some seats for luxury feel
+                        if (c % 4 === 0) {
+                            html += '<div class="seat-preview seat-empty"></div>';
+                            continue;
+                        }
+                        // Couples seating
+                        if (c % 2 === 0 && c < cols - 1) {
+                            html += '<div class="seat-preview seat-empty"></div>';
+                            continue;
+                        }
+                    }
+                    // Middle 40% are premium
+                    else if (r >= rows * 0.3) {
+                        seatClass = 'seat-premium';
+                        seatPrice = pPrice;
                     }
                 }
                 

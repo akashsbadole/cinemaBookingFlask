@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Seat Availability</h1>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Check Availability</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" id="availability-form">
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="mb-3">
+                                {{ form.screen_id.label(class="form-label") }}
+                                {{ form.screen_id(class="form-control", id="screen-select") }}
+                                {% if form.screen_id.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.screen_id.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.show_id.label(class="form-label") }}
+                                {{ form.show_id(class="form-control", id="show-select") }}
+                                {% if form.show_id.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.show_id.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            {{ form.submit(class="btn btn-primary") }}
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Legend</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="seat-legend">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="seat-preview seat-available me-2"></div>
+                                <span>Available</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="seat-preview seat-booked me-2"></div>
+                                <span>Booked</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="seat-preview seat-locked me-2"></div>
+                                <span>Locked (Temporary)</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="seat-preview seat-empty me-2"></div>
+                                <span>Empty Position</span>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="seat-type-legend">
+                            <h6>Seat Types:</h6>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="seat-preview seat-normal me-2"></div>
+                                <span>Normal Seat</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="seat-preview seat-premium me-2"></div>
+                                <span>Premium Seat</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="seat-preview seat-vip me-2"></div>
+                                <span>VIP Seat</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if layout_data %}
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    Seat Layout - {{ layout_data.screen.name }}
+                    {% if layout_data.layout %}
+                        <small class="text-muted">(Show ID: {{ request.form.show_id }})</small>
+                    {% endif %}
+                </h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" id="toggle-legend">
+                        <i class="fas fa-info-circle"></i> Legend
+                    </button>
+                    <button class="btn btn-outline-secondary" id="refresh-availability">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if layout_data.layout %}
+                <div class="seat-container">
+                    <div class="screen-view mb-3">
+                        <div class="text-center text-muted">SCREEN</div>
+                        <hr style="border-top: 3px solid #666;">
+                    </div>
+                    
+                    <div class="seat-layout">
+                        {% for row_letter in range(layout_data.screen.total_rows) %}
+                        {% set row_char = chr(65 + row_letter) %}
+                        <div class="seat-row">
+                            <div class="seat-label">{{ row_char }}</div>
+                            {% for col in range(1, layout_data.screen.total_columns + 1) %}
+                                {% if row_char in layout_data.layout and col in layout_data.layout[row_char] %}
+                                    {% set seat = layout_data.layout[row_char][col] %}
+                                    <div class="seat seat-{{ seat.type }} seat-{{ seat.status }} seat-item" 
+                                         data-seat-id="{{ seat.id }}"
+                                         data-seat-name="{{ seat.name }}"
+                                         data-seat-type="{{ seat.type }}"
+                                         data-seat-price="{{ seat.price }}"
+                                         data-seat-status="{{ seat.status }}"
+                                         title="{{ seat.name }} - {{ seat.type.title() }} - ₹{{ seat.price }} - {{ seat.status.title() }}">
+                                        {{ col }}
+                                    </div>
+                                {% else %}
+                                    <div class="seat seat-empty" title="Empty seat position">
+                                        {{ col }}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                            <div class="seat-label">{{ row_char }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Column numbers -->
+                    <div class="seat-row">
+                        <div class="seat-label"></div>
+                        {% for col in range(1, layout_data.screen.total_columns + 1) %}
+                        <div class="seat-number">{{ col }}</div>
+                        {% endfor %}
+                        <div class="seat-label"></div>
+                    </div>
+                </div>
+                
+                <!-- Seat Statistics -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Available</h5>
+                                <h2 class="mb-0" id="available-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Booked</h5>
+                                <h2 class="mb-0" id="booked-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Locked</h5>
+                                <h2 class="mb-0" id="locked-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Occupancy</h5>
+                                <h2 class="mb-0" id="occupancy-percent">0%</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-th fa-3x text-muted mb-3"></i>
+                    <h5>No Seat Layout Found</h5>
+                    <p class="text-muted">Please select a screen and show to view seat availability.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const screenSelect = document.getElementById('screen-select');
+    const showSelect = document.getElementById('show-select');
+    const availabilityForm = document.getElementById('availability-form');
+    
+    // Load shows when screen changes
+    screenSelect.addEventListener('change', function() {
+        const screenId = this.value;
+        if (screenId) {
+            fetch(`/screens/api/shows/${screenId}`)
+                .then(response => response.json())
+                .then(data => {
+                    showSelect.innerHTML = '';
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item[0];
+                        option.textContent = item[1];
+                        showSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading shows:', error);
+                    showSelect.innerHTML = '<option value="">Error loading shows</option>';
+                });
+        } else {
+            showSelect.innerHTML = '<option value="">Select a screen first</option>';
+        }
+    });
+    
+    // Toggle legend visibility
+    const toggleLegend = document.getElementById('toggle-legend');
+    if (toggleLegend) {
+        toggleLegend.addEventListener('click', function() {
+            const legend = document.querySelector('.seat-legend').parentElement.parentElement;
+            if (legend.style.display === 'none') {
+                legend.style.display = 'block';
+            } else {
+                legend.style.display = 'none';
+            }
+        });
+    }
+    
+    // Refresh availability
+    const refreshButton = document.getElementById('refresh-availability');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function() {
+            availabilityForm.submit();
+        });
+    }
+    
+    // Calculate seat statistics
+    function calculateStatistics() {
+        const seatItems = document.querySelectorAll('.seat-item');
+        let availableCount = 0;
+        let bookedCount = 0;
+        let lockedCount = 0;
+        
+        seatItems.forEach(seat => {
+            const status = seat.dataset.seatStatus;
+            if (status === 'available') {
+                availableCount++;
+            } else if (status === 'booked') {
+                bookedCount++;
+            } else if (status === 'locked') {
+                lockedCount++;
+            }
+        });
+        
+        const totalSeats = seatItems.length;
+        const occupiedCount = bookedCount + lockedCount;
+        const occupancyPercent = totalSeats > 0 ? Math.round((occupiedCount / totalSeats) * 100) : 0;
+        
+        // Update statistics
+        const availableCountEl = document.getElementById('available-count');
+        const bookedCountEl = document.getElementById('booked-count');
+        const lockedCountEl = document.getElementById('locked-count');
+        const occupancyPercentEl = document.getElementById('occupancy-percent');
+        
+        if (availableCountEl) availableCountEl.textContent = availableCount;
+        if (bookedCountEl) bookedCountEl.textContent = bookedCount;
+        if (lockedCountEl) lockedCountEl.textContent = lockedCount;
+        if (occupancyPercentEl) occupancyPercentEl.textContent = occupancyPercent + '%';
+    }
+    
+    // Calculate statistics on page load
+    calculateStatistics();
+    
+    // Seat hover effects
+    const seatItems = document.querySelectorAll('.seat-item');
+    seatItems.forEach(function(seat) {
+        seat.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.1)';
+            this.style.zIndex = '10';
+        });
+        
+        seat.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+            this.style.zIndex = '1';
+        });
+    });
+});
+</script>
+
+<style>
+.seat-container {
+    overflow-x: auto;
+    padding: 20px;
+}
+
+.screen-view {
+    margin-bottom: 20px;
+}
+
+.seat-layout {
+    display: inline-block;
+}
+
+.seat-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.seat-label {
+    width: 30px;
+    text-align: center;
+    font-weight: bold;
+    color: #666;
+}
+
+.seat-number {
+    width: 30px;
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+}
+
+.seat {
+    width: 35px;
+    height: 35px;
+    margin: 2px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    border: 2px solid;
+}
+
+/* Seat types */
+.seat-normal {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.seat-premium {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.seat-vip {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+/* Seat statuses */
+.seat-available {
+    opacity: 1.0;
+}
+
+.seat-booked {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.seat-locked {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 5px,
+        rgba(0,0,0,.1) 5px,
+        rgba(0,0,0,.1) 10px
+    );
+}
+
+.seat-empty {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #6c757d;
+    opacity: 0.5;
+}
+
+.seat:hover {
+    transform: scale(1.1);
+    z-index: 10;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.seat-preview {
+    width: 30px;
+    height: 30px;
+    border: 2px solid;
+    border-radius: 5px;
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.seat-available {
+    background-color: #d4edda;
+    border-color: #28a745;
+}
+
+.seat-booked {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+}
+
+.seat-locked {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,.1) 3px,
+        rgba(0,0,0,.1) 6px
+    );
+}
+
+.seat-empty {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+</style>
+{% endblock %}

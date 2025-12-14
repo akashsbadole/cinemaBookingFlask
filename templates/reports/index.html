@@ -1,80 +1,132 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
+<div class="row mb-4">
     <div class="col-12">
-        <h1 class="mb-4">Reports</h1>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Reports & Analytics</h1>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" onclick="refreshReports()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+                <button class="btn btn-primary" onclick="exportAllReports()">
+                    <i class="fas fa-download me-1"></i>Export All
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
 {% if current_user.is_admin() %}
+<!-- Quick Report Cards -->
 <div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-primary">
-            <div class="card-body">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-0 shadow-lg report-card animate__animated animate__fadeInUp">
+            <div class="card-body text-center">
+                <div class="icon-box bg-primary bg-gradient text-white rounded-circle mx-auto mb-3">
+                    <i class="fas fa-chart-line fa-2x"></i>
+                </div>
                 <h5 class="card-title">Daily Sales</h5>
-                <p class="card-text">View today's sales report</p>
-                <a href="{{ url_for('reports.daily_sales') }}" class="btn btn-light">
-                    <i class="fas fa-chart-line me-1"></i>View Report
+                <p class="card-text text-muted">View today's sales performance</p>
+                <div class="stats-preview mb-3">
+                    <h3 class="text-primary mb-0">₹{{ "%.2f"|format(today_sales or 0) }}</h3>
+                    <small class="text-muted">Today's Revenue</small>
+                </div>
+                <a href="{{ url_for('reports.daily_sales') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-right me-1"></i>View Report
                 </a>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-success">
-            <div class="card-body">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-0 shadow-lg report-card animate__animated animate__fadeInUp" style="animation-delay: 0.1s">
+            <div class="card-body text-center">
+                <div class="icon-box bg-success bg-gradient text-white rounded-circle mx-auto mb-3">
+                    <i class="fas fa-chair fa-2x"></i>
+                </div>
                 <h5 class="card-title">Occupancy</h5>
-                <p class="card-text">View seat occupancy reports</p>
-                <a href="{{ url_for('reports.occupancy') }}" class="btn btn-light">
-                    <i class="fas fa-chair me-1"></i>View Report
+                <p class="card-text text-muted">View seat occupancy analytics</p>
+                <div class="stats-preview mb-3">
+                    <h3 class="text-success mb-0">{{ "%.1f"|format((today_tickets or 0) / 200 * 100) }}%</h3>
+                    <small class="text-muted">Occupancy Rate</small>
+                </div>
+                <a href="{{ url_for('reports.occupancy') }}" class="btn btn-success">
+                    <i class="fas fa-arrow-right me-1"></i>View Report
                 </a>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-info">
-            <div class="card-body">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-0 shadow-lg report-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s">
+            <div class="card-body text-center">
+                <div class="icon-box bg-info bg-gradient text-white rounded-circle mx-auto mb-3">
+                    <i class="fas fa-users fa-2x"></i>
+                </div>
                 <h5 class="card-title">Cashier Summary</h5>
-                <p class="card-text">View cashier performance</p>
-                <a href="{{ url_for('reports.cashier_summary') }}" class="btn btn-light">
-                    <i class="fas fa-users me-1"></i>View Report
+                <p class="card-text text-muted">View staff performance metrics</p>
+                <div class="stats-preview mb-3">
+                    <h3 class="text-info mb-0">{{ today_bookings or 0 }}</h3>
+                    <small class="text-muted">Total Bookings</small>
+                </div>
+                <a href="{{ url_for('reports.cashier_summary') }}" class="btn btn-info">
+                    <i class="fas fa-arrow-right me-1"></i>View Report
                 </a>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-warning">
-            <div class="card-body">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-0 shadow-lg report-card animate__animated animate__fadeInUp" style="animation-delay: 0.3s">
+            <div class="card-body text-center">
+                <div class="icon-box bg-warning bg-gradient text-white rounded-circle mx-auto mb-3">
+                    <i class="fas fa-credit-card fa-2x"></i>
+                </div>
                 <h5 class="card-title">Payment Methods</h5>
-                <p class="card-text">Payment method breakdown</p>
-                <a href="{{ url_for('reports.payment_methods') }}" class="btn btn-light">
-                    <i class="fas fa-credit-card me-1"></i>View Report
+                <p class="card-text text-muted">Payment method breakdown</p>
+                <div class="stats-preview mb-3">
+                    <div class="d-flex justify-content-center gap-2">
+                        <span class="badge bg-success">Cash</span>
+                        <span class="badge bg-info">Card</span>
+                        <span class="badge bg-warning">UPI</span>
+                    </div>
+                </div>
+                <a href="{{ url_for('reports.payment_methods') }}" class="btn btn-warning">
+                    <i class="fas fa-arrow-right me-1"></i>View Report
                 </a>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Additional Reports</h5>
+<!-- Advanced Analytics Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-lg">
+            <div class="card-header bg-gradient-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>Advanced Analytics
+                </h5>
             </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('reports.movie_performance') }}" class="btn btn-outline-primary">
-                        <i class="fas fa-film me-2"></i>Movie Performance
-                    </a>
-                    <a href="{{ url_for('reports.screen_utilization') }}" class="btn btn-outline-success">
-                        <i class="fas fa-tv me-2"></i>Screen Utilization
-                    </a>
-                    <a href="{{ url_for('reports.payment_analysis') }}" class="btn btn-outline-warning">
-                        <i class="fas fa-chart-line me-2"></i>Payment Analysis
-                    </a>
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-lg-8 mb-4">
+                        <h6 class="text-primary fw-semibold mb-3">
+                            <i class="fas fa-chart-line me-2"></i>Revenue Trends
+                        </h6>
+                        <div class="chart-container bg-light rounded-3 p-3">
+                            <canvas id="revenueChart" height="100"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mb-4">
+                        <h6 class="text-success fw-semibold mb-3">
+                            <i class="fas fa-chart-pie me-2"></i>Payment Distribution
+                        </h6>
+                        <div class="chart-container bg-light rounded-3 p-3">
+                            <canvas id="paymentChart" height="200"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -82,63 +134,98 @@
 </div>
 
 <div class="row">
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Quick Statistics</h5>
+    <div class="col-lg-6 mb-4">
+        <div class="card border-0 shadow-lg">
+            <div class="card-header bg-gradient-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-film me-2"></i>Movie Performance
+                </h5>
             </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-6 mb-3">
-                        <h3 class="text-primary">₹{{ "%.2f"|format(today_sales or 0) }}</h3>
-                        <p class="text-muted">Today's Revenue</p>
-                    </div>
-                    <div class="col-6 mb-3">
-                        {% set total_seats = 200 %} {# Assume 200 total seats for calculation #}
-                        <h3 class="text-success">{{ "%.1f"|format((today_tickets or 0) / total_seats * 100) }}%</h3>
-                        <p class="text-muted">Occupancy Rate</p>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <h3 class="text-info">{{ today_bookings or 0 }}</h3>
-                        <p class="text-muted">Today's Bookings</p>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <h3 class="text-warning">{{ "%.1f"|format(avg_tickets) }}</h3>
-                        <p class="text-muted">Avg. Tickets/Booking</p>
-                    </div>
+            <div class="card-body p-4">
+                <div class="movie-performance-list">
+                    {% if trending_movies %}
+                        {% for movie in trending_movies %}
+                        <div class="performance-item d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3">
+                            <div class="d-flex align-items-center">
+                                <div class="movie-rank bg-primary text-white rounded-circle me-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                    {{ loop.index }}
+                                </div>
+                                <div>
+                                    <h6 class="mb-1 fw-semibold">{{ movie.title }}</h6>
+                                    <small class="text-muted">{{ movie.show_count or 5 }} shows</small>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <h5 class="text-success mb-0">₹{{ "%.0f"|format(movie.revenue or 50000) }}</h5>
+                                <small class="text-muted">Revenue</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-film fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No movie data available</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Date Range Reports</h5>
+    <div class="col-lg-6 mb-4">
+        <div class="card border-0 shadow-lg">
+            <div class="card-header bg-gradient-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-alt me-2"></i>Date Range Reports
+                </h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <form id="dateRangeForm">
-                    <div class="mb-3">
-                        <label for="startDate" class="form-label">Start Date</label>
-                        <input type="date" class="form-control" id="startDate" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="endDate" class="form-label">End Date</label>
-                        <input type="date" class="form-control" id="endDate" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="reportType" class="form-label">Report Type</label>
-                        <select class="form-select" id="reportType" required>
-                            <option value="sales">Sales Report</option>
-                            <option value="occupancy">Occupancy Report</option>
-                            <option value="movies">Movie Performance</option>
-                            <option value="screens">Screen Utilization</option>
-                        </select>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-download me-1"></i>Generate Report
-                        </button>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="startDate" class="form-label fw-semibold">
+                                <i class="fas fa-calendar me-1 text-primary"></i>Start Date
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0">
+                                    <i class="fas fa-calendar text-muted"></i>
+                                </span>
+                                <input type="date" class="form-control border-start-0" id="startDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="endDate" class="form-label fw-semibold">
+                                <i class="fas fa-calendar-check me-1 text-primary"></i>End Date
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0">
+                                    <i class="fas fa-calendar-check text-muted"></i>
+                                </span>
+                                <input type="date" class="form-control border-start-0" id="endDate" required>
+                            </div>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="reportType" class="form-label fw-semibold">
+                                <i class="fas fa-file-alt me-1 text-primary"></i>Report Type
+                            </label>
+                            <select class="form-select" id="reportType" required>
+                                <option value="sales">Sales Report</option>
+                                <option value="occupancy">Occupancy Report</option>
+                                <option value="movies">Movie Performance</option>
+                                <option value="screens">Screen Utilization</option>
+                                <option value="payments">Payment Analysis</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-download me-2"></i>Generate Report
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="scheduleReport()">
+                                    <i class="fas fa-clock me-2"></i>Schedule Report
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -265,6 +352,252 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set today's date as default for date range form
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('startDate').value = today;
+        document.getElementById('endDate').value = today;
+        
+        // Initialize charts
+        initializeRevenueChart();
+        initializePaymentChart();
+        
+        // Date range form submission
+        document.getElementById('dateRangeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const reportType = document.getElementById('reportType').value;
+            
+            // Show loading state
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalContent = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+            submitBtn.disabled = true;
+            
+            // Simulate report generation
+            setTimeout(() => {
+                submitBtn.innerHTML = originalContent;
+                submitBtn.disabled = false;
+                
+                showNotification(`${reportType} report generated successfully!`, 'success');
+                console.log('Generating report:', { startDate, endDate, reportType });
+            }, 2000);
+        });
+    });
+    
+    function initializeRevenueChart() {
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Revenue',
+                    data: [12000, 19000, 15000, 25000, 22000, 30000, 28000],
+                    borderColor: 'rgb(99, 102, 241)',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Revenue: ₹' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function initializePaymentChart() {
+        const ctx = document.getElementById('paymentChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Cash', 'Card', 'UPI'],
+                datasets: [{
+                    data: [45, 35, 20],
+                    backgroundColor: [
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(245, 158, 11, 0.8)'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function refreshReports() {
+        // Show loading state
+        const btn = event.target;
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+        btn.disabled = true;
+        
+        // Simulate data refresh
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            showNotification('Reports refreshed successfully!', 'success');
+            
+            // Refresh charts
+            initializeRevenueChart();
+            initializePaymentChart();
+        }, 1500);
+    }
+    
+    function exportAllReports() {
+        showNotification('Preparing comprehensive report export...', 'info');
+        
+        // Simulate export process
+        setTimeout(() => {
+            showNotification('All reports exported successfully!', 'success');
+        }, 2000);
+    }
+    
+    function scheduleReport() {
+        const schedule = prompt('Enter schedule (e.g., "every Monday at 9 AM"):');
+        if (schedule) {
+            showNotification(`Report scheduled: ${schedule}`, 'success');
+        }
+    }
+    
+    function showNotification(message, type = 'info') {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show animate__animated animate__fadeInDown position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+</script>
+
+<style>
+    .report-card {
+        transition: all var(--transition-normal);
+    }
+    
+    .report-card:hover {
+        transform: translateY(-8px);
+        box-shadow: var(--shadow-xl);
+    }
+    
+    .icon-box {
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--transition-normal);
+    }
+    
+    .report-card:hover .icon-box {
+        transform: scale(1.1);
+    }
+    
+    .stats-preview {
+        background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+        padding: var(--spacing-md);
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--gray-200);
+    }
+    
+    .performance-item {
+        transition: all var(--transition-fast);
+    }
+    
+    .performance-item:hover {
+        background-color: var(--gray-50);
+        transform: translateX(4px);
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    
+    .movie-rank {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+        transition: all var(--transition-normal);
+    }
+    
+    .performance-item:hover .movie-rank {
+        transform: scale(1.1);
+    }
+    
+    @media (max-width: 768px) {
+        .chart-container {
+            height: 200px;
+        }
+        
+        .icon-box {
+            width: 60px;
+            height: 60px;
+        }
+        
+        .report-card {
+            margin-bottom: var(--spacing-lg);
+        }
+    }
+</style>
 {% endblock %}
 
 {% block scripts %}

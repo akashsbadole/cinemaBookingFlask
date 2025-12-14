@@ -6,10 +6,15 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Payment Analysis Report</h2>
-        <div>
-            <a href="{{ url_for('reports.payment_analysis_pdf', start_date=start_date, end_date=end_date) }}" class="btn btn-primary">
-                <i class="fas fa-file-pdf"></i> Export PDF
-            </a>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="fas fa-download me-1"></i>Export
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{{ url_for('reports.payment_analysis_pdf', start_date=start_date, end_date=end_date) }}">PDF</a></li>
+                <li><a class="dropdown-item" href="#" onclick="exportReport('excel')">Excel</a></li>
+                <li><a class="dropdown-item" href="#" onclick="exportReport('csv')">CSV</a></li>
+            </ul>
         </div>
     </div>
 
@@ -276,5 +281,11 @@
             }
         }
     });
+    
+    function exportReport(format) {
+        const url = new URL(window.location);
+        url.searchParams.set('format', format);
+        window.location.href = "{{ url_for('reports.export_report_route', report_type='payment_analysis') }}" + url.search;
+    }
 </script>
 {% endblock %}

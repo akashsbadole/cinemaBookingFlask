@@ -129,6 +129,24 @@
                         <strong>Important:</strong> Refunds cannot be undone. Please verify all details before submitting.
                     </div>
                     
+                    <div class="alert alert-info" id="refund-summary" style="display: none;">
+                        <h6><i class="fas fa-info-circle me-2"></i>Refund Summary</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Original Amount:</strong> ₹{{ "%.2f"|format(payment.amount) }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Refund Amount:</strong> ₹<span id="display-refund-amount">0.00</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Remaining Balance:</strong> ₹<span id="remaining-balance">0.00</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Refund Percentage:</strong> <span id="refund-percentage">0</span>%
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('payments.receipt', id=payment.id) }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Back to Receipt
@@ -140,4 +158,71 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const refundAmountInput = document.getElementById('refund_amount');
+    const originalAmount = {{ payment.amount }};
+    
+    // Update refund summary when amount changes
+    refundAmountInput.addEventListener('input', function() {
+        const refundAmount = parseFloat(this.value) || 0;
+        const remainingBalance = originalAmount - refundAmount;
+        const refundPercentage = (refundAmount / originalAmount * 100).toFixed(1);
+        
+        // Update display
+        document.getElementById('display-refund-amount').textContent = refundAmount.toFixed(2);
+        document.getElementById('remaining-balance').textContent = remainingBalance.toFixed(2);
+        document.getElementById('refund-percentage').textContent = refundPercentage;
+        
+        // Show/hide summary
+        const summaryDiv = document.getElementById('refund-summary');
+        if (refundAmount > 0) {
+            summaryDiv.style.display = 'block';
+        } else {
+            summaryDiv.style.display = 'none';
+        }
+        
+        // Validate amount
+        if (refundAmount > originalAmount) {
+            this.setCustomValidity('Refund amount cannot exceed original amount');
+        } else if (refundAmount <= 0) {
+            this.setCustomValidity('Refund amount must be greater than 0');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+    
+    // Form submission confirmation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const refundAmount = parseFloat(refundAmountInput.value) || 0;
+        const refundReason = document.getElementById('refund_reason').value;
+        
+        if (refundAmount <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid refund amount');
+            return;
+        }
+        
+        if (!refundReason) {
+            e.preventDefault();
+            alert('Please select a refund reason');
+            return;
+        }
+        
+        // Confirmation dialog
+        const confirmMessage = `Are you sure you want to process this refund?\n\n` +
+                           `Amount: ₹${refundAmount.toFixed(2)}\n` +
+                           `Reason: ${refundReason}\n\n` +
+                           `This action cannot be undone.`;
+        
+        if (!confirm(confirmMessage)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
 {% endblock %}

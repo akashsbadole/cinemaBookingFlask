@@ -231,3 +231,46 @@ def view(id):
                         available_seats=available_seats,
                         occupied_seats=occupied_seats,
                         occupancy_percentage=occupancy_percentage)
+
+@bp.route('/<int:id>/seats')
+@login_required
+def show_seats(id):
+    """View seat layout and availability for a show"""
+    from app.screens.utils import get_seat_layout_with_availability
+    
+    show = Show.query.get_or_404(id)
+    
+    # Get seat layout with availability
+    layout_data = get_seat_layout_with_availability(show.screen_id, show.id)
+    
+    return render_template('shows/show_seats.html',
+                        title=f'Seat Layout - {show.movie.name}',
+                        show=show,
+                        layout_data=layout_data)
+
+
+@bp.route('/<int:id>/seat-layout')
+@login_required
+def seat_layout(id):
+    """Display seat layout with availability for a show"""
+    from app.screens.utils import get_seat_layout_with_availability
+    
+    show = Show.query.get_or_404(id)
+    
+    # Get seat layout with availability
+    layout_data = get_seat_layout_with_availability(show.screen_id, show.id)
+    
+    # Get seat statistics
+    total_seats = len(layout_data.get('seats', []))
+    available_seats = sum(1 for seat in layout_data.get('seats', []) if seat.get('status') == 'available')
+    booked_seats = sum(1 for seat in layout_data.get('seats', []) if seat.get('status') == 'booked')
+    locked_seats = sum(1 for seat in layout_data.get('seats', []) if seat.get('status') == 'locked')
+    
+    return render_template('shows/seat_layout.html',
+                        title=f'Seat Layout - {show.movie.name}',
+                        show=show,
+                        layout_data=layout_data,
+                        total_seats=total_seats,
+                        available_seats=available_seats,
+                        booked_seats=booked_seats,
+                        locked_seats=locked_seats)

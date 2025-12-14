@@ -130,6 +130,48 @@ F:VVVVVVVVVV</pre>
                                     </div>
                                 </div>
                             </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingVipCenter">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVipCenter">
+                                        VIP Center Layout
+                                    </button>
+                                </h2>
+                                <div id="collapseVipCenter" class="accordion-collapse collapse" data-bs-parent="#exampleAccordion">
+                                    <div class="accordion-body">
+                                        <pre class="bg-light p-2 rounded" id="vip-center-example"></pre>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="useExample('vip_center')">Use This Example</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingAisle">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAisle">
+                                        Aisle Layout
+                                    </button>
+                                </h2>
+                                <div id="collapseAisle" class="accordion-collapse collapse" data-bs-parent="#exampleAccordion">
+                                    <div class="accordion-body">
+                                        <pre class="bg-light p-2 rounded" id="aisle-example"></pre>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="useExample('aisle')">Use This Example</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingLuxury">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLuxury">
+                                        Luxury Layout
+                                    </button>
+                                </h2>
+                                <div id="collapseLuxury" class="accordion-collapse collapse" data-bs-parent="#exampleAccordion">
+                                    <div class="accordion-body">
+                                        <pre class="bg-light p-2 rounded" id="luxury-example"></pre>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="useExample('luxury')">Use This Example</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -206,6 +248,82 @@ function generateExamples() {
         mixedExample += `${rowLetter}:${pattern}\n`;
     }
     document.getElementById('mixed-example').textContent = mixedExample.trim();
+    
+    // VIP Center example
+    let vipCenterExample = '';
+    const centerStart = Math.floor(cols * 0.3);
+    const centerEnd = Math.floor(cols * 0.7);
+    
+    for (let i = 0; i < rows; i++) {
+        const rowLetter = String.fromCharCode(65 + i);
+        let pattern = '';
+        
+        for (let j = 0; j < cols; j++) {
+            if (centerStart <= j < centerEnd) {
+                pattern += 'V';
+            } else if (Math.abs(j - (centerStart + centerEnd) / 2) <= (centerEnd - centerStart) / 2 + 2) {
+                pattern += 'P';
+            } else {
+                pattern += 'N';
+            }
+        }
+        
+        vipCenterExample += `${rowLetter}:${pattern}\n`;
+    }
+    document.getElementById('vip-center-example').textContent = vipCenterExample.trim();
+    
+    // Aisle example
+    let aisleExample = '';
+    const aisle1 = Math.floor(cols * 0.33);
+    const aisle2 = Math.floor(cols * 0.67);
+    
+    for (let i = 0; i < rows; i++) {
+        const rowLetter = String.fromCharCode(65 + i);
+        let pattern = '';
+        
+        for (let j = 0; j < cols; j++) {
+            if (j === aisle1 || j === aisle2) {
+                // Skip aisles
+                continue;
+            } else if (Math.abs(j - aisle1) <= 1 || Math.abs(j - aisle2) <= 1) {
+                pattern += 'P';
+            } else if (i >= rows * 0.7) {
+                pattern += 'V';
+            } else {
+                pattern += 'N';
+            }
+        }
+        
+        aisleExample += `${rowLetter}:${pattern}\n`;
+    }
+    document.getElementById('aisle-example').textContent = aisleExample.trim();
+    
+    // Luxury example
+    let luxuryExample = '';
+    
+    for (let i = 0; i < rows; i++) {
+        const rowLetter = String.fromCharCode(65 + i);
+        let pattern = '';
+        
+        for (let j = 0; j < cols; j++) {
+            if (i >= rows * 0.7) {
+                // VIP section with gaps
+                if (j % 4 === 0 || (j % 2 === 0 && j < cols - 1)) {
+                    // Skip for luxury feel
+                    continue;
+                } else {
+                    pattern += 'V';
+                }
+            } else if (i >= rows * 0.3) {
+                pattern += 'P';
+            } else {
+                pattern += 'N';
+            }
+        }
+        
+        luxuryExample += `${rowLetter}:${pattern}\n`;
+    }
+    document.getElementById('luxury-example').textContent = luxuryExample.trim();
 }
 
 function useExample(type) {

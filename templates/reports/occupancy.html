@@ -211,11 +211,11 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
 {% endblock %}
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -289,13 +289,15 @@ const screenPerformanceChart = new Chart(perfCtx, {
         plugins: {
             legend: {
                 position: 'bottom'
+            }
+        }
+    });
+}
+
 function exportReport(format) {
     const url = new URL(window.location);
     url.searchParams.set('format', format);
     window.location.href = "{{ url_for('reports.export_report_route', report_type='occupancy') }}" + url.search;
 }
-        }
-    }
-});
 </script>
 {% endblock %}

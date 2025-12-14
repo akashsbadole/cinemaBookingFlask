@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-credit-card me-2"></i>Payment Details</h4>
+                <div>
+                    <span class="badge bg-{{ payment.get_status_badge_class() }} fs-6">
+                        {{ payment.get_status_display() }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Payment Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="payment-section">
+                            <h5 class="payment-section-title">Payment Information</h5>
+                            <div class="payment-details">
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Payment ID:</span>
+                                    <span>#{{ payment.id }}</span>
+                                </div>
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Booking ID:</span>
+                                    <span>
+                                        {% if payment.booking %}
+                                            <a href="{{ url_for('bookings.view', id=payment.booking.id) }}" class="text-decoration-none">
+                                                #{{ payment.booking.id }}
+                                            </a>
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Payment Method:</span>
+                                    <span>{{ payment.get_payment_method_display() }}</span>
+                                </div>
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Amount:</span>
+                                    <span class="text-primary fw-bold">₹{{ "%.2f"|format(payment.amount) }}</span>
+                                </div>
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Transaction ID:</span>
+                                    <span>{{ payment.reference_id or 'N/A' }}</span>
+                                </div>
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Payment Date:</span>
+                                    <span>{{ payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="payment-section">
+                            <h5 class="payment-section-title">Customer Information</h5>
+                            <div class="payment-details">
+                                {% if payment.booking %}
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Customer Name:</span>
+                                    <span>{{ payment.booking.customer_name }}</span>
+                                </div>
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Contact Number:</span>
+                                    <span>{{ payment.booking.customer_phone or 'N/A' }}</span>
+                                </div>
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Email:</span>
+                                    <span>{{ payment.booking.customer_email or 'N/A' }}</span>
+                                </div>
+                                {% else %}
+                                <div class="payment-details-row">
+                                    <span class="payment-details-label">Customer:</span>
+                                    <span class="text-muted">No booking information available</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Method Specific Details -->
+                {% if payment.mode == 'card' %}
+                <div class="payment-section mb-4">
+                    <h5 class="payment-section-title"><i class="fas fa-credit-card me-2"></i>Card Payment Details</h5>
+                    <div class="payment-details">
+                        {% if payment.card_type %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Card Type:</span>
+                            <span>{{ payment.card_type.title() }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.card_last_4 %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Card Number:</span>
+                            <span>****-****-****-{{ payment.card_last_4 }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.card_expiry_month and payment.card_expiry_year %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Expiry:</span>
+                            <span>{{ payment.card_expiry_month }}/{{ payment.card_expiry_year }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.card_authorization_code %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Authorization Code:</span>
+                            <span>{{ payment.card_authorization_code }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- UPI Payment Details -->
+                {% if payment.mode == 'upi' %}
+                <div class="payment-section mb-4">
+                    <h5 class="payment-section-title"><i class="fas fa-mobile-alt me-2"></i>UPI Payment Details</h5>
+                    <div class="payment-details">
+                        {% if payment.upi_id %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">UPI ID:</span>
+                            <span>{{ payment.upi_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.upi_transaction_id %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Transaction ID:</span>
+                            <span>{{ payment.upi_transaction_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.utr_number %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">UTR Number:</span>
+                            <span>{{ payment.utr_number }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- PayPal Payment Details -->
+                {% if payment.mode == 'paypal' %}
+                <div class="payment-section mb-4">
+                    <h5 class="payment-section-title"><i class="fab fa-paypal me-2"></i>PayPal Payment Details</h5>
+                    <div class="payment-details">
+                        {% if payment.paypal_order_id %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">PayPal Order ID:</span>
+                            <span>{{ payment.paypal_order_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.paypal_capture_id %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">PayPal Capture ID:</span>
+                            <span>{{ payment.paypal_capture_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.paypal_payment_status %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">PayPal Status:</span>
+                            <span><span class="badge bg-success">{{ payment.paypal_payment_status }}</span></span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Net Banking Details -->
+                {% if payment.mode == 'netbanking' %}
+                <div class="payment-section mb-4">
+                    <h5 class="payment-section-title"><i class="fas fa-university me-2"></i>Net Banking Details</h5>
+                    <div class="payment-details">
+                        {% if payment.bank_name %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Bank Name:</span>
+                            <span>{{ payment.bank_name.title() }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.netbanking_transaction_id %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Transaction ID:</span>
+                            <span>{{ payment.netbanking_transaction_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.account_last_4 %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Account Last 4:</span>
+                            <span>****{{ payment.account_last_4 }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Wallet Payment Details -->
+                {% if payment.mode == 'wallet' %}
+                <div class="payment-section mb-4">
+                    <h5 class="payment-section-title"><i class="fas fa-wallet me-2"></i>Wallet Payment Details</h5>
+                    <div class="payment-details">
+                        {% if payment.wallet_type %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Wallet Type:</span>
+                            <span>{{ payment.wallet_type.title() }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.wallet_mobile %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Mobile Number:</span>
+                            <span>{{ payment.wallet_mobile }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.wallet_transaction_id %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Transaction ID:</span>
+                            <span>{{ payment.wallet_transaction_id }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Booking Information -->
+                {% if payment.booking %}
+                <div class="payment-section mb-4">
+                    <h5 class="payment-section-title">Booking Information</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Movie</th>
+                                    <th>Screen</th>
+                                    <th>Date & Time</th>
+                                    <th>Seats</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{{ payment.booking.show.movie.title if payment.booking.show and payment.booking.show.movie else 'N/A' }}</td>
+                                    <td>{{ payment.booking.show.screen.name if payment.booking.show and payment.booking.show.screen else 'N/A' }}</td>
+                                    <td>{{ payment.booking.show.show_date.strftime('%d %b %Y') if payment.booking.show and payment.booking.show.show_date else 'N/A' }}<br>{{ payment.booking.show.show_time.strftime('%H:%M') if payment.booking.show and payment.booking.show.show_time else 'N/A' }}</td>
+                                    <td>{{ payment.booking.seats if payment.booking and payment.booking.seats else 'N/A' }}</td>
+                                    <td class="text-end">₹{{ "%.2f"|format(payment.amount) if payment.amount else '0.00' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Payment Notes -->
+                {% if payment.notes %}
+                <div class="payment-section mb-4">
+                    <h5 class="payment-section-title">Notes</h5>
+                    <p class="text-muted">{{ payment.notes }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Refund Information -->
+                {% if payment.is_refunded() %}
+                <div class="payment-section mb-4">
+                    <h5 class="payment-section-title"><i class="fas fa-undo me-2"></i>Refund Information</h5>
+                    <div class="payment-details">
+                        {% if payment.refund_amount %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Refund Amount:</span>
+                            <span class="text-danger">-₹{{ "%.2f"|format(payment.refund_amount) }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.refund_reason %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Refund Reason:</span>
+                            <span>{{ payment.refund_reason.replace('_', ' ').title() }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.refund_method %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Refund Method:</span>
+                            <span>{{ payment.refund_method.replace('_', ' ').title() }}</span>
+                        </div>
+                        {% endif %}
+                        {% if payment.refund_reference_id %}
+                        <div class="payment-details-row">
+                            <span class="payment-details-label">Refund Reference:</span>
+                            <span>{{ payment.refund_reference_id }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Payment Status Messages -->
+                {% if payment.is_pending() %}
+                <div class="payment-section mb-4">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Payment Pending:</strong> This payment is currently pending and may be processing.
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if payment.is_failed() %}
+                <div class="payment-section mb-4">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>
+                        <strong>Payment Failed:</strong> This payment could not be processed successfully.
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if payment.is_refunded() %}
+                <div class="payment-section mb-4">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-undo me-2"></i>
+                        <strong>Payment Refunded:</strong> This payment has been refunded.
+                        {% if payment.refund_notes %}{{ payment.refund_notes }}{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-between flex-wrap">
+                    <div class="mb-2">
+                        {% if payment.booking %}
+                        <a href="{{ url_for('bookings.view', id=payment.booking.id) }}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-ticket-alt me-2"></i>View Booking
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('payments.index') }}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-list me-2"></i>Back to Payments
+                        </a>
+                    </div>
+                    <div class="mb-2">
+                        <a href="{{ url_for('payments.receipt', id=payment.id) }}" class="btn btn-primary me-2">
+                            <i class="fas fa-receipt me-2"></i>View Receipt
+                        </a>
+                        <a href="{{ url_for('payments.status_history', id=payment.id) }}" class="btn btn-outline-info me-2">
+                            <i class="fas fa-history me-2"></i>Status History
+                        </a>
+                        {% if current_user.role == 'admin' %}
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-warning dropdown-toggle" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false"
+                                        title="Admin Actions">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    {% if payment.can_be_refunded() %}
+                                    <li>
+                                        <a class="dropdown-item text-warning" 
+                                           href="{{ url_for('payments.refund', id=payment.id) }}">
+                                            <i class="fas fa-undo me-2"></i>Process Refund
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    <li>
+                                        <a class="dropdown-item text-info" 
+                                           href="{{ url_for('payments.update_status', id=payment.id) }}">
+                                            <i class="fas fa-edit me-2"></i>Update Status
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" 
+                                           href="{{ url_for('payments.email_receipt', id=payment.id) }}">
+                                            <i class="fas fa-envelope me-2"></i>Email Receipt
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item"
+                                           href="{{ url_for('payments.payment_audit_trail', id=payment.id) }}">
+                                            <i class="fas fa-shield-alt me-2"></i>Audit Trail
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.payment-section {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+    margin-bottom: 15px;
+}
+
+.payment-section-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #007bff;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 5px;
+}
+
+.payment-details {
+    margin-bottom: 0;
+}
+
+.payment-details-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed #dee2e6;
+}
+
+.payment-details-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.payment-details-label {
+    font-weight: bold;
+    color: #495057;
+}
+</style>
+{% endblock %}

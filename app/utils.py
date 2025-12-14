@@ -454,3 +454,268 @@ def generate_report_pdf(report_data, report_type):
     buffer.close()
     
     return pdf_data
+
+def generate_payment_receipt_pdf(receipt_data):
+    """
+    Generate a PDF receipt for a payment with enhanced details
+    
+    Args:
+        receipt_data (dict): Dictionary containing payment receipt information
+        
+    Returns:
+        bytes: PDF data as bytes
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    
+    # Container for 'Flowable' objects
+    elements = []
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        textColor=colors.darkgreen
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=16,
+        spaceAfter=12,
+        textColor=colors.darkgreen
+    )
+    
+    normal_style = styles['Normal']
+    
+    # Cinema Title
+    elements.append(Paragraph("CINEMA POS", title_style))
+    elements.append(Paragraph("PAYMENT RECEIPT", heading_style))
+    elements.append(Spacer(1, 20))
+    
+    # Receipt details
+    receipt_details = [
+        ["Receipt ID:", receipt_data.get('receipt_id', 'N/A')],
+        ["Payment Date:", receipt_data.get('payment_date', 'N/A')],
+        ["Payment Method:", receipt_data.get('payment_method', 'N/A')],
+        ["Transaction ID:", receipt_data.get('transaction_id', 'N/A')],
+        ["Status:", receipt_data.get('status', 'N/A')],
+    ]
+    
+    receipt_table = Table(receipt_details, colWidths=[2*inch, 4*inch])
+    receipt_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(receipt_table)
+    elements.append(Spacer(1, 20))
+    
+    # Customer information
+    elements.append(Paragraph("Customer Information", heading_style))
+    
+    customer_details = [
+        ["Name:", receipt_data.get('customer_name', 'N/A')],
+        ["Contact:", receipt_data.get('customer_contact', 'N/A')],
+        ["Email:", receipt_data.get('customer_email', 'N/A')],
+        ["Booking ID:", receipt_data.get('booking_id', 'N/A')],
+    ]
+    
+    customer_table = Table(customer_details, colWidths=[2*inch, 4*inch])
+    customer_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(customer_table)
+    elements.append(Spacer(1, 20))
+    
+    # Payment method specific details
+    paypal_info = receipt_data.get('paypal_info', {})
+    if paypal_info:
+        elements.append(Paragraph("PayPal Payment Details", heading_style))
+        
+        paypal_details = []
+        if paypal_info.get('order_id'):
+            paypal_details.append(["PayPal Order ID:", paypal_info['order_id']])
+        if paypal_info.get('capture_id'):
+            paypal_details.append(["PayPal Capture ID:", paypal_info['capture_id']])
+        if paypal_info.get('payment_status'):
+            paypal_details.append(["PayPal Status:", paypal_info['payment_status']])
+        
+        if paypal_details:
+            paypal_table = Table(paypal_details, colWidths=[2*inch, 4*inch])
+            paypal_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            
+            elements.append(paypal_table)
+            elements.append(Spacer(1, 20))
+    
+    card_info = receipt_data.get('card_info', {})
+    if card_info:
+        elements.append(Paragraph("Card Payment Details", heading_style))
+        
+        card_details = [
+            ["Card Type:", card_info.get('card_type', 'N/A')],
+            ["Card Number:", f"****-****-****-{card_info.get('card_last_4', 'N/A')}" if card_info.get('card_last_4') else 'N/A'],
+            ["Expiry:", card_info.get('expiry', 'N/A')],
+            ["Auth Code:", card_info.get('auth_code', 'N/A')],
+        ]
+        
+        card_table = Table(card_details, colWidths=[2*inch, 4*inch])
+        card_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        elements.append(card_table)
+        elements.append(Spacer(1, 20))
+    
+    upi_info = receipt_data.get('upi_info', {})
+    if upi_info:
+        elements.append(Paragraph("UPI Payment Details", heading_style))
+        
+        upi_details = [
+            ["UPI ID:", upi_info.get('upi_id', 'N/A')],
+            ["Transaction ID:", upi_info.get('transaction_id', 'N/A')],
+            ["UTR Number:", upi_info.get('utr_number', 'N/A')],
+        ]
+        
+        upi_table = Table(upi_details, colWidths=[2*inch, 4*inch])
+        upi_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        elements.append(upi_table)
+        elements.append(Spacer(1, 20))
+    
+    # Booking details
+    elements.append(Paragraph("Booking Details", heading_style))
+    
+    booking_details = [
+        ["Movie", "Screen", "Date & Time", "Seats", "Amount"],
+        [
+            receipt_data.get('movie_title', 'N/A'),
+            receipt_data.get('screen_name', 'N/A'),
+            f"{receipt_data.get('show_date', 'N/A')} {receipt_data.get('show_time', 'N/A')}",
+            receipt_data.get('seats', 'N/A'),
+            f"₹{receipt_data.get('amount', '0.00')}"
+        ]
+    ]
+    
+    booking_table = Table(booking_details, colWidths=[2*inch, 1.5*inch, 2*inch, 1.5*inch, 1*inch])
+    booking_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('BACKGROUND', (0, 1), (-1, 1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(booking_table)
+    elements.append(Spacer(1, 20))
+    
+    # Total amount
+    total_details = [
+        ["", "", "Total Amount:", f"₹{receipt_data.get('amount', '0.00')}"]
+    ]
+    
+    total_table = Table(total_details, colWidths=[2*inch, 1.5*inch, 2*inch, 1.5*inch, 1*inch])
+    total_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    
+    elements.append(total_table)
+    elements.append(Spacer(1, 20))
+    
+    # Refund information if applicable
+    refund_info = receipt_data.get('refund_info', {})
+    if refund_info:
+        elements.append(Paragraph("Refund Information", heading_style))
+        
+        refund_details = [
+            ["Refund Amount:", f"₹{refund_info.get('refund_amount', '0.00')}"],
+            ["Refund Reason:", refund_info.get('refund_reason', 'N/A')],
+            ["Refund Method:", refund_info.get('refund_method', 'N/A')],
+            ["Refund Reference:", refund_info.get('refund_reference', 'N/A')],
+        ]
+        
+        if refund_info.get('refund_notes'):
+            refund_details.append(["Refund Notes:", refund_info['refund_notes']])
+        
+        refund_table = Table(refund_details, colWidths=[2*inch, 4*inch])
+        refund_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        elements.append(refund_table)
+        elements.append(Spacer(1, 20))
+    
+    # Notes if applicable
+    if receipt_data.get('notes'):
+        elements.append(Paragraph("Notes", heading_style))
+        elements.append(Paragraph(receipt_data['notes'], normal_style))
+        elements.append(Spacer(1, 20))
+    
+    # Footer
+    elements.append(Paragraph("Thank you for your business!", normal_style))
+    elements.append(Paragraph("This is a computer-generated receipt and does not require a signature.", normal_style))
+    
+    # Build PDF
+    doc.build(elements)
+    
+    # Get PDF data
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    return pdf_data

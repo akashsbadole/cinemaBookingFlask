@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Pricing Matrix - {{ pricing_data.screen.name }}</h1>
+            <a href="{{ url_for('screens.manage_seats', screen_id=pricing_data.screen.id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Seat Management
+            </a>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Normal Seats</h5>
+                        <h2 class="mb-0">{{ pricing_data.pricing.normal.count }}</h2>
+                        <hr>
+                        <div class="text-start">
+                            <p><strong>Min Price:</strong> ₹{{ "%.2f"|format(pricing_data.pricing.normal.min) }}</p>
+                            <p><strong>Max Price:</strong> ₹{{ "%.2f"|format(pricing_data.pricing.normal.max) }}</p>
+                            <p><strong>Avg Price:</strong> ₹{{ "%.2f"|format(pricing_data.pricing.normal.avg) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Premium Seats</h5>
+                        <h2 class="mb-0">{{ pricing_data.pricing.premium.count }}</h2>
+                        <hr>
+                        <div class="text-start">
+                            <p><strong>Min Price:</strong> ₹{{ "%.2f"|format(pricing_data.pricing.premium.min) }}</p>
+                            <p><strong>Max Price:</strong> ₹{{ "%.2f"|format(pricing_data.pricing.premium.max) }}</p>
+                            <p><strong>Avg Price:</strong> ₹{{ "%.2f"|format(pricing_data.pricing.premium.avg) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">VIP Seats</h5>
+                        <h2 class="mb-0">{{ pricing_data.pricing.vip.count }}</h2>
+                        <hr>
+                        <div class="text-start">
+                            <p><strong>Min Price:</strong> ₹{{ "%.2f"|format(pricing_data.pricing.vip.min) }}</p>
+                            <p><strong>Max Price:</strong> ₹{{ "%.2f"|format(pricing_data.pricing.vip.max) }}</p>
+                            <p><strong>Avg Price:</strong> ₹{{ "%.2f"|format(pricing_data.pricing.vip.avg) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Price Distribution Charts</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="priceDistributionChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('priceDistributionChart').getContext('2d');
+    
+    const pricingData = {{ pricing_data|tojson }};
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Normal', 'Premium', 'VIP'],
+            datasets: [{
+                label: 'Average Price',
+                data: [
+                    pricingData.pricing.normal.avg,
+                    pricingData.pricing.premium.avg,
+                    pricingData.pricing.vip.avg
+                ],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(220, 53, 69, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(220, 53, 69, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value;
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Average Price: ₹' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -307,6 +307,52 @@ class DataValidators:
     """Data format and integrity validators"""
     
     @staticmethod
+    def validate_username_format(username):
+        """
+        Validate username format according to requirements
+        
+        Args:
+            username: Username string to validate
+            
+        Returns:
+            bool: True if valid, False otherwise
+        """
+        if not username:
+            return False
+        
+        # Username should be 3-30 characters long
+        if len(username) < 3 or len(username) > 30:
+            return False
+        
+        # Username should contain only alphanumeric characters and underscores
+        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            return False
+        
+        # Username should not start or end with underscore
+        if username.startswith('_') or username.endswith('_'):
+            return False
+        
+        return True
+    
+    @staticmethod
+    def validate_email_format(email):
+        """
+        Validate email format
+        
+        Args:
+            email: Email string to validate
+            
+        Returns:
+            bool: True if valid, False otherwise
+        """
+        if not email:
+            return False
+        
+        # Basic email format validation
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(email_pattern, email))
+    
+    @staticmethod
     def validate_password_strength(password):
         """
         Validate password strength according to security requirements
@@ -681,3 +727,41 @@ class SecurityValidator:
         # This would integrate with Flask-WTF's CSRF protection
         # Implementation depends on specific requirements
         return True
+    
+    @staticmethod
+    def is_suspicious_pattern(input_string):
+        """
+        Detect suspicious patterns in input strings
+        
+        Args:
+            input_string: String to check for suspicious patterns
+            
+        Returns:
+            bool: True if suspicious pattern detected
+        """
+        if not input_string:
+            return False
+        
+        # Convert to string if not already
+        if not isinstance(input_string, str):
+            input_string = str(input_string)
+        
+        # Common suspicious patterns
+        suspicious_patterns = [
+            r'\b(admin|administrator|root|superuser)\b.*\b(login|signin|auth)\b',
+            r'\b(union|select|insert|update|delete|drop|create|alter)\b.*\b(from|into|table)\b',
+            r'\b(script|javascript|vbscript|onload|onerror)\b',
+            r'\b(eval|exec|system|shell)\b',
+            r'\b(\.\./|\.\.\\)\b',  # Directory traversal
+            r'[<>]',  # HTML tags
+            r'[\'"]\s*[=;]',  # Potential injection
+            r'\b(and|or)\s+[\d\w]+\s*[=<>!]',  # SQL injection pattern
+            r'\b(waitfor|delay|sleep)\b',  # Time-based attacks
+            r'\b(xp_|sp_)\w+',  # SQL stored procedures
+        ]
+        
+        for pattern in suspicious_patterns:
+            if re.search(pattern, input_string, re.IGNORECASE):
+                return True
+        
+        return False

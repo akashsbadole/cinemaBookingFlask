@@ -8,8 +8,11 @@ from wtforms.widgets import TextArea
 import re
 from datetime import datetime
 from app.validators import (
-    DataValidators, BusinessValidators, InputSanitizer, 
+    DataValidators, BusinessValidators, InputSanitizer,
     SecurityValidator, CrossFieldValidators
+)
+from app.enhanced_validators import (
+    BusinessRuleValidators, ValidationAuditor
 )
 from app.payments.models import Payment
 
@@ -35,18 +38,31 @@ class PaymentMethodForm(FlaskForm):
     submit = SubmitField('Process Payment')
     
     def validate_amount_received(self, field):
-        """Validate and sanitize amount received"""
+        """Validate and sanitize amount received with business rules"""
         if field.data:
             # Sanitize numeric input
             sanitized = InputSanitizer.sanitize_numeric(
-                field.data, 
-                min_val=0.01, 
+                field.data,
+                min_val=0.01,
                 max_val=100000,  # Maximum reasonable amount
                 decimal_places=2
             )
             
             if sanitized is None:
                 raise ValidationError('Invalid amount format')
+            
+            # Validate payment method limits
+            payment_method = self.payment_method.data if self.payment_method.data else None
+            if payment_method:
+                from flask_login import current_user
+                user_id = current_user.id if current_user.is_authenticated else None
+                
+                payment_valid, payment_error = BusinessRuleValidators.validate_payment_method_limits(
+                    user_id, payment_method, sanitized
+                )
+                
+                if not payment_valid:
+                    raise ValidationError(payment_error)
             
             # Update field data with sanitized version
             field.data = sanitized

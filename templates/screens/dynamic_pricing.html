@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Dynamic Pricing - {{ screen.name }}</h1>
+            <a href="{{ url_for('screens.manage_seats', screen_id=screen.id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Seat Management
+            </a>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Pricing Rules Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('screens.dynamic_pricing', screen_id=screen.id) }}">
+                            <div class="mb-3">
+                                <label class="form-label">Select Show (Optional)</label>
+                                <select class="form-select" name="show_id" id="show-select">
+                                    <option value="">Apply to all shows</option>
+                                    {% for show in screen.shows %}
+                                    <option value="{{ show.id }}">{{ show.show_date.strftime('%Y-%m-%d') }} {{ show.show_time.strftime('%H:%M') }} - {{ show.movie.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">
+                                    Select a specific show to preview pricing, or leave empty to apply to all shows.
+                                </small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Weekend Surcharge Multiplier</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">x</span>
+                                    <input type="number" class="form-control" name="weekend_surcharge" value="1.2" step="0.1" min="0.1" max="3.0">
+                                </div>
+                                <small class="form-text text-muted">
+                                    Applied on Saturday and Sunday shows (1.2 = 20% surcharge)
+                                </small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Matinee Discount Multiplier</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">x</span>
+                                    <input type="number" class="form-control" name="matinee_discount" value="0.9" step="0.1" min="0.1" max="1.0">
+                                </div>
+                                <small class="form-text text-muted">
+                                    Applied to shows before 12 PM (0.9 = 10% discount)
+                                </small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Evening Surcharge Multiplier</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">x</span>
+                                    <input type="number" class="form-control" name="evening_surcharge" value="1.1" step="0.1" min="0.1" max="3.0">
+                                </div>
+                                <small class="form-text text-muted">
+                                    Applied to shows between 6 PM - 10 PM (1.1 = 10% surcharge)
+                                </small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Holiday Surcharge Multiplier</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">x</span>
+                                    <input type="number" class="form-control" name="holiday_surcharge" value="1.5" step="0.1" min="0.1" max="3.0">
+                                </div>
+                                <small class="form-text text-muted">
+                                    Applied on public holidays (1.5 = 50% surcharge)
+                                </small>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('screens.manage_seats', screen_id=screen.id) }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>Apply Pricing Rules
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Pricing Preview</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="pricing-preview">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-calculator fa-3x mb-3"></i>
+                                <p>Select pricing rules to see preview</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Pricing Rules Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="pricing-info">
+                            <h6>How Dynamic Pricing Works:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Base prices are set per seat type</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Multipliers are applied based on show timing</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Weekend surcharge adds 20% by default</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Matinee discount reduces by 10% for morning shows</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Evening surcharge adds 10% for prime time shows</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Holiday surcharge adds 50% for special days</li>
+                            </ul>
+                            
+                            <h6 class="mt-3">Seat Type Multipliers:</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Normal:</strong> Base price × 1.0</li>
+                                <li><strong>Premium:</strong> Base price × 1.5</li>
+                                <li><strong>VIP:</strong> Base price × 2.0</li>
+                            </ul>
+                            
+                            <h6 class="mt-3">Minimum Price:</h6>
+                            <p>All seats have a minimum price of ₹50.00 regardless of calculations.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const showSelect = document.getElementById('show-select');
+    const pricingPreview = document.getElementById('pricing-preview');
+    
+    function updatePreview() {
+        const weekendSurcharge = parseFloat(document.querySelector('input[name="weekend_surcharge"]').value) || 1.2;
+        const matineeDiscount = parseFloat(document.querySelector('input[name="matinee_discount"]').value) || 0.9;
+        const eveningSurcharge = parseFloat(document.querySelector('input[name="evening_surcharge"]').value) || 1.1;
+        const holidaySurcharge = parseFloat(document.querySelector('input[name="holiday_surcharge"]').value) || 1.5;
+        
+        let html = '<div class="preview-table">';
+        html += '<h6>Sample Price Calculations:</h6>';
+        html += '<table class="table table-sm">';
+        html += '<thead><tr><th>Seat Type</th><th>Base Price</th><th>Weekend</th><th>Matinee</th><th>Evening</th><th>Holiday</th></tr></thead>';
+        html += '<tbody>';
+        
+        // Normal seat example
+        html += '<tr>';
+        html += '<td>Normal</td><td>₹100</td>';
+        html += `<td>₹${(100 * weekendSurcharge).toFixed(2)}</td>`;
+        html += `<td>₹${(100 * matineeDiscount).toFixed(2)}</td>`;
+        html += `<td>₹${(100 * eveningSurcharge).toFixed(2)}</td>`;
+        html += `<td>₹${(100 * holidaySurcharge).toFixed(2)}</td>`;
+        html += '</tr>';
+        
+        // Premium seat example
+        html += '<tr>';
+        html += '<td>Premium</td><td>₹150</td>';
+        html += `<td>₹${(150 * 1.5 * weekendSurcharge).toFixed(2)}</td>`;
+        html += `<td>₹${(150 * 1.5 * matineeDiscount).toFixed(2)}</td>`;
+        html += `<td>₹${(150 * 1.5 * eveningSurcharge).toFixed(2)}</td>`;
+        html += `<td>₹${(150 * 1.5 * holidaySurcharge).toFixed(2)}</td>`;
+        html += '</tr>';
+        
+        // VIP seat example
+        html += '<tr>';
+        html += '<td>VIP</td><td>₹250</td>';
+        html += `<td>₹${(250 * 2.0 * weekendSurcharge).toFixed(2)}</td>`;
+        html += `<td>₹${(250 * 2.0 * matineeDiscount).toFixed(2)}</td>`;
+        html += `<td>₹${(250 * 2.0 * eveningSurcharge).toFixed(2)}</td>`;
+        html += `<td>₹${(250 * 2.0 * holidaySurcharge).toFixed(2)}</td>`;
+        html += '</tr>';
+        
+        html += '</tbody></table>';
+        html += '</div>';
+        
+        pricingPreview.innerHTML = html;
+    }
+    
+    // Update preview when any input changes
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+        input.addEventListener('input', updatePreview);
+    });
+    
+    // Initial preview
+    updatePreview();
+});
+</script>
+
+<style>
+.preview-table {
+    font-size: 14px;
+}
+
+.preview-table table {
+    width: 100%;
+}
+
+.preview-table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    text-align: center;
+}
+
+.preview-table td {
+    text-align: center;
+    padding: 0.25rem;
+}
+
+.pricing-info {
+    font-size: 14px;
+}
+
+.pricing-info h6 {
+    color: #495057;
+    margin-bottom: 10px;
+}
+
+.pricing-info ul li {
+    margin-bottom: 5px;
+    line-height: 1.4;
+}
+</style>
+{% endblock %}

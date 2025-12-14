@@ -8,6 +8,12 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, Selec
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from app.auth.models import User
 from app.validators import DataValidators, InputSanitizer, SecurityValidator
+from app.enhanced_validators import (
+    DatabaseConstraintValidators,
+    ValidationAuditor,
+    validate_unique_field,
+    validate_async_field
+)
 
 class LoginForm(FlaskForm):
     """Login form"""
@@ -48,12 +54,16 @@ class RegistrationForm(FlaskForm):
     """Registration form"""
     username = StringField('Username', validators=[
         DataRequired(message='Username is required'),
-        Length(min=1, max=64, message='Username must be between 1 and 64 characters')
+        Length(min=3, max=64, message='Username must be between 3 and 64 characters'),
+        validate_unique_field(User, 'username'),
+        validate_async_field('username')
     ])
     email = StringField('Email', validators=[
         DataRequired(message='Email is required'),
-        Length(min=1, max=64, message='Email must be between 1 and 64 characters'),
-        Email(message='Please enter a valid email address')
+        Length(min=5, max=64, message='Email must be between 5 and 64 characters'),
+        Email(message='Please enter a valid email address'),
+        validate_unique_field(User, 'email'),
+        validate_async_field('email')
     ])
     password = PasswordField('Password', validators=[
         DataRequired(message='Password is required'),
@@ -124,12 +134,14 @@ class ProfileForm(FlaskForm):
     """Profile form for updating user information"""
     username = StringField('Username', validators=[
         DataRequired(message='Username is required'),
-        Length(min=1, max=64, message='Username must be between 1 and 64 characters')
+        Length(min=3, max=64, message='Username must be between 3 and 64 characters'),
+        validate_async_field('username')
     ])
     email = StringField('Email', validators=[
         DataRequired(message='Email is required'),
-        Length(min=1, max=64, message='Email must be between 1 and 64 characters'),
-        Email(message='Please enter a valid email address')
+        Length(min=5, max=64, message='Email must be between 5 and 64 characters'),
+        Email(message='Please enter a valid email address'),
+        validate_async_field('email')
     ])
     current_password = PasswordField('Current Password', validators=[
         DataRequired(message='Current password is required')

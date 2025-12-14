@@ -1,963 +1,565 @@
 """
-Payments Routes
+Payment Routes
 """
-from flask import render_template, redirect, url_for, flash, request, make_response, jsonify, session, current_app, abort
+from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, abort, make_response
 from flask_login import login_required, current_user
 from app.payments import bp
-from app.bookings.models import Booking, BookingSeat
-from app.payments.models import Payment, PaymentStatusHistory, PaymentRefund, PaymentAudit
 from app.payments.forms import (
-    PaymentMethodForm, CashPaymentForm, CardPaymentForm, UpiPaymentForm,
-    NetBankingPaymentForm, WalletPaymentForm, RefundPaymentForm,
-    PaymentStatusForm, PaymentSearchForm, PaymentForm, EmailReceiptForm
+    PaymentForm, RefundPaymentForm, EmailReceiptForm, PaymentMethodForm,
+    CashPaymentForm, CardPaymentForm, UpiPaymentForm, NetBankingPaymentForm, 
+    WalletPaymentForm, PaymentStatusForm, PaymentSearchForm
 )
+from app.payments.models import Payment, PaymentRefund, PaymentStatusHistory, PaymentAudit
+from app.bookings.models import Booking
+from app.movies.models import Movie
+from app.shows.models import Show
+from app.error_handlers import ErrorLogger
 from app.database import db
-from app.utils import generate_receipt_pdf
-from app.paypal_service import get_paypal_service
-from app.validators import InputSanitizer, DataValidators, SecurityValidator, BusinessValidators, ValidationError
-from app.error_handlers import ErrorLogger, ErrorHandler
-from app.data_integrity import IntegrityChecker
-from datetime import datetime, timedelta
+from app.validators import InputSanitizer, SecurityValidator, DataValidators
 import logging
+from datetime import datetime
 import json
-from flask_mail import Message, Mail
 
-# Configure logging
 logger = logging.getLogger(__name__)
-
-def send_receipt_email(payment, recipient_email, message=None):
-    """
-    Send payment receipt via email with validation
-    
-    Args:
-        payment (Payment): Payment object
-        recipient_email (str): Email address to send receipt to
-        message (str): Optional additional message
-        
-    Returns:
-        bool: True if email sent successfully, False otherwise
-    """
-    try:
-        # Validate recipient email
-        if not DataValidators.validate_email_format(recipient_email):
-            logger.error(f"Invalid recipient email format: {recipient_email}")
-            return False
-        
-        # Sanitize email address
-        recipient_email = InputSanitizer.sanitize_email(recipient_email)
-        
-        # Validate payment object
-        if not payment or not payment.id:
-            logger.error("Invalid payment object for email receipt")
-            return False
-        
-        # Get seats for this booking
-        seats = []
-        if payment.booking:
-            for booking_seat in payment.booking.booking_seats:
-                seats.append(f"{booking_seat.seat.row}{booking_seat.seat.column}")
-        
-        # Sanitize additional message
-        safe_message = InputSanitizer.sanitize_string(message or "", max_length=500) if message else ""
-        
-        # Create email message
-        msg = Message(
-            subject=f"Cinema POS - Payment Receipt #{payment.id}",
-            sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@cinemapos.com'),
-            recipients=[recipient_email]
-        )
-        
-        # Generate HTML email body
-        msg.html = render_template('payments/email_receipt.html',
-                                payment=payment,
-                                seats=', '.join(seats),
-                                message=safe_message)
-        
-        # Generate PDF receipt and attach it
-        pdf_data = generate_receipt_pdf({
-            'id': payment.id,
-            'customer_name': InputSanitizer.sanitize_string(payment.booking.customer_name, max_length=100) if payment.booking else 'N/A',
-            'contact_number': InputSanitizer.sanitize_string(payment.booking.contact_number, max_length=20) if payment.booking else 'N/A',
-            'email': InputSanitizer.sanitize_email(payment.booking.email) if payment.booking else 'N/A',
-            'booking_id': payment.booking_id,
-            'movie_title': InputSanitizer.sanitize_string(payment.booking.show.movie.title, max_length=200) if payment.booking and payment.booking.show and payment.booking.show.movie else 'N/A',
-            'screen_name': InputSanitizer.sanitize_string(payment.booking.show.screen.name, max_length=100) if payment.booking and payment.booking.show and payment.booking.show.screen else 'N/A',
-            'show_date': payment.booking.show.show_date.strftime('%d %b %Y') if payment.booking and payment.booking.show and payment.booking.show.show_date else 'N/A',
-            'show_time': payment.booking.show.show_time.strftime('%H:%M') if payment.booking and payment.booking.show and payment.booking.show.show_time else 'N/A',
-            'seats': ', '.join(seats),
-            'amount': float(payment.amount) if payment.amount else 0,
-            'payment_method': payment.get_payment_method_display(),
-            'transaction_id': InputSanitizer.sanitize_string(payment.reference_id, max_length=100),
-            'paypal_order_id': InputSanitizer.sanitize_string(payment.paypal_order_id, max_length=100),
-            'payment_date': payment.payment_date,
-            'notes': InputSanitizer.sanitize_string(payment.notes, max_length=500) if payment.notes else '',
-            'status': payment.get_status_display()
-        })
-        
-        msg.attach(
-            filename=f"receipt_{payment.id}.pdf",
-            content_type="application/pdf",
-            data=pdf_data
-        )
-        
-        # Send email
-        mail = Mail(current_app)
-        mail.send(msg)
-        
-        ErrorLogger.log_security_event(
-            'receipt_email_sent',
-            f'Receipt email sent to {recipient_email} for payment {payment.id}',
-            request,
-            user_id=current_user.id,
-            context={'payment_id': payment.id, 'recipient_email': recipient_email}
-        )
-        
-        logger.info(f"Receipt email sent to {recipient_email} for payment {payment.id}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error sending receipt email: {str(e)}")
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment.id if payment else None})
-        return False
-
-@bp.route('/')
-@login_required
-def index():
-    """Payments listing page with filtering and search with enhanced validation"""
-    try:
-        # Get search parameters
-        search_form = PaymentSearchForm(request.args)
-        
-        # Build base query
-        query = Payment.query
-        
-        # Sanitize and validate search parameters
-        search_term = InputSanitizer.sanitize_string(search_form.search_term.data, max_length=100) if search_form.search_term.data else ""
-        search_type = InputSanitizer.sanitize_string(search_form.search_type.data, max_length=20) if search_form.search_type.data else "all"
-        status_filter = InputSanitizer.sanitize_string(search_form.status_filter.data, max_length=20) if search_form.status_filter.data else "all"
-        payment_method_filter = InputSanitizer.sanitize_string(search_form.payment_method_filter.data, max_length=20) if search_form.payment_method_filter.data else "all"
-        
-        # Security check for injection attempts
-        if SecurityValidator.detect_sql_injection([search_term, search_type, status_filter, payment_method_filter]):
-            ErrorLogger.log_security_event(
-                'sql_injection_attempt',
-                f'SQL injection attempt detected in payment search: {search_term}',
-                request,
-                user_id=current_user.id,
-                severity='high'
-            )
-            abort(400, "Invalid input detected")
-        
-        # Validate search type
-        valid_search_types = ['all', 'transaction_id', 'booking_id', 'customer', 'payment_method']
-        if search_type not in valid_search_types:
-            search_type = 'all'
-        
-        # Apply search filters
-        if search_term and search_type != 'all':
-            search_term_safe = f"%{search_term}%"
-            if search_type == 'transaction_id':
-                query = query.filter(Payment.reference_id.like(search_term_safe))
-            elif search_type == 'booking_id':
-                try:
-                    booking_id = int(search_term)
-                    if booking_id > 0:
-                        query = query.filter(Payment.booking_id == booking_id)
-                    else:
-                        query = query.join(Booking).filter(Booking.reference_number.like(search_term_safe))
-                except ValueError:
-                    query = query.join(Booking).filter(Booking.reference_number.like(search_term_safe))
-            elif search_type == 'customer':
-                query = query.join(Booking).filter(Booking.customer_name.like(search_term_safe))
-            elif search_type == 'payment_method':
-                query = query.filter(Payment.mode.like(search_term_safe))
-        elif search_term:
-            # Search across all fields
-            search_term_safe = f"%{search_term}%"
-            query = query.filter(
-                db.or_(
-                    Payment.reference_id.like(search_term_safe),
-                    Payment.notes.like(search_term_safe),
-                    Booking.customer_name.like(search_term_safe),
-                    Booking.reference_number.like(search_term_safe)
-                )
-            )
-        
-        # Validate and apply status filter
-        valid_statuses = ['all', 'pending', 'processing', 'completed', 'failed', 'refunded']
-        if status_filter in valid_statuses and status_filter != 'all':
-            query = query.filter(Payment.status == status_filter)
-        
-        # Validate and apply payment method filter
-        valid_methods = ['all', 'cash', 'card', 'upi', 'netbanking', 'wallet', 'paypal']
-        if payment_method_filter in valid_methods and payment_method_filter != 'all':
-            query = query.filter(Payment.mode == payment_method_filter)
-        
-        # Apply date filters with validation
-        if search_form.date_from.data:
-            try:
-                date_from = datetime.strptime(search_form.date_from.data, '%Y-%m-%d')
-                if date_from <= datetime.now():
-                    query = query.filter(Payment.created_at >= date_from)
-                else:
-                    flash('Start date cannot be in the future', 'warning')
-            except ValueError:
-                flash('Invalid start date format', 'warning')
-        
-        if search_form.date_to.data:
-            try:
-                date_to = datetime.strptime(search_form.date_to.data, '%Y-%m-%d')
-                date_to = date_to + timedelta(days=1)  # Include the entire day
-                query = query.filter(Payment.created_at < date_to)
-            except ValueError:
-                flash('Invalid end date format', 'warning')
-        
-        # Get payments with related data
-        payments = query.order_by(Payment.created_at.desc()).limit(1000).all()  # Limit to prevent performance issues
-        
-        # Format payment data for template
-        formatted_payments = []
-        for payment in payments:
-            try:
-                # Get seats for this booking
-                seats = []
-                if payment.booking:
-                    for booking_seat in payment.booking.booking_seats:
-                        seats.append(f"{booking_seat.seat.row}{booking_seat.seat.column}")
-                
-                formatted_payments.append({
-                    'id': payment.id,
-                    'booking_id': payment.booking_id,
-                    'customer_name': payment.booking.customer_name if payment.booking else 'N/A',
-                    'movie_title': payment.booking.show.movie.title if payment.booking and payment.booking.show and payment.booking.show.movie else 'N/A',
-                    'amount': float(payment.amount) if payment.amount else 0,
-                    'payment_method': payment.get_payment_method_display(),
-                    'status': payment.get_status_display(),
-                    'status_badge_class': payment.get_status_badge_class(),
-                    'payment_date': payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A',
-                    'transaction_id': payment.reference_id,
-                    'paypal_order_id': payment.paypal_order_id,
-                    'seats': ', '.join(seats)
-                })
-            except Exception as e:
-                ErrorLogger.log_error(e, request, context={'payment_id': payment.id})
-                continue
-        
-        # Calculate summary statistics with validation
-        try:
-            summary = {
-                'total_payments': len(formatted_payments),
-                'completed_payments': len([p for p in formatted_payments if p['status'] == 'Completed']),
-                'pending_payments': len([p for p in formatted_payments if p['status'] == 'Pending']),
-                'failed_payments': len([p for p in formatted_payments if p['status'] == 'Failed']),
-                'total_revenue': sum(p['amount'] for p in formatted_payments if p['status'] == 'Completed'),
-                'monthly_revenue': 0
-            }
-            
-            # Calculate monthly revenue with proper date validation
-            current_month = datetime.now().month
-            current_year = datetime.now().year
-            monthly_revenue = 0
-            
-            for p in formatted_payments:
-                if p['status'] == 'Completed' and p['payment_date'] != 'N/A':
-                    try:
-                        payment_date = datetime.strptime(p['payment_date'], '%d %b %Y %H:%M')
-                        if payment_date.month == current_month and payment_date.year == current_year:
-                            monthly_revenue += p['amount']
-                    except ValueError:
-                        continue
-            
-            summary['monthly_revenue'] = monthly_revenue
-            
-        except Exception as e:
-            ErrorLogger.log_error(e, request, user_id=current_user.id)
-            summary = {
-                'total_payments': 0,
-                'completed_payments': 0,
-                'pending_payments': 0,
-                'failed_payments': 0,
-                'total_revenue': 0,
-                'monthly_revenue': 0
-            }
-        
-        return render_template('payments/index.html', 
-                             title='Payments', 
-                             payments=formatted_payments,
-                             search_form=search_form,
-                             summary=summary)
-    
-    except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
-        ErrorHandler.handle_error(e, request)
-        flash('An error occurred while loading payments', 'danger')
-        return render_template('payments/index.html', 
-                             title='Payments', 
-                             payments=[],
-                             search_form=PaymentSearchForm(),
-                             summary={})
 
 @bp.route('/process/<int:booking_id>', methods=['GET', 'POST'])
 @login_required
-def process(booking_id):
-    """Process payment for booking with enhanced validation"""
+def process_payment(booking_id):
+    """Process payment for a booking"""
     try:
-        # Validate booking ID
-        if booking_id <= 0:
-            flash('Invalid booking ID', 'danger')
-            return redirect(url_for('bookings.index'))
-        
+        # Validate booking
         booking = Booking.query.get(booking_id)
         if not booking:
             flash('Booking not found', 'danger')
             return redirect(url_for('bookings.index'))
         
-        # Validate booking status
-        if booking.status not in ['confirmed', 'pending']:
-            flash('This booking cannot be paid for', 'danger')
-            return redirect(url_for('bookings.view', id=booking_id))
-        
-        # Validate booking amount
-        if not booking.total_amount or float(booking.total_amount) <= 0:
-            flash('Invalid booking amount', 'danger')
-            return redirect(url_for('bookings.view', id=booking_id))
-        
-        # Check if payment already exists for this booking
+        # Check if payment already exists
         existing_payment = Payment.query.filter_by(booking_id=booking_id).first()
-        if existing_payment and existing_payment.status != 'failed':
-            flash('Payment has already been processed for this booking', 'warning')
+        if existing_payment:
+            flash('Payment already processed for this booking', 'warning')
             return redirect(url_for('payments.receipt', id=existing_payment.id))
         
+        # Initialize forms
+        payment_method_form = PaymentMethodForm()
+        cash_form = CashPaymentForm()
+        card_form = CardPaymentForm()
+        upi_form = UpiPaymentForm()
+        netbanking_form = NetBankingPaymentForm()
+        wallet_form = WalletPaymentForm()
+        
         if request.method == 'POST':
-            # Sanitize and validate payment method
-            payment_method = InputSanitizer.sanitize_string(request.form.get('payment_method', ''), max_length=20)
+            payment_method = request.form.get('payment_method')
+            amount_received = float(request.form.get('amount_received', 0))
             
-            # Validate payment method
-            valid_methods = ['cash', 'card', 'upi', 'netbanking', 'wallet', 'paypal']
-            if payment_method not in valid_methods:
+            # Validate amount
+            if amount_received <= 0:
+                flash('Invalid payment amount', 'danger')
+                return render_template('payments/process.html', 
+                                    booking=booking, 
+                                    payment_method_form=payment_method_form,
+                                    cash_form=cash_form,
+                                    card_form=card_form,
+                                    upi_form=upi_form,
+                                    netbanking_form=netbanking_form,
+                                    wallet_form=wallet_form,
+                                    now_year=datetime.now().year)
+            
+            # Create payment record
+            payment = Payment(
+                booking_id=booking_id,
+                amount=amount_received,
+                mode=payment_method,
+                status='pending',
+                created_by=current_user.id,
+                notes=request.form.get('notes', '')
+            )
+            
+            # Process based on payment method
+            if payment_method == 'cash':
+                cash_form = CashPaymentForm(request.form)
+                if cash_form.validate():
+                    payment.mode = 'cash'
+                    payment.reference_id = cash_form.reference_id.data
+                    payment.mark_completed()
+                    db.session.add(payment)
+                    db.session.commit()
+                    
+                    # Log audit
+                    PaymentAudit.log_operation(
+                        payment.id, 'CREATE', current_user.id,
+                        new_values={'mode': 'cash', 'amount': amount_received, 'status': 'completed'},
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent')
+                    )
+                    
+                    flash('Cash payment processed successfully!', 'success')
+                    return redirect(url_for('payments.receipt', id=payment.id))
+                else:
+                    flash('Please correct errors in form', 'danger')
+                    return render_template('payments/process.html', 
+                                        booking=booking, 
+                                        payment_method_form=payment_method_form,
+                                        cash_form=cash_form,
+                                        card_form=card_form,
+                                        upi_form=upi_form,
+                                        netbanking_form=netbanking_form,
+                                        wallet_form=wallet_form,
+                                        now_year=datetime.now().year)
+            
+            elif payment_method == 'card':
+                card_form = CardPaymentForm(request.form)
+                if card_form.validate():
+                    payment.mode = 'card'
+                    payment.card_type = card_form.card_type.data
+                    payment.card_last_4 = card_form.card_number.data[-4:]
+                    payment.card_expiry_month = card_form.expiry_month.data
+                    payment.card_expiry_year = card_form.expiry_year.data
+                    payment.card_authorization_code = card_form.reference_id.data
+                    payment.mark_completed()
+                    db.session.add(payment)
+                    db.session.commit()
+                    
+                    # Log audit
+                    PaymentAudit.log_operation(
+                        payment.id, 'CREATE', current_user.id,
+                        new_values={'mode': 'card', 'amount': amount_received, 'status': 'completed'},
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent')
+                    )
+                    
+                    flash('Card payment processed successfully!', 'success')
+                    return redirect(url_for('payments.receipt', id=payment.id))
+                else:
+                    flash('Please correct errors in form', 'danger')
+                    return render_template('payments/process.html', 
+                                        booking=booking, 
+                                        payment_method_form=payment_method_form,
+                                        cash_form=cash_form,
+                                        card_form=card_form,
+                                        upi_form=upi_form,
+                                        netbanking_form=netbanking_form,
+                                        wallet_form=wallet_form,
+                                        now_year=datetime.now().year)
+            
+            elif payment_method == 'upi':
+                upi_form = UpiPaymentForm(request.form)
+                if upi_form.validate():
+                    payment.mode = 'upi'
+                    payment.upi_id = upi_form.upi_id.data
+                    payment.upi_transaction_id = upi_form.transaction_id.data
+                    payment.utr_number = upi_form.reference_id.data
+                    payment.mark_completed()
+                    db.session.add(payment)
+                    db.session.commit()
+                    
+                    # Log audit
+                    PaymentAudit.log_operation(
+                        payment.id, 'CREATE', current_user.id,
+                        new_values={'mode': 'upi', 'amount': amount_received, 'status': 'completed'},
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent')
+                    )
+                    
+                    flash('UPI payment processed successfully!', 'success')
+                    return redirect(url_for('payments.receipt', id=payment.id))
+                else:
+                    flash('Please correct errors in form', 'danger')
+                    return render_template('payments/process.html', 
+                                        booking=booking, 
+                                        payment_method_form=payment_method_form,
+                                        cash_form=cash_form,
+                                        card_form=card_form,
+                                        upi_form=upi_form,
+                                        netbanking_form=netbanking_form,
+                                        wallet_form=wallet_form,
+                                        now_year=datetime.now().year)
+            
+            elif payment_method == 'netbanking':
+                netbanking_form = NetBankingPaymentForm(request.form)
+                if netbanking_form.validate():
+                    payment.mode = 'netbanking'
+                    payment.bank_name = netbanking_form.bank_name.data
+                    payment.netbanking_transaction_id = netbanking_form.transaction_id.data
+                    payment.account_last_4 = netbanking_form.account_last_4.data
+                    payment.reference_id = netbanking_form.reference_id.data
+                    payment.mark_completed()
+                    db.session.add(payment)
+                    db.session.commit()
+                    
+                    # Log audit
+                    PaymentAudit.log_operation(
+                        payment.id, 'CREATE', current_user.id,
+                        new_values={'mode': 'netbanking', 'amount': amount_received, 'status': 'completed'},
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent')
+                    )
+                    
+                    flash('Net Banking payment processed successfully!', 'success')
+                    return redirect(url_for('payments.receipt', id=payment.id))
+                else:
+                    flash('Please correct errors in form', 'danger')
+                    return render_template('payments/process.html', 
+                                        booking=booking, 
+                                        payment_method_form=payment_method_form,
+                                        cash_form=cash_form,
+                                        card_form=card_form,
+                                        upi_form=upi_form,
+                                        netbanking_form=netbanking_form,
+                                        wallet_form=wallet_form,
+                                        now_year=datetime.now().year)
+            
+            elif payment_method == 'wallet':
+                wallet_form = WalletPaymentForm(request.form)
+                if wallet_form.validate():
+                    payment.mode = 'wallet'
+                    payment.wallet_type = wallet_form.wallet_type.data
+                    payment.wallet_mobile = wallet_form.mobile_number.data
+                    payment.wallet_transaction_id = wallet_form.transaction_id.data
+                    payment.reference_id = wallet_form.reference_id.data
+                    payment.mark_completed()
+                    db.session.add(payment)
+                    db.session.commit()
+                    
+                    # Log audit
+                    PaymentAudit.log_operation(
+                        payment.id, 'CREATE', current_user.id,
+                        new_values={'mode': 'wallet', 'amount': amount_received, 'status': 'completed'},
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent')
+                    )
+                    
+                    flash('Wallet payment processed successfully!', 'success')
+                    return redirect(url_for('payments.receipt', id=payment.id))
+                else:
+                    flash('Please correct errors in form', 'danger')
+                    return render_template('payments/process.html', 
+                                        booking=booking, 
+                                        payment_method_form=payment_method_form,
+                                        cash_form=cash_form,
+                                        card_form=card_form,
+                                        upi_form=upi_form,
+                                        netbanking_form=netbanking_form,
+                                        wallet_form=wallet_form,
+                                        now_year=datetime.now().year)
+            
+            elif payment_method == 'paypal':
+                payment.mode = 'paypal'
+                payment.mark_processing()
+                db.session.add(payment)
+                db.session.commit()
+                
+                # Log audit
+                PaymentAudit.log_operation(
+                    payment.id, 'CREATE', current_user.id,
+                    new_values={'mode': 'paypal', 'amount': amount_received, 'status': 'processing'},
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+                
+                flash('Redirecting to PayPal for payment...', 'info')
+                return redirect(url_for('payments.create_paypal_order', booking_id=booking_id))
+            
+            else:
                 flash('Invalid payment method', 'danger')
                 return render_template('payments/process.html', 
-                                     title='Process Payment', 
-                                     booking=booking,
-                                     paypal_client_id=get_paypal_service().get_client_id(),
-                                     is_sandbox=get_paypal_service().is_sandbox())
-            
-            if payment_method == 'paypal':
-                # PayPal is handled separately via JavaScript
-                flash('Please use PayPal button to complete your payment', 'info')
-                return render_template('payments/process.html', 
-                                     title='Process Payment', 
-                                     booking=booking,
-                                     paypal_client_id=get_paypal_service().get_client_id(),
-                                     is_sandbox=get_paypal_service().is_sandbox())
-            
-            # Process other payment methods
-            return process_non_paypal_payment(booking, payment_method)
+                                    booking=booking, 
+                                    payment_method_form=payment_method_form,
+                                    cash_form=cash_form,
+                                    card_form=card_form,
+                                    upi_form=upi_form,
+                                    netbanking_form=netbanking_form,
+                                    wallet_form=wallet_form,
+                                    now_year=datetime.now().year)
         
+        # GET request - show payment form
         return render_template('payments/process.html', 
-                             title='Process Payment', 
-                             booking=booking,
-                             paypal_client_id=get_paypal_service().get_client_id(),
-                             is_sandbox=get_paypal_service().is_sandbox())
-    
+                            booking=booking, 
+                            payment_method_form=payment_method_form,
+                            cash_form=cash_form,
+                            card_form=card_form,
+                            upi_form=upi_form,
+                            netbanking_form=netbanking_form,
+                            wallet_form=wallet_form,
+                            now_year=datetime.now().year)
+            
     except Exception as e:
+        db.session.rollback()
         ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': booking_id})
-        ErrorHandler.handle_error(e, request)
+        logger.error(f"Error processing payment: {str(e)}")
         flash('An error occurred while processing payment', 'danger')
-        return redirect(url_for('bookings.index'))
+        return redirect(url_for('bookings.view', id=booking_id))
 
-def process_non_paypal_payment(booking, payment_method):
-    """Process non-PayPal payment methods with enhanced validation"""
+@bp.route('/create_paypal_order/<int:booking_id>', methods=['POST'])
+@login_required
+def create_paypal_order(booking_id):
+    """Create PayPal order for payment"""
     try:
-        # Get and validate form data
-        form_data = request.form
-        notes = InputSanitizer.sanitize_string(form_data.get('notes', ''), max_length=500)
+        booking = Booking.query.get(booking_id)
+        if not booking:
+            return jsonify({'error': 'Booking not found'}), 404
         
-        # Validate booking amount
-        if not booking.total_amount or float(booking.total_amount) <= 0:
-            raise ValidationError("Invalid booking amount")
+        # Get pending PayPal payment
+        payment = Payment.query.filter_by(
+            booking_id=booking_id, 
+            mode='paypal', 
+            status='processing'
+        ).first()
         
-        # Create payment record
-        payment = Payment(
-            booking_id=booking.id,
-            amount=booking.total_amount,
-            mode=payment_method,
-            notes=notes,
-            created_by=current_user.id if current_user.is_authenticated else None,
-            initiated_at=datetime.utcnow()
-        )
+        if not payment:
+            return jsonify({'error': 'PayPal payment not found or not in processing state'}), 404
         
-        # Process payment-specific validation and fields
-        if payment_method == 'cash':
-            reference_id = InputSanitizer.sanitize_string(form_data.get('reference_id', ''), max_length=100)
-            payment.reference_id = reference_id
-            payment.mark_processing()
-            
-            # Simulate cash payment processing
-            payment.mark_completed(reference_id=reference_id)
-            
-        elif payment_method == 'card':
-            # Validate card payment data
-            card_type = InputSanitizer.sanitize_string(form_data.get('card_type', ''), max_length=20)
-            card_number = form_data.get('card_number', '').strip()
-            expiry_month = form_data.get('expiry_month', '').strip()
-            expiry_year = form_data.get('expiry_year', '').strip()
-            reference_id = InputSanitizer.sanitize_string(form_data.get('reference_id', ''), max_length=100)
-            
-            # Validate card details
-            if not DataValidators.validate_card_details(card_number, expiry_month, expiry_year):
-                raise ValidationError("Invalid card details")
-            
-            if not DataValidators.validate_card_type(card_type):
-                raise ValidationError("Invalid card type")
-            
-            payment.card_type = card_type
-            payment.card_last_4 = card_number[-4:] if len(card_number) >= 4 else ''
-            payment.card_expiry_month = expiry_month
-            payment.card_expiry_year = expiry_year
-            payment.card_authorization_code = reference_id
-            payment.reference_id = reference_id
-            
-            payment.mark_processing()
-            # Simulate card payment processing
-            import time
-            time.sleep(1)  # Simulate processing time
-            payment.mark_completed(reference_id=reference_id)
-            
-        elif payment_method == 'upi':
-            # Validate UPI payment data
-            upi_id = form_data.get('upi_id', '').strip()
-            transaction_id = InputSanitizer.sanitize_string(form_data.get('transaction_id', ''), max_length=100)
-            reference_id = InputSanitizer.sanitize_string(form_data.get('reference_id', ''), max_length=100)
-            
-            if not DataValidators.validate_upi_id(upi_id):
-                raise ValidationError("Invalid UPI ID format")
-            
-            payment.upi_id = upi_id
-            payment.upi_transaction_id = transaction_id
-            payment.utr_number = reference_id
-            payment.reference_id = reference_id
-            
-            payment.mark_processing()
-            # Simulate UPI processing
-            payment.mark_completed(reference_id=reference_id)
-            
-        elif payment_method == 'netbanking':
-            # Validate net banking payment data
-            bank_name = InputSanitizer.sanitize_string(form_data.get('bank_name', ''), max_length=100)
-            transaction_id = InputSanitizer.sanitize_string(form_data.get('transaction_id', ''), max_length=100)
-            account_last_4 = form_data.get('account_last_4', '').strip()
-            reference_id = InputSanitizer.sanitize_string(form_data.get('reference_id', ''), max_length=100)
-            
-            if not DataValidators.validate_account_number(account_last_4):
-                raise ValidationError("Invalid account number format")
-            
-            payment.bank_name = bank_name
-            payment.netbanking_transaction_id = transaction_id
-            payment.account_last_4 = account_last_4
-            payment.reference_id = reference_id
-            
-            payment.mark_processing()
-            # Simulate net banking processing
-            payment.mark_completed(reference_id=transaction_id)
-            
-        elif payment_method == 'wallet':
-            # Validate wallet payment data
-            wallet_type = InputSanitizer.sanitize_string(form_data.get('wallet_type', ''), max_length=50)
-            mobile_number = form_data.get('mobile_number', '').strip()
-            transaction_id = InputSanitizer.sanitize_string(form_data.get('transaction_id', ''), max_length=100)
-            reference_id = InputSanitizer.sanitize_string(form_data.get('reference_id', ''), max_length=100)
-            
-            if not DataValidators.validate_phone_format(mobile_number):
-                raise ValidationError("Invalid mobile number format")
-            
-            payment.wallet_type = wallet_type
-            payment.wallet_mobile = mobile_number
-            payment.wallet_transaction_id = transaction_id
-            payment.reference_id = reference_id
-            
-            payment.mark_processing()
-            # Simulate wallet processing
-            payment.mark_completed(reference_id=transaction_id)
+        # Import PayPal service
+        from app.paypal_service import PayPalService
+        paypal_service = PayPalService()
         
-        else:
-            raise ValidationError("Unsupported payment method")
+        # Create PayPal order
+        order_data = {
+            'intent': 'CAPTURE',
+            'purchase_units': [{
+                'reference_id': str(booking_id),
+                'description': f'Cinema Booking #{booking_id}',
+                'amount': {
+                    'currency_code': 'USD',
+                    'value': str(float(payment.amount))
+                }
+            }]
+        }
         
-        # Validate payment amount consistency
-        if abs(float(payment.amount) - float(booking.total_amount)) > 0.01:
-            ErrorLogger.log_security_event(
-                'payment_amount_mismatch',
-                f'Payment amount mismatch. Booking: {booking.total_amount}, Payment: {payment.amount}',
-                request,
-                user_id=current_user.id,
-                context={'booking_id': booking.id, 'payment_method': payment_method},
-                severity='high'
-            )
-            raise ValidationError("Payment amount mismatch")
+        response = paypal_service.create_order(order_data)
         
-        db.session.add(payment)
+        if response.get('error'):
+            payment.mark_failed(response.get('error'))
+            db.session.commit()
+            return jsonify({'error': 'Failed to create PayPal order'}), 500
         
-        # Update booking payment status
-        booking.payment_method = payment_method
-        booking.payment_date = datetime.utcnow()
-        booking.status = 'confirmed'
+        # Update payment with PayPal order ID
+        payment.paypal_order_id = response.get('id')
+        db.session.commit()
         
-        # Log payment operation
+        return jsonify({
+            'orderID': response.get('id'),
+            'approval_url': next((link['href'] for link in response.get('links', []) 
+                               if link.get('rel') == 'approve'), None)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': booking_id})
+        return jsonify({'error': 'Failed to create PayPal order'}), 500
+
+@bp.route('/capture_paypal_order/<int:booking_id>', methods=['POST'])
+@login_required
+def capture_paypal_order(booking_id):
+    """Capture PayPal order after approval"""
+    try:
+        data = request.get_json()
+        order_id = data.get('orderID')
+        
+        if not order_id:
+            return jsonify({'error': 'Order ID is required'}), 400
+        
+        # Get payment record
+        payment = Payment.query.filter_by(
+            booking_id=booking_id, 
+            paypal_order_id=order_id,
+            status='processing'
+        ).first()
+        
+        if not payment:
+            return jsonify({'error': 'PayPal order not found'}), 404
+        
+        # Import PayPal service
+        from app.paypal_service import PayPalService
+        paypal_service = PayPalService()
+        
+        # Capture the order
+        response = paypal_service.capture_order(order_id)
+        
+        if response.get('error'):
+            payment.mark_failed(response.get('error'))
+            db.session.commit()
+            return jsonify({'error': 'Failed to capture PayPal payment'}), 500
+        
+        # Update payment with capture details
+        payment.paypal_capture_id = response.get('id')
+        payment.paypal_payment_status = 'COMPLETED'
+        payment.mark_completed()
+        db.session.commit()
+        
+        # Log audit
         PaymentAudit.log_operation(
-            payment_id=payment.id,
-            operation='CREATE',
-            user_id=current_user.id if current_user.is_authenticated else None,
-            new_values={
-                'amount': float(payment.amount),
-                'payment_method': payment.mode,
-                'status': payment.status
-            },
+            payment.id, 'UPDATE', current_user.id,
+            new_values={'status': 'completed', 'paypal_capture_id': response.get('id')},
             ip_address=request.remote_addr,
             user_agent=request.headers.get('User-Agent')
         )
         
-        db.session.commit()
-        
-        ErrorLogger.log_security_event(
-            'payment_processed',
-            f'User {current_user.username} processed payment {payment.id} for booking {booking.id}',
-            request,
-            user_id=current_user.id,
-            context={
-                'payment_id': payment.id,
-                'booking_id': booking.id,
-                'amount': float(payment.amount),
-                'payment_method': payment_method
-            }
-        )
-        
-        flash('Payment processed successfully', 'success')
-        return redirect(url_for('payments.receipt', id=payment.id))
-        
-    except ValidationError as e:
-        db.session.rollback()
-        ErrorLogger.log_security_event(
-            'payment_validation_error',
-            f'Validation error in payment processing: {str(e)}',
-            request,
-            user_id=current_user.id,
-            context={'booking_id': booking.id, 'payment_method': payment_method},
-            severity='medium'
-        )
-        flash(str(e), 'danger')
-        return redirect(url_for('payments.process', booking_id=booking.id))
+        return jsonify({
+            'success': True,
+            'redirect_url': url_for('payments.receipt', id=payment.id)
+        })
         
     except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error processing payment: {str(e)}")
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': booking.id})
-        flash('An error occurred while processing payment', 'danger')
-        return redirect(url_for('payments.process', booking_id=booking.id))
-
-@bp.route('/create-paypal-order/<int:booking_id>', methods=['POST'])
-@login_required
-def create_paypal_order(booking_id):
-    """Create a PayPal order for booking with enhanced validation"""
-    try:
-        # Validate booking ID
-        if booking_id <= 0:
-            return jsonify({'error': 'Invalid booking ID'}), 400
-        
-        booking = Booking.query.get(booking_id)
-        if not booking:
-            return jsonify({'error': 'Booking not found'}), 404
-        
-        # Validate booking status and amount
-        if booking.status not in ['confirmed', 'pending']:
-            return jsonify({'error': 'Booking cannot be paid for'}), 400
-        
-        if not booking.total_amount or float(booking.total_amount) <= 0:
-            return jsonify({'error': 'Invalid booking amount'}), 400
-        
-        # Check for existing payments
-        existing_payment = Payment.query.filter_by(booking_id=booking_id).first()
-        if existing_payment and existing_payment.status != 'failed':
-            return jsonify({'error': 'Payment already exists for this booking'}), 400
-        
-        paypal_service = get_paypal_service()
-        
-        # Create PayPal order
-        order = paypal_service.create_order(
-            amount=float(booking.total_amount),
-            description=f"Cinema Booking #{booking.id} - {booking.show.movie.title}"
-        )
-        
-        if order:
-            # Create pending payment record
-            payment = Payment(
-                booking_id=booking_id,
-                amount=booking.total_amount,
-                mode='paypal',
-                paypal_order_id=order.id,
-                status='pending',
-                created_by=current_user.id if current_user.is_authenticated else None,
-                initiated_at=datetime.utcnow()
-            )
-            
-            db.session.add(payment)
-            db.session.commit()
-            
-            # Store PayPal order ID in session for security
-            session[f'paypal_order_{booking_id}'] = order.id
-            
-            ErrorLogger.log_security_event(
-                'paypal_order_created',
-                f'PayPal order {order.id} created for booking {booking_id}',
-                request,
-                user_id=current_user.id,
-                context={
-                    'booking_id': booking_id,
-                    'paypal_order_id': order.id,
-                    'amount': float(booking.total_amount)
-                }
-            )
-            
-            return jsonify({'orderID': order.id})
-        else:
-            return jsonify({'error': 'Failed to create PayPal order'}), 500
-            
-    except Exception as e:
-        logger.error(f"Error creating PayPal order: {str(e)}")
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': booking_id})
-        return jsonify({'error': 'Failed to create PayPal order'}), 500
-
-@bp.route('/capture-paypal-order/<int:booking_id>', methods=['POST'])
-@login_required
-def capture_paypal_order(booking_id):
-    """Capture a PayPal order payment with enhanced validation"""
-    try:
-        # Validate booking ID
-        if booking_id <= 0:
-            return jsonify({'error': 'Invalid booking ID'}), 400
-        
-        booking = Booking.query.get(booking_id)
-        if not booking:
-            return jsonify({'error': 'Booking not found'}), 404
-        
-        # Get and validate JSON data
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Invalid JSON data'}), 400
-        
-        paypal_order_id = InputSanitizer.sanitize_string(data.get('orderID', ''), max_length=100)
-        
-        if not paypal_order_id:
-            return jsonify({'error': 'PayPal order ID is required'}), 400
-        
-        # Verify this order ID matches what we created (security check)
-        session_order_id = session.get(f'paypal_order_{booking_id}')
-        if session_order_id != paypal_order_id:
-            ErrorLogger.log_security_event(
-                'paypal_order_mismatch',
-                f'PayPal order ID mismatch for booking {booking_id}',
-                request,
-                user_id=current_user.id,
-                context={
-                    'booking_id': booking_id,
-                    'session_order_id': session_order_id,
-                    'provided_order_id': paypal_order_id
-                },
-                severity='high'
-            )
-            return jsonify({'error': 'Invalid PayPal order ID'}), 400
-        
-        # Find pending payment record
-        payment = Payment.query.filter_by(
-            booking_id=booking_id,
-            paypal_order_id=paypal_order_id,
-            status='pending'
-        ).first()
-        
-        if not payment:
-            return jsonify({'error': 'Payment record not found'}), 404
-        
-        paypal_service = get_paypal_service()
-        
-        # Capture PayPal order
-        capture_result = paypal_service.capture_order(paypal_order_id)
-        
-        if capture_result:
-            # Validate capture amount
-            if abs(float(capture_result.amount) - float(booking.total_amount)) > 0.01:
-                ErrorLogger.log_security_event(
-                    'paypal_capture_amount_mismatch',
-                    f'PayPal capture amount mismatch for booking {booking_id}',
-                    request,
-                    user_id=current_user.id,
-                    context={
-                        'booking_id': booking_id,
-                        'expected_amount': float(booking.total_amount),
-                        'capture_amount': float(capture_result.amount)
-                    },
-                    severity='high'
-                )
-                return jsonify({'error': 'Payment amount mismatch'}), 400
-            
-            # Update payment record
-            payment.paypal_capture_id = capture_result.id
-            payment.paypal_payment_status = 'COMPLETED'
-            payment.reference_id = capture_result.id
-            payment.mark_completed()
-            
-            # Update booking payment status
-            booking.payment_method = 'paypal'
-            booking.payment_date = datetime.utcnow()
-            booking.status = 'confirmed'
-            
-            # Clean up session
-            session.pop(f'paypal_order_{booking_id}', None)
-            
-            db.session.commit()
-            
-            ErrorLogger.log_security_event(
-                'paypal_payment_captured',
-                f'PayPal payment {capture_result.id} captured for booking {booking_id}',
-                request,
-                user_id=current_user.id,
-                context={
-                    'booking_id': booking_id,
-                    'paypal_capture_id': capture_result.id,
-                    'amount': float(capture_result.amount)
-                }
-            )
-            
-            return jsonify({
-                'success': True,
-                'redirect_url': url_for('payments.receipt', id=payment.id)
-            })
-        else:
-            payment.mark_failed('PayPal capture failed')
-            db.session.commit()
-            return jsonify({'error': 'Failed to capture PayPal payment'}), 500
-            
-    except Exception as e:
-        logger.error(f"Error capturing PayPal order: {str(e)}")
         db.session.rollback()
         ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': booking_id})
         return jsonify({'error': 'Failed to capture PayPal payment'}), 500
 
-@bp.route('/receipt/<int:id>')
+@bp.route('/capture/<int:payment_id>', methods=['POST'])
 @login_required
-def receipt(id):
-    """View payment receipt with validation"""
+def capture_payment(payment_id):
+    """Capture payment (for PayPal and other delayed payment methods)"""
     try:
-        if id <= 0:
-            flash('Invalid payment ID', 'danger')
-            return redirect(url_for('payments.index'))
-        
-        payment = Payment.query.get(id)
+        payment = Payment.query.get(payment_id)
         if not payment:
-            flash('Payment not found', 'danger')
-            return redirect(url_for('payments.index'))
-        
-        # Get seats for this booking
-        seats = []
-        if payment.booking:
-            for booking_seat in payment.booking.booking_seats:
-                seats.append(f"{booking_seat.seat.row}{booking_seat.seat.column}")
-            
-            # Add seats to booking object
-            payment.booking.seats = ', '.join(seats)
-        
-        return render_template('payments/receipt.html', title='Payment Receipt', payment=payment)
-    
-    except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': id})
-        ErrorHandler.handle_error(e, request)
-        flash('An error occurred while loading receipt', 'danger')
-        return redirect(url_for('payments.index'))
-
-@bp.route('/receipt/<int:id>/pdf')
-@login_required
-def receipt_pdf(id):
-    """Generate PDF receipt with validation"""
-    try:
-        if id <= 0:
-            return jsonify({'error': 'Invalid payment ID'}), 400
-        
-        payment = Payment.query.get(id)
-        if not payment:
+            ErrorLogger.log_error(f"Payment not found: {payment_id}", request, context={'payment_id': payment_id})
             return jsonify({'error': 'Payment not found'}), 404
         
-        # Get seats for this booking
-        seats = []
-        if payment.booking:
-            for booking_seat in payment.booking.booking_seats:
-                seats.append(f"{booking_seat.seat.row}{booking_seat.seat.column}")
+        if payment.status != 'pending':
+            return jsonify({'error': 'Payment is not in pending status'}), 400
         
-        # Prepare and sanitize payment data for PDF generation
-        payment_data = {
-            'id': payment.id,
-            'customer_name': InputSanitizer.sanitize_string(payment.booking.customer_name, max_length=100) if payment.booking else 'N/A',
-            'contact_number': InputSanitizer.sanitize_string(payment.booking.contact_number, max_length=20) if payment.booking else 'N/A',
-            'email': InputSanitizer.sanitize_email(payment.booking.email) if payment.booking else 'N/A',
-            'booking_id': payment.booking_id,
-            'movie_title': InputSanitizer.sanitize_string(payment.booking.show.movie.title, max_length=200) if payment.booking and payment.booking.show and payment.booking.show.movie else 'N/A',
-            'screen_name': InputSanitizer.sanitize_string(payment.booking.show.screen.name, max_length=100) if payment.booking and payment.booking.show and payment.booking.show.screen else 'N/A',
-            'show_date': payment.booking.show.show_date.strftime('%d %b %Y') if payment.booking and payment.booking.show and payment.booking.show.show_date else 'N/A',
-            'show_time': payment.booking.show.show_time.strftime('%H:%M') if payment.booking and payment.booking.show and payment.booking.show.show_time else 'N/A',
-            'seats': ', '.join(seats),
-            'amount': float(payment.amount) if payment.amount else 0,
-            'payment_method': payment.get_payment_method_display(),
-            'transaction_id': InputSanitizer.sanitize_string(payment.reference_id, max_length=100),
-            'paypal_order_id': InputSanitizer.sanitize_string(payment.paypal_order_id, max_length=100),
-            'payment_date': payment.payment_date,
-            'notes': InputSanitizer.sanitize_string(payment.notes, max_length=500) if payment.notes else '',
-            'status': payment.get_status_display()
-        }
+        # Here you would integrate with payment gateway to capture payment
+        # For now, simulate successful capture
+        payment.status = 'completed'
+        payment.reference_id = f'CAPTURED_{payment_id}_{datetime.now().strftime("%Y%m%d%H%M%S")}'
+        payment.completed_at = datetime.utcnow()
         
-        # Generate PDF
-        pdf_data = generate_receipt_pdf(payment_data)
+        db.session.commit()
         
-        # Create response
-        response = make_response(pdf_data)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=receipt_{payment.id}.pdf'
+        # Update booking status
+        booking = payment.booking
+        booking.status = 'confirmed'
+        db.session.commit()
         
-        return response
-    
+        # Log audit
+        PaymentAudit.log_operation(
+            payment.id, 'UPDATE', current_user.id,
+            new_values={'status': 'completed', 'reference_id': payment.reference_id},
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+        
+        flash('Payment captured successfully!', 'success')
+        return jsonify({'success': True, 'message': 'Payment captured successfully'})
+        
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': id})
-        ErrorHandler.handle_error(e, request)
-        return jsonify({'error': 'Failed to generate PDF receipt'}), 500
+        db.session.rollback()
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        return jsonify({'success': False, 'error': 'Failed to capture payment'}), 500
 
 @bp.route('/refund/<int:payment_id>', methods=['GET', 'POST'])
 @login_required
-def refund(payment_id):
-    """Process payment refund with enhanced validation"""
+def refund_payment(payment_id):
+    """Process refund for a payment"""
     try:
-        if payment_id <= 0:
-            flash('Invalid payment ID', 'danger')
-            return redirect(url_for('payments.index'))
-        
         payment = Payment.query.get(payment_id)
         if not payment:
             flash('Payment not found', 'danger')
             return redirect(url_for('payments.index'))
         
         if not payment.can_be_refunded():
-            flash('This payment cannot be refunded', 'danger')
-            return redirect(url_for('payments.receipt', id=payment.id))
+            flash('This payment cannot be refunded', 'warning')
+            return redirect(url_for('payments.view', id=payment_id))
         
-        form = RefundPaymentForm(original_amount=float(payment.amount))
+        form = RefundPaymentForm(original_amount=payment.amount)
         
         if form.validate_on_submit():
-            try:
-                # Sanitize and validate form data
-                refund_amount = float(form.refund_amount.data)
-                refund_reason = InputSanitizer.sanitize_string(form.refund_reason.data, max_length=500)
-                refund_method = InputSanitizer.sanitize_string(form.refund_method.data, max_length=20)
-                reference_id = InputSanitizer.sanitize_string(form.reference_id.data, max_length=100)
-                refund_notes = InputSanitizer.sanitize_string(form.refund_notes.data, max_length=500)
-                
-                # Validate refund amount
-                if refund_amount <= 0:
-                    raise ValidationError("Refund amount must be positive")
-                
-                if refund_amount > float(payment.amount):
-                    raise ValidationError("Refund amount cannot exceed payment amount")
-                
-                # Validate refund method
-                valid_refund_methods = ['cash', 'card', 'upi', 'netbanking', 'wallet', 'bank_transfer']
-                if refund_method not in valid_refund_methods:
-                    raise ValidationError("Invalid refund method")
-                
-                # Create refund record
-                refund_record = PaymentRefund(
-                    payment_id=payment.id,
-                    refund_amount=refund_amount,
-                    refund_reason=refund_reason,
-                    refund_method=refund_method,
-                    refund_reference_id=reference_id,
-                    refund_notes=refund_notes,
-                    processed_by=current_user.id if current_user.is_authenticated else None
-                )
-                
-                db.session.add(refund_record)
-                
-                # Update payment status
-                payment.mark_refunded(
-                    refund_amount=refund_amount,
-                    refund_reason=refund_reason,
-                    refund_method=refund_method,
-                    refund_reference_id=reference_id
-                )
-                
-                # Update booking status if fully refunded
-                if refund_amount >= float(payment.amount):
-                    payment.booking.status = 'cancelled'
-                
-                # Log refund operation
-                PaymentAudit.log_operation(
-                    payment_id=payment.id,
-                    operation='REFUND',
-                    user_id=current_user.id if current_user.is_authenticated else None,
-                    new_values={
-                        'refund_amount': refund_amount,
-                        'refund_reason': refund_reason,
-                        'refund_method': refund_method
-                    },
-                    ip_address=request.remote_addr,
-                    user_agent=request.headers.get('User-Agent')
-                )
-                
-                db.session.commit()
-                
-                ErrorLogger.log_security_event(
-                    'payment_refunded',
-                    f'User {current_user.username} refunded {refund_amount} for payment {payment.id}',
-                    request,
-                    user_id=current_user.id,
-                    context={
-                        'payment_id': payment.id,
-                        'refund_amount': refund_amount,
-                        'refund_method': refund_method
-                    }
-                )
-                
-                flash('Refund processed successfully', 'success')
-                return redirect(url_for('payments.receipt', id=payment.id))
-                
-            except ValidationError as e:
-                db.session.rollback()
-                ErrorLogger.log_security_event(
-                    'refund_validation_error',
-                    f'Validation error in refund processing: {str(e)}',
-                    request,
-                    user_id=current_user.id,
-                    context={'payment_id': payment_id},
-                    severity='medium'
-                )
-                flash(str(e), 'danger')
-                
-            except Exception as e:
-                db.session.rollback()
-                logger.error(f"Error processing refund: {str(e)}")
-                ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
-                flash('An error occurred while processing refund', 'danger')
+            # Create refund record
+            refund = PaymentRefund(
+                payment_id=payment_id,
+                refund_amount=form.refund_amount.data,
+                refund_reason=form.refund_reason.data,
+                refund_method=form.refund_method.data,
+                refund_reference_id=request.form.get('reference_id'),
+                refund_notes=form.refund_notes.data,
+                processed_by=current_user.id
+            )
+            
+            db.session.add(refund)
+            
+            # Update payment status
+            payment.mark_refunded(
+                refund_amount=form.refund_amount.data,
+                refund_reason=form.refund_reason.data,
+                refund_method=form.refund_method.data,
+                refund_reference_id=request.form.get('reference_id')
+            )
+            
+            db.session.commit()
+            
+            # Log audit
+            PaymentAudit.log_operation(
+                payment.id, 'REFUND', current_user.id,
+                new_values={
+                    'status': 'refunded',
+                    'refund_amount': float(form.refund_amount.data),
+                    'refund_reason': form.refund_reason.data
+                },
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            
+            flash('Refund processed successfully!', 'success')
+            return redirect(url_for('payments.view', id=payment_id))
         
-        return render_template('payments/refund.html', title='Process Refund', payment=payment, form=form)
-    
+        return render_template('payments/refund.html', payment=payment, form=form)
+        
     except Exception as e:
+        db.session.rollback()
         ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
-        ErrorHandler.handle_error(e, request)
-        flash('An error occurred while loading refund page', 'danger')
-        return redirect(url_for('payments.index'))
+        logger.error(f"Error processing refund: {str(e)}")
+        flash('An error occurred while processing refund', 'danger')
+        return redirect(url_for('payments.view', id=payment_id))
 
-@bp.route('/status/<int:payment_id>', methods=['GET', 'POST'])
+@bp.route('/email_receipt/<int:payment_id>', methods=['GET', 'POST'])
 @login_required
-def update_status(payment_id):
-    """Update payment status with validation and audit logging"""
+def email_receipt(payment_id):
+    """Send email receipt for a payment"""
     try:
-        if payment_id <= 0:
-            flash('Invalid payment ID', 'danger')
+        payment = Payment.query.get(payment_id)
+        if not payment:
+            flash('Payment not found', 'danger')
             return redirect(url_for('payments.index'))
         
+        form = EmailReceiptForm()
+        
+        if form.validate_on_submit():
+            # Get booking details
+            booking = payment.booking
+            show = booking.show
+            movie = show.movie
+            
+            # Prepare receipt data
+            receipt_data = {
+                'payment_id': payment.id,
+                'booking_id': booking.id,
+                'movie_title': movie.title,
+                'show_time': show.show_time.strftime('%Y-%m-%d %H:%M'),
+                'screen_name': show.screen.name,
+                'seats': booking.seats,
+                'total_amount': float(payment.amount),
+                'payment_method': payment.get_payment_method_display(),
+                'reference_id': payment.reference_id,
+                'payment_date': payment.created_at.strftime('%Y-%m-%d %H:%M')
+            }
+            
+            # TODO: Implement email sending functionality
+            # For now, just show success message
+            flash('Email receipt functionality will be available soon!', 'info')
+            return redirect(url_for('payments.view', id=payment_id))
+        
+        return render_template('payments/email_receipt_form.html', payment=payment, form=form)
+        
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        logger.error(f"Error sending email receipt: {str(e)}")
+        flash('An error occurred while sending receipt', 'danger')
+        return redirect(url_for('payments.view', id=payment_id))
+
+@bp.route('/update_status/<int:payment_id>', methods=['GET', 'POST'])
+@login_required
+def update_status(payment_id):
+    """Update payment status"""
+    try:
         payment = Payment.query.get(payment_id)
         if not payment:
             flash('Payment not found', 'danger')
@@ -966,93 +568,208 @@ def update_status(payment_id):
         form = PaymentStatusForm()
         
         if form.validate_on_submit():
-            try:
-                # Sanitize and validate form data
-                new_status = InputSanitizer.sanitize_string(form.status.data, max_length=20)
-                notes = InputSanitizer.sanitize_string(form.notes.data, max_length=500)
-                
-                # Validate status
-                valid_statuses = ['pending', 'processing', 'completed', 'failed', 'refunded']
-                if new_status not in valid_statuses:
-                    raise ValidationError("Invalid payment status")
-                
-                old_status = payment.status
-                
-                # Update payment status
-                payment.status = new_status
-                payment.notes = notes
-                payment.updated_at = datetime.utcnow()
-                
-                # Add status change to history
-                payment._add_status_history(new_status, notes)
-                
-                # Log status update
-                PaymentAudit.log_operation(
-                    payment_id=payment.id,
-                    operation='UPDATE_STATUS',
-                    user_id=current_user.id if current_user.is_authenticated else None,
-                    old_values={'status': old_status},
-                    new_values={'status': new_status},
-                    ip_address=request.remote_addr,
-                    user_agent=request.headers.get('User-Agent')
-                )
-                
-                db.session.commit()
-                
-                ErrorLogger.log_security_event(
-                    'payment_status_updated',
-                    f'User {current_user.username} updated payment {payment.id} status from {old_status} to {new_status}',
-                    request,
-                    user_id=current_user.id,
-                    context={
-                        'payment_id': payment.id,
-                        'old_status': old_status,
-                        'new_status': new_status
-                    }
-                )
-                
-                flash('Payment status updated successfully', 'success')
-                return redirect(url_for('payments.receipt', id=payment.id))
-                
-            except ValidationError as e:
-                db.session.rollback()
-                ErrorLogger.log_security_event(
-                    'status_update_validation_error',
-                    f'Validation error in status update: {str(e)}',
-                    request,
-                    user_id=current_user.id,
-                    context={'payment_id': payment_id},
-                    severity='medium'
-                )
-                flash(str(e), 'danger')
-                
-            except Exception as e:
-                db.session.rollback()
-                logger.error(f"Error updating payment status: {str(e)}")
-                ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
-                flash('An error occurred while updating payment status', 'danger')
+            old_status = payment.status
+            new_status = form.status.data
+            notes = form.notes.data
+            
+            # Update status
+            payment.status = new_status
+            payment.updated_by = current_user.id
+            payment.updated_at = datetime.utcnow()
+            
+            # Update timestamps based on status
+            if new_status == 'completed':
+                payment.completed_at = datetime.utcnow()
+            elif new_status == 'refunded':
+                payment.refunded_at = datetime.utcnow()
+            elif new_status == 'failed':
+                payment.failed_at = datetime.utcnow()
+            
+            # Add to status history
+            payment._add_status_history(new_status, notes)
+            
+            db.session.commit()
+            
+            # Log audit
+            PaymentAudit.log_operation(
+                payment.id, 'UPDATE', current_user.id,
+                old_values={'status': old_status},
+                new_values={'status': new_status, 'notes': notes},
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            
+            flash('Payment status updated successfully!', 'success')
+            return redirect(url_for('payments.view', id=payment_id))
         
-        # Pre-select current status
+        # Pre-fill form with current status
         form.status.data = payment.status
-        form.notes.data = payment.notes
+        return render_template('payments/update_status.html', payment=payment, form=form)
         
-        return render_template('payments/update_status.html', title='Update Payment Status', payment=payment, form=form)
+    except Exception as e:
+        db.session.rollback()
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        logger.error(f"Error updating payment status: {str(e)}")
+        flash('An error occurred while updating payment status', 'danger')
+        return redirect(url_for('payments.view', id=payment_id))
+
+@bp.route('/')
+@bp.route('/index')
+@login_required
+def index():
+    """Payment management dashboard"""
+    try:
+        # Get search parameters
+        search_form = PaymentSearchForm()
+        
+        # Sanitize search parameters
+        search_term = InputSanitizer.sanitize_string(request.args.get('search_term', ''), max_length=100)
+        search_type = InputSanitizer.sanitize_string(request.args.get('search_type', 'all'), max_length=20)
+        status_filter = InputSanitizer.sanitize_string(request.args.get('status_filter', 'all'), max_length=20)
+        payment_method_filter = InputSanitizer.sanitize_string(request.args.get('payment_method_filter', 'all'), max_length=20)
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+        
+        # Security check for injection attempts
+        if SecurityValidator.detect_sql_injection([search_term, search_type, status_filter, payment_method_filter]):
+            ErrorLogger.log_security_event(
+                'sql_injection_attempt',
+                f'SQL injection attempt detected in payment search',
+                request,
+                user_id=current_user.id,
+                severity='high'
+            )
+            abort(400, "Invalid input detected")
+        
+        # Start with base query
+        query = Payment.query
+        
+        # Apply search filters
+        if search_term:
+            if search_type == 'all' or search_type == 'transaction_id':
+                query = query.filter(Payment.reference_id.ilike(f'%{search_term}%'))
+            elif search_type == 'booking_id':
+                try:
+                    booking_id = int(search_term)
+                    query = query.filter(Payment.booking_id == booking_id)
+                except ValueError:
+                    flash('Invalid booking ID format', 'warning')
+            elif search_type == 'customer':
+                query = query.join(Booking).filter(Booking.customer_name.ilike(f'%{search_term}%'))
+        
+        # Apply status filter
+        if status_filter != 'all':
+            query = query.filter(Payment.status == status_filter)
+        
+        # Apply payment method filter
+        if payment_method_filter != 'all':
+            query = query.filter(Payment.mode == payment_method_filter)
+        
+        # Apply date filters
+        if date_from:
+            try:
+                from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+                query = query.filter(Payment.created_at >= from_date)
+            except ValueError:
+                flash('Invalid start date format', 'warning')
+        
+        if date_to:
+            try:
+                to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+                query = query.filter(Payment.created_at <= to_date)
+            except ValueError:
+                flash('Invalid end date format', 'warning')
+        
+        # Get filtered payments with booking information
+        payments = query.join(Booking).join(Show).join(Movie).order_by(Payment.created_at.desc()).limit(100).all()
+        
+        # Format payment data for template
+        formatted_payments = []
+        for payment in payments:
+            try:
+                formatted_payments.append({
+                    'id': payment.id,
+                    'booking_id': payment.booking_id,
+                    'customer_name': payment.booking.customer_name if payment.booking else 'N/A',
+                    'movie_title': payment.booking.show.movie.title if payment.booking and payment.booking.show and payment.booking.show.movie else 'N/A',
+                    'amount': float(payment.amount) if payment.amount else 0,
+                    'mode': payment.mode,
+                    'payment_method': payment.get_payment_method_display(),
+                    'status': payment.status,
+                    'get_status_badge_class': payment.get_status_badge_class(),
+                    'payment_date': payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A',
+                    'seats': payment.booking.seats if payment.booking and payment.booking.seats else 'N/A'
+                })
+            except Exception as e:
+                ErrorLogger.log_error(e, request, context={'payment_id': payment.id})
+                continue
+        
+        # Calculate summary statistics
+        summary = {
+            'total_payments': len(formatted_payments),
+            'completed_payments': len([p for p in formatted_payments if p['status'] == 'completed']),
+            'pending_payments': len([p for p in formatted_payments if p['status'] == 'pending']),
+            'failed_payments': len([p for p in formatted_payments if p['status'] == 'failed']),
+            'total_revenue': sum([p['amount'] for p in formatted_payments if p['status'] == 'completed'])
+        }
+        
+        return render_template('payments/index.html', 
+                            title='Payments', 
+                            payments=formatted_payments,
+                            summary=summary,
+                            search_form=search_form)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        logger.error(f"Error loading payments index: {str(e)}")
+        flash('An error occurred while loading payments', 'danger')
+        return render_template('payments/index.html', 
+                            title='Payments', 
+                            payments=[],
+                            summary={},
+                            search_form=PaymentSearchForm())
+
+@bp.route('/view/<int:payment_id>')
+@login_required
+def view(payment_id):
+    """View payment details"""
+    try:
+        payment = Payment.query.get(payment_id)
+        if not payment:
+            flash('Payment not found', 'danger')
+            return redirect(url_for('payments.index'))
+        
+        return render_template('payments/view.html', title=f'Payment #{payment_id}', payment=payment)
     
     except Exception as e:
         ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
-        ErrorHandler.handle_error(e, request)
-        flash('An error occurred while loading status update page', 'danger')
+        logger.error(f"Error viewing payment: {str(e)}")
+        flash('An error occurred while loading payment details', 'danger')
         return redirect(url_for('payments.index'))
 
-@bp.route('/history/<int:payment_id>')
+@bp.route('/receipt/<int:payment_id>')
 @login_required
-def status_history(payment_id):
-    """View payment status history with validation"""
+def receipt(payment_id):
+    """View payment receipt"""
     try:
-        if payment_id <= 0:
-            flash('Invalid payment ID', 'danger')
+        payment = Payment.query.get(payment_id)
+        if not payment:
+            flash('Payment not found', 'danger')
             return redirect(url_for('payments.index'))
         
+        return render_template('payments/receipt.html', title='Payment Receipt', payment=payment)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        logger.error(f"Error viewing receipt: {str(e)}")
+        flash('An error occurred while loading receipt', 'danger')
+        return redirect(url_for('payments.index'))
+
+@bp.route('/status_history/<int:payment_id>')
+@login_required
+def status_history(payment_id):
+    """Get payment status history"""
+    try:
         payment = Payment.query.get(payment_id)
         if not payment:
             flash('Payment not found', 'danger')
@@ -1061,32 +778,75 @@ def status_history(payment_id):
         # Get status history
         history = PaymentStatusHistory.query.filter_by(payment_id=payment_id).order_by(PaymentStatusHistory.changed_at.desc()).all()
         
-        return render_template('payments/status_history.html', title='Payment History', payment=payment, history=history)
+        return render_template('payments/status_history.html', 
+                            title='Payment Status History', 
+                            payment=payment, 
+                            history=history)
     
     except Exception as e:
         ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
-        ErrorHandler.handle_error(e, request)
-        flash('An error occurred while loading payment history', 'danger')
+        logger.error(f"Error loading status history: {str(e)}")
+        flash('An error occurred while loading status history', 'danger')
+        return redirect(url_for('payments.view', id=payment_id))
+
+@bp.route('/audit_trail')
+@login_required
+def audit_trail():
+    """Payment audit trail"""
+    try:
+        # Get all payments with their audit information
+        payments = db.session.query(
+            Payment,
+            Payment.created_at.label('created_at_formatted'),
+            Payment.completed_at.label('completed_at_formatted')
+        ).order_by(Payment.created_at.desc()).limit(100).all()
+        
+        # Get audit trail for all payments
+        audit_trail = []
+        for payment in payments:
+            payment_audits = db.session.query(PaymentAudit).filter_by(payment_id=payment.id).order_by(PaymentAudit.timestamp.desc()).all()
+            for audit in payment_audits:
+                # Parse JSON values for template
+                if audit.old_values:
+                    try:
+                        audit.old_values_dict = json.loads(audit.old_values)
+                    except:
+                        audit.old_values_dict = {}
+                else:
+                    audit.old_values_dict = {}
+                
+                if audit.new_values:
+                    try:
+                        audit.new_values_dict = json.loads(audit.new_values)
+                    except:
+                        audit.new_values_dict = {}
+                else:
+                    audit.new_values_dict = {}
+                
+                audit_trail.append(audit)
+        
+        return render_template('payments/audit_trail.html', title='Payment Audit Trail', payments=payments, audit_trail=audit_trail)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        logger.error(f"Error loading audit trail: {str(e)}")
+        flash('An error occurred while loading audit trail', 'danger')
         return redirect(url_for('payments.index'))
 
-@bp.route('/audit/<int:payment_id>')
+@bp.route('/audit_trail/<int:payment_id>')
 @login_required
-def audit_trail(payment_id):
-    """View payment audit trail with validation"""
+def payment_audit_trail(payment_id):
+    """Payment audit trail for a specific payment"""
     try:
-        if payment_id <= 0:
-            flash('Invalid payment ID', 'danger')
-            return redirect(url_for('payments.index'))
-        
         payment = Payment.query.get(payment_id)
         if not payment:
             flash('Payment not found', 'danger')
             return redirect(url_for('payments.index'))
         
-        # Get audit trail
-        audit_trail = PaymentAudit.query.filter_by(payment_id=payment_id).order_by(PaymentAudit.timestamp.desc()).all()
+        # Get audit trail for this payment
+        audit_trail = db.session.query(PaymentAudit).filter_by(payment_id=payment_id).order_by(PaymentAudit.timestamp.desc()).all()
         
-        # Parse JSON values for display
+        # Parse JSON values for template
         for audit in audit_trail:
             if audit.old_values:
                 try:
@@ -1095,7 +855,7 @@ def audit_trail(payment_id):
                     audit.old_values_dict = {}
             else:
                 audit.old_values_dict = {}
-                
+            
             if audit.new_values:
                 try:
                     audit.new_values_dict = json.loads(audit.new_values)
@@ -1108,76 +868,90 @@ def audit_trail(payment_id):
     
     except Exception as e:
         ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
-        ErrorHandler.handle_error(e, request)
+        logger.error(f"Error loading audit trail: {str(e)}")
         flash('An error occurred while loading audit trail', 'danger')
-        return redirect(url_for('payments.index'))
+        return redirect(url_for('payments.view', id=payment_id))
 
-@bp.route('/email-receipt/<int:payment_id>', methods=['GET', 'POST'])
+@bp.route('/receipt/<int:payment_id>/pdf')
 @login_required
-def email_receipt(payment_id):
-    """Send payment receipt via email with validation"""
+def receipt_pdf(payment_id):
+    """Generate PDF receipt for a payment"""
     try:
-        if payment_id <= 0:
-            flash('Invalid payment ID', 'danger')
-            return redirect(url_for('payments.index'))
-        
         payment = Payment.query.get(payment_id)
         if not payment:
             flash('Payment not found', 'danger')
             return redirect(url_for('payments.index'))
         
-        form = EmailReceiptForm()
+        # Prepare receipt data for PDF generation
+        receipt_data = {
+            'receipt_id': f"RCP-{payment_id}-{payment.created_at.strftime('%Y%m%d') if payment.created_at else 'N/A'}",
+            'payment_date': payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A',
+            'payment_method': payment.get_payment_method_display(),
+            'payment_method_details': {},
+            'transaction_id': payment.reference_id or 'N/A',
+            'status': payment.get_status_display(),
+            'status_badge_class': payment.get_status_badge_class(),
+            'customer_name': payment.booking.customer_name if payment.booking else 'N/A',
+            'customer_contact': payment.booking.contact_number if payment.booking else 'N/A',
+            'customer_email': payment.booking.email if payment.booking else 'N/A',
+            'booking_id': f"#{payment.booking.id}" if payment.booking else 'N/A',
+            'movie_title': payment.booking.show.movie.title if payment.booking and payment.booking.show and payment.booking.show.movie else 'N/A',
+            'screen_name': payment.booking.show.screen.name if payment.booking and payment.booking.show and payment.booking.show.screen else 'N/A',
+            'show_date': payment.booking.show.show_date.strftime('%d %b %Y') if payment.booking and payment.booking.show and payment.booking.show.show_date else 'N/A',
+            'show_time': payment.booking.show.show_time.strftime('%H:%M') if payment.booking and payment.booking.show and payment.booking.show.show_time else 'N/A',
+            'seats': payment.booking.seats if payment.booking and payment.booking.seats else 'N/A',
+            'amount': float(payment.amount) if payment.amount else 0,
+            'notes': payment.notes,
+            'refund_info': {},
+            'paypal_info': {},
+            'card_info': {},
+            'upi_info': {}
+        }
         
-        if form.validate_on_submit():
-            try:
-                # Sanitize and validate email
-                recipient_email = InputSanitizer.sanitize_email(form.email.data)
-                message = InputSanitizer.sanitize_string(form.message.data, max_length=500) if form.message.data else ""
-                
-                if not DataValidators.validate_email_format(recipient_email):
-                    raise ValidationError("Invalid email format")
-                
-                # Send email receipt
-                success = send_receipt_email(
-                    payment=payment,
-                    recipient_email=recipient_email,
-                    message=message
-                )
-                
-                if success:
-                    flash(f'Receipt sent successfully to {recipient_email}', 'success')
-                else:
-                    flash('Failed to send receipt. Please try again.', 'danger')
-                    
-                return redirect(url_for('payments.receipt', id=payment.id))
-                
-            except ValidationError as e:
-                ErrorLogger.log_security_event(
-                    'email_validation_error',
-                    f'Validation error in email receipt: {str(e)}',
-                    request,
-                    user_id=current_user.id,
-                    context={'payment_id': payment_id},
-                    severity='medium'
-                )
-                flash(str(e), 'danger')
-                
-            except Exception as e:
-                logger.error(f"Error sending email receipt: {str(e)}")
-                ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
-                flash('An error occurred while sending receipt', 'danger')
+        # Add payment method specific details
+        if payment.mode == 'paypal':
+            receipt_data['paypal_info'] = {
+                'order_id': payment.paypal_order_id,
+                'capture_id': payment.paypal_capture_id,
+                'payment_status': payment.paypal_payment_status
+            }
+        elif payment.mode == 'card':
+            receipt_data['card_info'] = {
+                'card_type': payment.card_type.title() if payment.card_type else 'N/A',
+                'card_last_4': payment.card_last_4,
+                'expiry': f"{payment.card_expiry_month}/{payment.card_expiry_year}" if payment.card_expiry_month and payment.card_expiry_year else 'N/A',
+                'auth_code': payment.card_authorization_code
+            }
+        elif payment.mode == 'upi':
+            receipt_data['upi_info'] = {
+                'upi_id': payment.upi_id,
+                'transaction_id': payment.upi_transaction_id,
+                'utr_number': payment.utr_number
+            }
         
-        # Pre-fill email if booking has email
-        if payment.booking and payment.booking.email and not form.email.data:
-            form.email.data = payment.booking.email
+        # Add refund information if applicable
+        if payment.is_refunded():
+            receipt_data['refund_info'] = {
+                'refund_amount': float(payment.refund_amount) if payment.refund_amount else 0,
+                'refund_reason': payment.refund_reason.replace('_', ' ').title() if payment.refund_reason else 'N/A',
+                'refund_method': payment.refund_method.replace('_', ' ').title() if payment.refund_method else 'N/A',
+                'refund_reference': payment.refund_reference_id,
+                'refund_notes': payment.refund_notes
+            }
         
-        return render_template('payments/email_receipt_form.html',
-                             title='Email Receipt',
-                             payment=payment,
-                             form=form)
+        # Generate PDF using utility
+        from app.utils import generate_payment_receipt_pdf
+        pdf_data = generate_payment_receipt_pdf(receipt_data)
+        
+        # Create response
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=receipt_{payment_id}.pdf'
+        
+        return response
     
     except Exception as e:
         ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
-        ErrorHandler.handle_error(e, request)
-        flash('An error occurred while loading email receipt form', 'danger')
-        return redirect(url_for('payments.index'))
+        logger.error(f"Error generating PDF receipt: {str(e)}")
+        flash('An error occurred while generating PDF receipt', 'danger')
+        return redirect(url_for('payments.receipt', id=payment_id))

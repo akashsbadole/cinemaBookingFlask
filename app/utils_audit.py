@@ -12,6 +12,30 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 
+class ConcurrentAccessChecker:
+    """Utility class for checking concurrent access conflicts"""
+    
+    @staticmethod
+    def check_booking_conflicts(show_id, seat_ids, user_id):
+        """
+        Check for booking conflicts with concurrent access
+        
+        Args:
+            show_id (int): ID of the show
+            seat_ids (list): List of seat IDs to check
+            user_id (int): ID of the current user
+            
+        Returns:
+            dict: Dictionary with conflict information
+        """
+        # For now, just return no conflicts
+        # In a real implementation, this would check the database for existing bookings/locks
+        return {
+            'has_conflict': False,
+            'conflicts': []
+        }
+
+
 def generate_payment_audit_pdf(payment_data, audit_trail):
     """
     Generate a PDF audit report for a payment

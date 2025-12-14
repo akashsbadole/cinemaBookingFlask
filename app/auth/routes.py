@@ -131,7 +131,7 @@ def login():
             return redirect(next_page)
             
         except Exception as e:
-            ErrorLogger.log_error(e, request, context={'username': form.username.data})
+            ErrorLogger.log_error(e, request_data={'username': form.username.data})
             ErrorHandler.handle_error(e, request)
             flash('An error occurred during login. Please try again.', 'danger')
             return render_template('auth/login.html', title='Sign In', form=form)

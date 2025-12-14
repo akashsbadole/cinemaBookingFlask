@@ -2,7 +2,7 @@
 Screens Forms
 """
 from flask_wtf import FlaskForm
-from wtforms import StringField, IntegerField, SubmitField, SelectField, DecimalField, HiddenField, BooleanField, TextAreaField
+from wtforms import StringField, IntegerField, SubmitField, SelectField, DecimalField, HiddenField, BooleanField, TextAreaField, DateField
 from wtforms.validators import DataRequired, NumberRange, Optional
 
 class ScreenForm(FlaskForm):
@@ -40,7 +40,10 @@ class BulkSeatForm(FlaskForm):
     pattern = SelectField('Seat Pattern', choices=[
         ('regular', 'Regular Layout'),
         ('stadium', 'Stadium Layout'),
-        ('mixed', 'Mixed Types')
+        ('mixed', 'Mixed Types'),
+        ('vip_center', 'VIP Center Layout'),
+        ('aisle', 'Aisle Layout'),
+        ('luxury', 'Luxury Layout')
     ], validators=[DataRequired()])
     normal_price = DecimalField('Normal Price', places=2, validators=[
         DataRequired(),
@@ -63,3 +66,40 @@ class SeatLayoutForm(FlaskForm):
     layout_definition = TextAreaField('Layout Definition', validators=[DataRequired()],
                                      description='Define seat types per row. Format: ROW:TYPE_PATTERN (e.g., A:NNNPPV for Normal, Premium, Premium, VIP)')
     submit = SubmitField('Apply Layout')
+
+class BulkUpdateSeatTypesForm(FlaskForm):
+    """Form for bulk updating seat types"""
+    screen_id = HiddenField('Screen ID', validators=[DataRequired()])
+    seat_updates = TextAreaField('Seat Updates', validators=[DataRequired()],
+                                description='Enter seat updates in format: SEAT_ID:TYPE (one per line, e.g., A1:premium, B5:vip)')
+    submit = SubmitField('Update Seat Types')
+
+class BulkUpdatePricesForm(FlaskForm):
+    """Form for bulk updating seat prices"""
+    screen_id = HiddenField('Screen ID', validators=[DataRequired()])
+    normal_price = DecimalField('Normal Price', places=2, validators=[
+        DataRequired(),
+        NumberRange(min=0, message='Price must be a positive number')
+    ])
+    premium_price = DecimalField('Premium Price', places=2, validators=[
+        DataRequired(),
+        NumberRange(min=0, message='Price must be a positive number')
+    ])
+    vip_price = DecimalField('VIP Price', places=2, validators=[
+        DataRequired(),
+        NumberRange(min=0, message='Price must be a positive number')
+    ])
+    submit = SubmitField('Update Prices')
+
+class SeatAvailabilityForm(FlaskForm):
+    """Form for checking seat availability for shows"""
+    screen_id = SelectField('Screen', coerce=int, validators=[DataRequired()])
+    show_id = SelectField('Show', coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Check Availability')
+
+class SeatUtilizationForm(FlaskForm):
+    """Form for generating seat utilization reports"""
+    screen_id = SelectField('Screen', coerce=int, validators=[DataRequired()])
+    start_date = DateField('Start Date', validators=[Optional()])
+    end_date = DateField('End Date', validators=[Optional()])
+    submit = SubmitField('Generate Report')

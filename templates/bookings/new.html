@@ -1,44 +1,78 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
+<div class="row mb-4">
     <div class="col-12">
-        <h1 class="mb-4">New Booking</h1>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">New Booking</h1>
+            <div class="breadcrumb">
+                <a href="{{ url_for('index') }}" class="text-decoration-none text-muted">Dashboard</a>
+                <span class="mx-2 text-muted">/</span>
+                <a href="{{ url_for('bookings.index') }}" class="text-decoration-none text-muted">Bookings</a>
+                <span class="mx-2 text-muted">/</span>
+                <span class="text-primary">New Booking</span>
+            </div>
+        </div>
     </div>
 </div>
 
 <div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Booking Details</h5>
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-lg animate__animated animate__fadeInUp">
+            <div class="card-header bg-gradient-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-ticket-alt me-2"></i>Booking Details
+                </h5>
             </div>
-            <div class="card-body">
-                <form id="bookingForm">
+            <div class="card-body p-4">
+                <form id="bookingForm" novalidate>
                     <!-- Customer Information -->
                     <div class="row mb-4">
                         <div class="col-12">
-                            <h6>Customer Information</h6>
-                            <hr>
+                            <h6 class="text-primary fw-semibold mb-3">
+                                <i class="fas fa-user me-2"></i>Customer Information
+                            </h6>
+                            <hr class="mt-0">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="customerName" class="form-label">Customer Name</label>
-                            <input type="text" class="form-control" id="customerName" required>
+                            <label for="customerName" class="form-label fw-semibold">
+                                <i class="fas fa-user me-1 text-primary"></i>Customer Name
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0">
+                                    <i class="fas fa-user text-muted"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0" id="customerName" placeholder="Enter customer name" required>
+                            </div>
+                            <div class="invalid-feedback">
+                                Please enter customer name
+                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="customerPhone" class="form-label">Phone Number</label>
-                            <input type="tel" class="form-control" id="customerPhone">
+                            <label for="customerPhone" class="form-label fw-semibold">
+                                <i class="fas fa-phone me-1 text-primary"></i>Phone Number
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0">
+                                    <i class="fas fa-phone text-muted"></i>
+                                </span>
+                                <input type="tel" class="form-control border-start-0" id="customerPhone" placeholder="Enter phone number">
+                            </div>
                         </div>
                     </div>
 
                     <!-- Movie Selection -->
                     <div class="row mb-4">
                         <div class="col-12">
-                            <h6>Select Movie</h6>
-                            <hr>
+                            <h6 class="text-primary fw-semibold mb-3">
+                                <i class="fas fa-film me-2"></i>Select Movie
+                            </h6>
+                            <hr class="mt-0">
                         </div>
                         <div class="col-md-12 mb-3">
-                            <label for="movieSelect" class="form-label">Movie</label>
+                            <label for="movieSelect" class="form-label fw-semibold">
+                                <i class="fas fa-film me-1 text-primary"></i>Movie
+                            </label>
                             <select class="form-select" id="movieSelect" required>
                                 <option value="" selected disabled>Select a movie</option>
                                 <option value="1">Avatar 2</option>
@@ -46,21 +80,38 @@
                                 <option value="3">Barbie</option>
                                 <option value="4">Fast X</option>
                             </select>
+                            <div class="invalid-feedback">
+                                Please select a movie
+                            </div>
                         </div>
                     </div>
 
                     <!-- Show Selection -->
                     <div class="row mb-4">
                         <div class="col-12">
-                            <h6>Select Show</h6>
-                            <hr>
+                            <h6 class="text-primary fw-semibold mb-3">
+                                <i class="fas fa-clock me-2"></i>Select Show
+                            </h6>
+                            <hr class="mt-0">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="showDate" class="form-label">Date</label>
-                            <input type="date" class="form-control" id="showDate" required>
+                            <label for="showDate" class="form-label fw-semibold">
+                                <i class="fas fa-calendar me-1 text-primary"></i>Date
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0">
+                                    <i class="fas fa-calendar text-muted"></i>
+                                </span>
+                                <input type="date" class="form-control border-start-0" id="showDate" required>
+                            </div>
+                            <div class="invalid-feedback">
+                                Please select a date
+                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="showTime" class="form-label">Time</label>
+                            <label for="showTime" class="form-label fw-semibold">
+                                <i class="fas fa-clock me-1 text-primary"></i>Time
+                            </label>
                             <select class="form-select" id="showTime" required>
                                 <option value="" selected disabled>Select a time</option>
                                 <option value="09:00">09:00 AM</option>
@@ -69,73 +120,93 @@
                                 <option value="18:30">06:30 PM</option>
                                 <option value="21:00">09:00 PM</option>
                             </select>
+                            <div class="invalid-feedback">
+                                Please select a time
+                            </div>
                         </div>
                         <div class="col-md-12 mb-3">
-                            <label for="screenSelect" class="form-label">Screen</label>
+                            <label for="screenSelect" class="form-label fw-semibold">
+                                <i class="fas fa-tv me-1 text-primary"></i>Screen
+                            </label>
                             <select class="form-select" id="screenSelect" required>
                                 <option value="" selected disabled>Select a screen</option>
                                 <option value="1">Screen 1 (Premium)</option>
                                 <option value="2">Screen 2 (Standard)</option>
                                 <option value="3">Screen 3 (Standard)</option>
                             </select>
+                            <div class="invalid-feedback">
+                                Please select a screen
+                            </div>
                         </div>
                     </div>
 
                     <!-- Seat Selection -->
                     <div class="row mb-4">
                         <div class="col-12">
-                            <h6>Select Seats</h6>
-                            <hr>
+                            <h6 class="text-primary fw-semibold mb-3">
+                                <i class="fas fa-chair me-2"></i>Select Seats
+                            </h6>
+                            <hr class="mt-0">
                         </div>
                         <div class="col-12 mb-3">
-                            <div class="d-flex justify-content-between mb-2">
-                                <div>
-                                    <span class="badge bg-success me-2">Available</span>
-                                    <span class="badge bg-warning me-2">Selected</span>
-                                    <span class="badge bg-secondary">Booked</span>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="seat-legend">
+                                    <span class="badge bg-success me-2"><i class="fas fa-chair me-1"></i>Available</span>
+                                    <span class="badge bg-warning me-2"><i class="fas fa-chair me-1"></i>Selected</span>
+                                    <span class="badge bg-secondary"><i class="fas fa-chair me-1"></i>Booked</span>
                                 </div>
                                 <div>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="resetSeats">Reset Selection</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="resetSeats">
+                                        <i class="fas fa-redo me-1"></i>Reset Selection
+                                    </button>
                                 </div>
                             </div>
-                            <div class="seat-layout p-3 bg-light rounded">
-                                <div class="screen text-center mb-3">SCREEN</div>
+                            <div class="seat-layout p-4 bg-gradient-light rounded-3">
+                                <div class="screen text-center mb-4 py-2 bg-gradient-primary text-white rounded-pill">
+                                    <i class="fas fa-tv me-2"></i>SCREEN
+                                </div>
                                 <div class="seat-container">
                                     <!-- Row A -->
-                                    <div class="seat-row mb-2">
-                                        <div class="seat-label me-2">A</div>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A1">A1</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A2">A2</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A3">A3</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A4">A4</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A5">A5</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A6">A6</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A7">A7</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="A8">A8</button>
+                                    <div class="seat-row mb-3">
+                                        <div class="seat-label me-3">A</div>
+                                        <div class="seat-group">
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="A1">A1</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="A2">A2</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="A3">A3</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="A4">A4</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="A5">A5</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="A6">A6</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="A7">A7</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat" data-seat="A8">A8</button>
+                                        </div>
                                     </div>
                                     <!-- Row B -->
-                                    <div class="seat-row mb-2">
-                                        <div class="seat-label me-2">B</div>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B1">B1</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B2">B2</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B3">B3</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B4">B4</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B5">B5</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B6">B6</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B7">B7</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="B8">B8</button>
+                                    <div class="seat-row mb-3">
+                                        <div class="seat-label me-3">B</div>
+                                        <div class="seat-group">
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="B1">B1</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="B2">B2</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="B3">B3</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="B4">B4</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="B5">B5</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="B6">B6</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="B7">B7</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat" data-seat="B8">B8</button>
+                                        </div>
                                     </div>
                                     <!-- Row C -->
-                                    <div class="seat-row mb-2">
-                                        <div class="seat-label me-2">C</div>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C1">C1</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C2">C2</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C3">C3</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C4">C4</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C5">C5</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C6">C6</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C7">C7</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success seat me-1" data-seat="C8">C8</button>
+                                    <div class="seat-row mb-3">
+                                        <div class="seat-label me-3">C</div>
+                                        <div class="seat-group">
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="C1">C1</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="C2">C2</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="C3">C3</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="C4">C4</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="C5">C5</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="C6">C6</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat me-2" data-seat="C7">C7</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success seat" data-seat="C8">C8</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -145,31 +216,45 @@
                     <!-- Payment Information -->
                     <div class="row mb-4">
                         <div class="col-12">
-                            <h6>Payment Information</h6>
-                            <hr>
+                            <h6 class="text-primary fw-semibold mb-3">
+                                <i class="fas fa-credit-card me-2"></i>Payment Information
+                            </h6>
+                            <hr class="mt-0">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="paymentMethod" class="form-label">Payment Method</label>
+                            <label for="paymentMethod" class="form-label fw-semibold">
+                                <i class="fas fa-credit-card me-1 text-primary"></i>Payment Method
+                            </label>
                             <select class="form-select" id="paymentMethod" required>
                                 <option value="" selected disabled>Select payment method</option>
                                 <option value="cash">Cash</option>
                                 <option value="card">Credit/Debit Card</option>
                                 <option value="upi">UPI</option>
                             </select>
+                            <div class="invalid-feedback">
+                                Please select a payment method
+                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="referenceId" class="form-label">Reference ID (if applicable)</label>
-                            <input type="text" class="form-control" id="referenceId">
+                            <label for="referenceId" class="form-label fw-semibold">
+                                <i class="fas fa-receipt me-1 text-primary"></i>Reference ID (if applicable)
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0">
+                                    <i class="fas fa-receipt text-muted"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0" id="referenceId" placeholder="Enter reference ID">
+                            </div>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-12">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i>Create Booking
+                            <button type="submit" class="btn btn-primary btn-lg me-2" id="submitBtn">
+                                <i class="fas fa-save me-2"></i>Create Booking
                             </button>
-                            <a href="{{ url_for('bookings.index') }}" class="btn btn-secondary">
-                                <i class="fas fa-times me-1"></i>Cancel
+                            <a href="{{ url_for('bookings.index') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times me-2"></i>Cancel
                             </a>
                         </div>
                     </div>
@@ -178,33 +263,88 @@
         </div>
     </div>
     
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Booking Summary</h5>
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-lg sticky-top animate__animated animate__fadeInUp booking-summary-card">
+            <div class="card-header bg-gradient-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-receipt me-2"></i>Booking Summary
+                </h5>
             </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <strong>Movie:</strong> <span id="summaryMovie">Not selected</span>
+            <div class="card-body p-4">
+                <div class="summary-item mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">
+                            <i class="fas fa-film me-1"></i>Movie
+                        </span>
+                        <span class="fw-semibold" id="summaryMovie">Not selected</span>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <strong>Date:</strong> <span id="summaryDate">Not selected</span>
+                <div class="summary-item mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>Date
+                        </span>
+                        <span class="fw-semibold" id="summaryDate">Not selected</span>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <strong>Time:</strong> <span id="summaryTime">Not selected</span>
+                <div class="summary-item mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">
+                            <i class="fas fa-clock me-1"></i>Time
+                        </span>
+                        <span class="fw-semibold" id="summaryTime">Not selected</span>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <strong>Screen:</strong> <span id="summaryScreen">Not selected</span>
+                <div class="summary-item mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">
+                            <i class="fas fa-tv me-1"></i>Screen
+                        </span>
+                        <span class="fw-semibold" id="summaryScreen">Not selected</span>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <strong>Seats:</strong> <span id="summarySeats">None selected</span>
+                <div class="summary-item mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">
+                            <i class="fas fa-chair me-1"></i>Seats
+                        </span>
+                        <span class="fw-semibold" id="summarySeats">None selected</span>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <strong>Price per seat:</strong> $<span id="summaryPricePerSeat">12.00</span>
+                <div class="summary-item mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">
+                            <i class="fas fa-tag me-1"></i>Price per seat
+                        </span>
+                        <span class="fw-semibold">$<span id="summaryPricePerSeat">12.00</span></span>
+                    </div>
                 </div>
                 <hr>
-                <div class="mb-3">
-                    <strong>Total Amount:</strong> $<span id="summaryTotal">0.00</span>
+                <div class="summary-total mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="h5 mb-0">
+                            <i class="fas fa-dollar-sign me-1"></i>Total Amount
+                        </span>
+                        <span class="h3 mb-0 text-success fw-bold">$<span id="summaryTotal">0.00</span></span>
+                    </div>
+                </div>
+                
+                <!-- Payment Status -->
+                <div class="payment-status mb-3">
+                    <div class="alert alert-info d-flex align-items-center">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>Complete form to see payment options</small>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="printSummary()">
+                        <i class="fas fa-print me-1"></i>Print Summary
+                    </button>
+                    <button type="button" class="btn btn-outline-primary w-100" onclick="emailSummary()">
+                        <i class="fas fa-envelope me-1"></i>Email Summary
+                    </button>
                 </div>
             </div>
         </div>
@@ -218,25 +358,52 @@
         const seatPrice = 12.00;
         let selectedSeats = [];
         
-        // Seat selection
+        // Initialize form validation
+        const form = document.getElementById('bookingForm');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        // Add input validation listeners
+        const requiredFields = form.querySelectorAll('[required]');
+        requiredFields.forEach(field => {
+            field.addEventListener('blur', () => validateField(field));
+            field.addEventListener('input', () => {
+                if (field.classList.contains('is-invalid')) {
+                    validateField(field);
+                }
+                updatePaymentStatus();
+            });
+        });
+        
+        // Seat selection with enhanced UX
         const seatButtons = document.querySelectorAll('.seat');
         seatButtons.forEach(button => {
             button.addEventListener('click', function() {
                 const seatId = this.getAttribute('data-seat');
                 
                 if (this.classList.contains('btn-outline-success')) {
-                    // Select seat
+                    // Select seat with animation
                     this.classList.remove('btn-outline-success');
-                    this.classList.add('btn-warning');
+                    this.classList.add('btn-warning', 'animate__animated', 'animate__pulse');
                     selectedSeats.push(seatId);
+                    
+                    // Remove animation after completion
+                    setTimeout(() => {
+                        this.classList.remove('animate__animated', 'animate__pulse');
+                    }, 500);
                 } else if (this.classList.contains('btn-warning')) {
-                    // Deselect seat
+                    // Deselect seat with animation
                     this.classList.remove('btn-warning');
-                    this.classList.add('btn-outline-success');
+                    this.classList.add('btn-outline-success', 'animate__animated', 'animate__pulse');
                     selectedSeats = selectedSeats.filter(seat => seat !== seatId);
+                    
+                    // Remove animation after completion
+                    setTimeout(() => {
+                        this.classList.remove('animate__animated', 'animate__pulse');
+                    }, 500);
                 }
                 
                 updateSummary();
+                updatePaymentStatus();
             });
         });
         
@@ -246,17 +413,54 @@
             seatButtons.forEach(button => {
                 if (button.classList.contains('btn-warning')) {
                     button.classList.remove('btn-warning');
-                    button.classList.add('btn-outline-success');
+                    button.classList.add('btn-outline-success', 'animate__animated', 'animate__fadeIn');
                 }
             });
             updateSummary();
+            updatePaymentStatus();
         });
         
         // Update summary when form fields change
-        document.getElementById('movieSelect').addEventListener('change', updateSummary);
-        document.getElementById('showDate').addEventListener('change', updateSummary);
-        document.getElementById('showTime').addEventListener('change', updateSummary);
-        document.getElementById('screenSelect').addEventListener('change', updateSummary);
+        document.getElementById('movieSelect').addEventListener('change', () => {
+            updateSummary();
+            updatePaymentStatus();
+        });
+        document.getElementById('showDate').addEventListener('change', () => {
+            updateSummary();
+            updatePaymentStatus();
+        });
+        document.getElementById('showTime').addEventListener('change', () => {
+            updateSummary();
+            updatePaymentStatus();
+        });
+        document.getElementById('screenSelect').addEventListener('change', () => {
+            updateSummary();
+            updatePaymentStatus();
+        });
+        
+        function validateField(field) {
+            const value = field.value.trim();
+            let isValid = true;
+            
+            if (field.hasAttribute('required') && !value) {
+                isValid = false;
+            }
+            
+            // Specific validation for different field types
+            if (field.type === 'tel' && value && !/^\d{10,15}$/.test(value.replace(/[\s-]/g, ''))) {
+                isValid = false;
+            }
+            
+            if (isValid) {
+                field.classList.remove('is-invalid');
+                field.classList.add('is-valid');
+            } else {
+                field.classList.remove('is-valid');
+                field.classList.add('is-invalid');
+            }
+            
+            return isValid;
+        }
         
         function updateSummary() {
             // Update movie
@@ -267,7 +471,17 @@
             // Update date
             const showDate = document.getElementById('showDate');
             const summaryDate = document.getElementById('summaryDate');
-            summaryDate.textContent = showDate.value || 'Not selected';
+            if (showDate.value) {
+                const date = new Date(showDate.value);
+                summaryDate.textContent = date.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            } else {
+                summaryDate.textContent = 'Not selected';
+            }
             
             // Update time
             const showTime = document.getElementById('showTime');
@@ -279,23 +493,77 @@
             const summaryScreen = document.getElementById('summaryScreen');
             summaryScreen.textContent = screenSelect.options[screenSelect.selectedIndex]?.text || 'Not selected';
             
-            // Update seats
+            // Update seats with better formatting
             const summarySeats = document.getElementById('summarySeats');
-            summarySeats.textContent = selectedSeats.length > 0 ? selectedSeats.join(', ') : 'None selected';
+            if (selectedSeats.length > 0) {
+                summarySeats.innerHTML = `<span class="badge bg-success me-1">${selectedSeats.length} seats</span>${selectedSeats.join(', ')}`;
+            } else {
+                summarySeats.textContent = 'None selected';
+            }
             
-            // Update total
+            // Update total with animation
             const totalAmount = selectedSeats.length * seatPrice;
-            document.getElementById('summaryTotal').textContent = totalAmount.toFixed(2);
+            const totalElement = document.getElementById('summaryTotal');
+            const currentTotal = parseFloat(totalElement.textContent);
+            
+            if (currentTotal !== totalAmount) {
+                totalElement.classList.add('animate__animated', 'animate__pulse');
+                totalElement.textContent = totalAmount.toFixed(2);
+                
+                setTimeout(() => {
+                    totalElement.classList.remove('animate__animated', 'animate__pulse');
+                }, 500);
+            }
         }
         
-        // Form submission
-        document.getElementById('bookingForm').addEventListener('submit', function(e) {
+        function updatePaymentStatus() {
+            const paymentStatus = document.querySelector('.payment-status .alert');
+            const allRequired = areAllRequiredFieldsFilled();
+            const hasSeats = selectedSeats.length > 0;
+            
+            if (allRequired && hasSeats) {
+                paymentStatus.className = 'alert alert-success d-flex align-items-center animate__animated animate__fadeInDown';
+                paymentStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i><small>Ready for booking!</small>';
+            } else if (hasSeats) {
+                paymentStatus.className = 'alert alert-warning d-flex align-items-center';
+                paymentStatus.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i><small>Please complete all required fields</small>';
+            } else {
+                paymentStatus.className = 'alert alert-info d-flex align-items-center';
+                paymentStatus.innerHTML = '<i class="fas fa-info-circle me-2"></i><small>Select seats to continue</small>';
+            }
+        }
+        
+        function areAllRequiredFieldsFilled() {
+            const requiredFields = form.querySelectorAll('[required]');
+            return Array.from(requiredFields).every(field => field.value.trim() !== '');
+        }
+        
+        // Enhanced form submission
+        form.addEventListener('submit', function(e) {
             e.preventDefault();
             
+            // Validate all fields
+            let isFormValid = true;
+            requiredFields.forEach(field => {
+                if (!validateField(field)) {
+                    isFormValid = false;
+                }
+            });
+            
             if (selectedSeats.length === 0) {
-                alert('Please select at least one seat');
+                showNotification('Please select at least one seat', 'warning');
                 return;
             }
+            
+            if (!isFormValid) {
+                showNotification('Please fill in all required fields correctly', 'warning');
+                return;
+            }
+            
+            // Show loading state
+            const originalContent = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Booking...';
+            submitBtn.disabled = true;
             
             // Collect form data
             const formData = {
@@ -311,54 +579,253 @@
                 totalAmount: selectedSeats.length * seatPrice
             };
             
-            // In a real application, this would be sent to the server
-            console.log('Booking data:', formData);
-            
-            // Show success message
-            alert('Booking created successfully!');
-            
-            // Redirect to bookings list
-            window.location.href = "{{ url_for('bookings.index') }}";
+            // Simulate API call
+            setTimeout(() => {
+                // In a real application, this would be sent to the server
+                console.log('Booking data:', formData);
+                
+                // Reset button state
+                submitBtn.innerHTML = originalContent;
+                submitBtn.disabled = false;
+                
+                // Show success message
+                showNotification('Booking created successfully!', 'success');
+                
+                // Redirect to bookings list after delay
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('bookings.index') }}";
+                }, 2000);
+            }, 2000);
         });
+        
+        // Initialize
+        updateSummary();
+        updatePaymentStatus();
     });
+    
+    // Utility functions
+    function showNotification(message, type = 'info') {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show animate__animated animate__fadeInDown position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+    
+    function printSummary() {
+        window.print();
+        showNotification('Print dialog opened', 'info');
+    }
+    
+    function emailSummary() {
+        const email = prompt('Enter email address to send booking summary:');
+        if (email) {
+            showNotification(`Booking summary sent to ${email}`, 'success');
+        }
+    }
 </script>
 
 <style>
     .seat-layout {
-        max-width: 400px;
+        max-width: 500px;
         margin: 0 auto;
+        background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+        border-radius: var(--border-radius-xl);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
     }
     
     .screen {
-        background-color: #ccc;
-        padding: 5px;
-        border-radius: 5px;
-        font-weight: bold;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+        padding: var(--spacing-md);
+        border-radius: 50px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        margin-bottom: var(--spacing-lg);
     }
     
     .seat-container {
         display: flex;
         flex-direction: column;
         align-items: center;
+        gap: var(--spacing-md);
     }
     
     .seat-row {
         display: flex;
         align-items: center;
+        gap: var(--spacing-sm);
     }
     
     .seat-label {
-        width: 20px;
+        width: 30px;
         text-align: center;
-        font-weight: bold;
+        font-weight: 700;
+        color: var(--gray-600);
+        font-size: var(--font-size-sm);
+    }
+    
+    .seat-group {
+        display: flex;
+        gap: var(--spacing-sm);
+        flex-wrap: wrap;
+        justify-content: center;
     }
     
     .seat {
-        width: 35px;
-        height: 35px;
-        margin: 2px;
-        font-size: 12px;
+        width: 40px;
+        height: 40px;
+        margin: 0;
+        font-size: var(--font-size-xs);
         padding: 0;
+        border-radius: var(--border-radius-md);
+        transition: all var(--transition-normal);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .seat::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width var(--transition-slow), height var(--transition-slow);
+    }
+    
+    .seat:hover::before {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .seat.btn-outline-success {
+        background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+        border: 2px solid var(--success-color);
+        color: white;
+        transform: scale(1);
+    }
+    
+    .seat.btn-outline-success:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    
+    .seat.btn-warning {
+        background: linear-gradient(135deg, var(--warning-color) 0%, #d97706 100%);
+        border: 2px solid var(--warning-color);
+        color: white;
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+    
+    .booking-summary-card {
+        top: 20px;
+        z-index: 100;
+    }
+    
+    .summary-item {
+        padding: var(--spacing-sm);
+        border-radius: var(--border-radius-md);
+        transition: all var(--transition-fast);
+    }
+    
+    .summary-item:hover {
+        background-color: var(--gray-50);
+        transform: translateX(4px);
+    }
+    
+    .summary-total {
+        background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+        padding: var(--spacing-lg);
+        border-radius: var(--border-radius-lg);
+        border: 2px solid var(--gray-200);
+    }
+    
+    .payment-status .alert {
+        border-radius: var(--border-radius-lg);
+        border: none;
+        animation: slideInRight var(--transition-normal);
+    }
+    
+    .quick-actions .btn {
+        transition: all var(--transition-normal);
+    }
+    
+    .quick-actions .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+        font-size: var(--font-size-sm);
+    }
+    
+    .breadcrumb a:hover {
+        color: var(--primary-color) !important;
+    }
+    
+    .input-group-text {
+        border-radius: var(--border-radius-lg) 0 0 var(--border-radius-lg);
+    }
+    
+    .form-control.border-start-0 {
+        border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
+    }
+    
+    .bg-gradient-light {
+        background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-50) 100%);
+    }
+    
+    @keyframes slideInRight {
+        from {
+            transform: translateX(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .seat-layout {
+            max-width: 100%;
+            padding: var(--spacing-md);
+        }
+        
+        .seat {
+            width: 35px;
+            height: 35px;
+            font-size: 10px;
+        }
+        
+        .seat-group {
+            gap: var(--spacing-xs);
+        }
+        
+        .booking-summary-card {
+            position: static;
+            margin-top: var(--spacing-lg);
+        }
     }
 </style>
 {% endblock %}

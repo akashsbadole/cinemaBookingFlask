@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Seat Utilization Report</h1>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Report Parameters</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" id="utilization-form">
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="mb-3">
+                                {{ form.screen_id.label(class="form-label") }}
+                                {{ form.screen_id(class="form-control") }}
+                                {% if form.screen_id.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.screen_id.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        {{ form.start_date.label(class="form-label") }}
+                                        {{ form.start_date(class="form-control") }}
+                                        {% if form.start_date.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.start_date.errors %}
+                                                    <small>{{ error }}</small>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        {{ form.end_date.label(class="form-label") }}
+                                        {{ form.end_date(class="form-control") }}
+                                        {% if form.end_date.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.end_date.errors %}
+                                                    <small>{{ error }}</small>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {{ form.submit(class="btn btn-primary") }}
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Quick Filters</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-primary" onclick="setDateRange(7)">Last 7 Days</button>
+                            <button type="button" class="btn btn-outline-primary" onclick="setDateRange(30)">Last 30 Days</button>
+                            <button type="button" class="btn btn-outline-primary" onclick="setDateRange(90)">Last 90 Days</button>
+                            <button type="button" class="btn btn-outline-primary" onclick="setDateRange(365)">Last Year</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if report_data %}
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Utilization Report - {{ report_data.screen.name }}</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" id="print-report">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                    <button class="btn btn-outline-success" id="export-report">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Report Summary -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Total Shows</h5>
+                                <h2 class="mb-0">{{ report_data.period.total_shows }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Total Seats</h5>
+                                <h2 class="mb-0">{{ report_data.screen.total_seats }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Booked Seats</h5>
+                                <h2 class="mb-0">{{ report_data.total_booked_seats }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Utilization</h5>
+                                <h2 class="mb-0">{{ report_data.overall_utilization }}%</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Utilization by Seat Type -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5>Utilization by Seat Type</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">Normal Seats</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-2">
+                                            <small class="text-muted">Capacity</small>
+                                            <h5>{{ report_data.by_seat_type.normal.total_capacity }}</h5>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted">Booked</small>
+                                            <h5>{{ report_data.by_seat_type.normal.booked }}</h5>
+                                        </div>
+                                        <div class="mb-0">
+                                            <small class="text-muted">Utilization</small>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-success" style="width: {{ report_data.by_seat_type.normal.utilization }}%">
+                                                    {{ "%.1f"|format(report_data.by_seat_type.normal.utilization) }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header bg-warning text-white">
+                                        <h6 class="mb-0">Premium Seats</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-2">
+                                            <small class="text-muted">Capacity</small>
+                                            <h5>{{ report_data.by_seat_type.premium.total_capacity }}</h5>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted">Booked</small>
+                                            <h5>{{ report_data.by_seat_type.premium.booked }}</h5>
+                                        </div>
+                                        <div class="mb-0">
+                                            <small class="text-muted">Utilization</small>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-warning" style="width: {{ report_data.by_seat_type.premium.utilization }}%">
+                                                    {{ "%.1f"|format(report_data.by_seat_type.premium.utilization) }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header bg-danger text-white">
+                                        <h6 class="mb-0">VIP Seats</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-2">
+                                            <small class="text-muted">Capacity</small>
+                                            <h5>{{ report_data.by_seat_type.vip.total_capacity }}</h5>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted">Booked</small>
+                                            <h5>{{ report_data.by_seat_type.vip.booked }}</h5>
+                                        </div>
+                                        <div class="mb-0">
+                                            <small class="text-muted">Utilization</small>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-danger" style="width: {{ report_data.by_seat_type.vip.utilization }}%">
+                                                    {{ "%.1f"|format(report_data.by_seat_type.vip.utilization) }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chart Visualization -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5>Utilization Chart</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <canvas id="utilizationChart" width="400" height="150"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Report Details -->
+                <div class="row">
+                    <div class="col-12">
+                        <h5>Report Details</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Screen Name</td>
+                                        <td>{{ report_data.screen.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Report Period</td>
+                                        <td>{{ report_data.period.start_date }} to {{ report_data.period.end_date }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Total Shows</td>
+                                        <td>{{ report_data.period.total_shows }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Total Seat Capacity</td>
+                                        <td>{{ report_data.total_seat_capacity }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Total Booked Seats</td>
+                                        <td>{{ report_data.total_booked_seats }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Overall Utilization</td>
+                                        <td>{{ report_data.overall_utilization }}%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set date range function
+    window.setDateRange = function(days) {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - days);
+        
+        document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
+        document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
+    };
+    
+    // Print report
+    const printButton = document.getElementById('print-report');
+    if (printButton) {
+        printButton.addEventListener('click', function() {
+            window.print();
+        });
+    }
+    
+    // Export report
+    const exportButton = document.getElementById('export-report');
+    if (exportButton) {
+        exportButton.addEventListener('click', function() {
+            // Create CSV content
+            const csvContent = "data:text/csv;charset=utf-8,";
+            const headers = "Metric,Value\n";
+            const rows = [
+                `Screen Name,{{ report_data.screen.name if report_data else '' }}`,
+                `Report Period,{{ report_data.period.start_date if report_data else '' }} to {{ report_data.period.end_date if report_data else '' }}`,
+                `Total Shows,{{ report_data.period.total_shows if report_data else '' }}`,
+                `Total Seat Capacity,{{ report_data.total_seat_capacity if report_data else '' }}`,
+                `Total Booked Seats,{{ report_data.total_booked_seats if report_data else '' }}`,
+                `Overall Utilization,{{ report_data.overall_utilization if report_data else '' }}%`,
+                `Normal Seats Capacity,{{ report_data.by_seat_type.normal.total_capacity if report_data else '' }}`,
+                `Normal Seats Booked,{{ report_data.by_seat_type.normal.booked if report_data else '' }}`,
+                `Normal Seats Utilization,{{ "%.1f"|format(report_data.by_seat_type.normal.utilization) if report_data else '' }}%`,
+                `Premium Seats Capacity,{{ report_data.by_seat_type.premium.total_capacity if report_data else '' }}`,
+                `Premium Seats Booked,{{ report_data.by_seat_type.premium.booked if report_data else '' }}`,
+                `Premium Seats Utilization,{{ "%.1f"|format(report_data.by_seat_type.premium.utilization) if report_data else '' }}%`,
+                `VIP Seats Capacity,{{ report_data.by_seat_type.vip.total_capacity if report_data else '' }}`,
+                `VIP Seats Booked,{{ report_data.by_seat_type.vip.booked if report_data else '' }}`,
+                `VIP Seats Utilization,{{ "%.1f"|format(report_data.by_seat_type.vip.utilization) if report_data else '' }}%`
+            ];
+            
+            const encodedUri = encodeURI(csvContent + headers + rows.join("\n"));
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "seat_utilization_report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    }
+    
+    // Create utilization chart
+    {% if report_data %}
+    const ctx = document.getElementById('utilizationChart').getContext('2d');
+    const utilizationChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Normal', 'Premium', 'VIP'],
+            datasets: [{
+                label: 'Utilization (%)',
+                data: [
+                    {{ "%.1f"|format(report_data.by_seat_type.normal.utilization) }},
+                    {{ "%.1f"|format(report_data.by_seat_type.premium.utilization) }},
+                    {{ "%.1f"|format(report_data.by_seat_type.vip.utilization) }}
+                ],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(220, 53, 69, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(220, 53, 69, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+});
+</script>
+
+<style>
+@media print {
+    .btn-group, .card-header .btn-group {
+        display: none !important;
+    }
+    
+    .card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
+</style>
+{% endblock %}

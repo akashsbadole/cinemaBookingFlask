@@ -2,6 +2,9 @@
 Booking utilities for seat management and availability checking
 """
 from datetime import datetime, timedelta
+import io
+import qrcode
+from flask import send_file
 from app.database import db
 from app.bookings.models import BookingSeat
 from app.screens.models import Seat
@@ -285,3 +288,50 @@ class BookingCalculator:
         
         breakdown['total_amount'] = total
         return breakdown
+
+def generate_qr_code(data):
+    """Generate QR code for the given data"""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+    
+    return img_io
+
+def get_available_seats(show_id):
+    """Get available seats for a show"""
+    return SeatManager.get_available_seats(show_id)
+
+def validate_booking_rules(show_id, seat_ids, user_id=None):
+    """Validate booking rules and constraints"""
+    from app.shows.models import Show
+    
+    show = Show.query.get(show_id)
+    if not show:
+        return False, "Show not found"
+    
+    # Check maximum seats per booking
+    if len(seat_ids) > 10:
+        return False, "Maximum 10 seats allowed per booking"
+    
+    # Check if show is in the future
+    if show.show_date < datetime.now().date():
+        return False, "Cannot book past shows"
+    
+    # Check if show is already started
+    show_datetime = datetime.combine(show.show_date, show.show_time)
+    if show_datetime <= datetime.now():
+        return False, "Show has already started"
+    
+    # Check seat availability
+    return SeatManager.validate_seat_availability(show_id, seat_ids)

@@ -5,9 +5,20 @@ from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from app.screens import bp
 from app.auth.decorators import admin_required
-from app.screens.forms import ScreenForm, SeatForm, BulkSeatForm, SeatLayoutForm
-from app.screens.models import Screen, Seat
+from app.screens.forms import (
+    ScreenForm, SeatForm, BulkSeatForm, SeatLayoutForm,
+    BulkUpdateSeatTypesForm, BulkUpdatePricesForm, 
+    SeatAvailabilityForm, SeatUtilizationForm
+)
+from app.screens.models import Screen, Seat, SeatLock
+from app.screens.utils import (
+    check_seat_availability, get_seat_layout_with_availability,
+    lock_seats_for_booking, release_seat_locks, cleanup_expired_locks,
+    get_seat_utilization_report, update_seat_prices, bulk_update_seat_types,
+    get_seat_pricing_matrix, apply_dynamic_pricing, get_seat_availability_summary
+)
 from app.database import db
+from datetime import datetime, timedelta
 
 @bp.route('/')
 @login_required
@@ -164,7 +175,7 @@ def edit_seat(seat_id):
             return redirect(url_for('screens.edit_seat', seat_id=seat_id))
         
         # Check if seat has bookings
-        from app.bookings.models import BookingSeat
+        from app.bookings.models import BookingSeat, Booking
         active_bookings = BookingSeat.query.filter_by(seat_id=seat_id).join('booking').filter(
             Booking.status.in_(['confirmed', 'pending'])
         ).count()
@@ -197,7 +208,7 @@ def delete_seat(seat_id):
     seat = Seat.query.get_or_404(seat_id)
     
     # Check if seat has bookings
-    from app.bookings.models import BookingSeat
+    from app.bookings.models import BookingSeat, Booking
     active_bookings = BookingSeat.query.filter_by(seat_id=seat_id).join('booking').filter(
         Booking.status.in_(['confirmed', 'pending'])
     ).count()
@@ -286,6 +297,177 @@ def custom_layout(screen_id):
                           screen=screen,
                           example_text=example_text)
 
+@bp.route('/<int:screen_id>/seats/bulk-update-types', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def bulk_update_seat_types(screen_id):
+    """Bulk update seat types"""
+    screen = Screen.query.get_or_404(screen_id)
+    form = BulkUpdateSeatTypesForm()
+    
+    # Set screen ID
+    form.screen_id.data = screen_id
+    
+    if form.validate_on_submit():
+        try:
+            # Parse seat updates
+            updates = {}
+            for line in form.seat_updates.data.strip().split('\n'):
+                if ':' in line:
+                    seat_id, seat_type = line.strip().split(':', 1)
+                    updates[seat_id.strip()] = seat_type.strip().lower()
+            
+            result = bulk_update_seat_types(screen_id, updates)
+            
+            if result['success']:
+                flash(f"Updated {result['updated_count']} seats successfully!", 'success')
+                
+                if result['errors']:
+                    flash(f"Failed to update {len(result['errors'])} seats.", 'warning')
+                    for error in result['errors']:
+                        flash(f"Seat {error['seat']}: {error['reason']}", 'warning')
+            else:
+                flash(f"Error updating seats: {result.get('message', 'Unknown error')}", 'danger')
+            
+            return redirect(url_for('screens.manage_seats', screen_id=screen_id))
+        except Exception as e:
+            flash(f'Error updating seat types: {str(e)}', 'danger')
+    
+    return render_template('screens/bulk_update_types.html', 
+                          title=f'Bulk Update Seat Types - {screen.name}',
+                          form=form, 
+                          screen=screen)
+
+@bp.route('/<int:screen_id>/seats/bulk-update-prices', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def bulk_update_prices(screen_id):
+    """Bulk update seat prices"""
+    screen = Screen.query.get_or_404(screen_id)
+    form = BulkUpdatePricesForm()
+    
+    # Set screen ID and current prices
+    form.screen_id.data = screen_id
+    
+    # Get current prices by type
+    seat_counts = screen.get_seat_count_by_type()
+    current_prices = {}
+    
+    for seat_type in ['normal', 'premium', 'vip']:
+        seats = Seat.query.filter_by(screen_id=screen_id, type=seat_type).first()
+        if seats:
+            current_prices[seat_type] = float(seats.price)
+        else:
+            current_prices[seat_type] = 100.00 if seat_type == 'normal' else (150.00 if seat_type == 'premium' else 250.00)
+    
+    if request.method == 'GET':
+        form.normal_price.data = current_prices['normal']
+        form.premium_price.data = current_prices['premium']
+        form.vip_price.data = current_prices['vip']
+    
+    if form.validate_on_submit():
+        try:
+            price_updates = {
+                'normal': float(form.normal_price.data),
+                'premium': float(form.premium_price.data),
+                'vip': float(form.vip_price.data)
+            }
+            
+            result = update_seat_prices(screen_id, price_updates)
+            
+            if result['success']:
+                flash(result['message'], 'success')
+            else:
+                flash(result['message'], 'danger')
+            
+            return redirect(url_for('screens.manage_seats', screen_id=screen_id))
+        except Exception as e:
+            flash(f'Error updating prices: {str(e)}', 'danger')
+    
+    return render_template('screens/bulk_update_prices.html', 
+                          title=f'Bulk Update Prices - {screen.name}',
+                          form=form, 
+                          screen=screen,
+                          seat_counts=seat_counts,
+                          current_prices=current_prices)
+
+@bp.route('/seat-availability', methods=['GET', 'POST'])
+@login_required
+def seat_availability():
+    """Check seat availability for shows"""
+    form = SeatAvailabilityForm()
+    
+    # Populate screen choices
+    screens = Screen.query.all()
+    form.screen_id.choices = [(s.id, s.name) for s in screens]
+    
+    # Initialize show choices (will be populated by JavaScript)
+    form.show_id.choices = [(0, 'Select a screen first')]
+    
+    if form.validate_on_submit() and form.show_id.data != 0:
+        try:
+            screen_id = form.screen_id.data
+            show_id = form.show_id.data
+            
+            # Get seat layout with availability
+            layout_data = get_seat_layout_with_availability(screen_id, show_id)
+            
+            if layout_data:
+                return render_template('screens/seat_availability.html', 
+                                      title='Seat Availability',
+                                      form=form,
+                                      layout_data=layout_data)
+            else:
+                flash('No seat layout found for this screen.', 'danger')
+                return redirect(url_for('screens.seat_availability'))
+        except Exception as e:
+            flash(f'Error checking seat availability: {str(e)}', 'danger')
+    
+    return render_template('screens/seat_availability.html', 
+                          title='Seat Availability',
+                          form=form,
+                          layout_data=None)
+
+@bp.route('/seat-utilization', methods=['GET', 'POST'])
+@login_required
+def seat_utilization():
+    """Generate seat utilization reports"""
+    form = SeatUtilizationForm()
+    
+    # Populate screen choices
+    screens = Screen.query.all()
+    form.screen_id.choices = [(s.id, s.name) for s in screens]
+    
+    # Set default date range (last 30 days)
+    if request.method == 'GET':
+        form.start_date.data = datetime.now() - timedelta(days=30)
+        form.end_date.data = datetime.now()
+    
+    if form.validate_on_submit():
+        try:
+            screen_id = form.screen_id.data
+            start_date = form.start_date.data
+            end_date = form.end_date.data
+            
+            # Get utilization report
+            report_data = get_seat_utilization_report(screen_id, start_date, end_date)
+            
+            if report_data:
+                return render_template('screens/seat_utilization.html', 
+                                      title='Seat Utilization Report',
+                                      form=form,
+                                      report_data=report_data)
+            else:
+                flash('No utilization data found for this screen.', 'danger')
+                return redirect(url_for('screens.seat_utilization'))
+        except Exception as e:
+            flash(f'Error generating utilization report: {str(e)}', 'danger')
+    
+    return render_template('screens/seat_utilization.html', 
+                          title='Seat Utilization Report',
+                          form=form,
+                          report_data=None)
+
 @bp.route('/<int:screen_id>/seats/api', methods=['GET'])
 @login_required
 def get_seats_api(screen_id):
@@ -315,3 +497,192 @@ def get_seats_api(screen_id):
         },
         'seats': seats_data
     })
+
+@bp.route('/<int:screen_id>/shows/<int:show_id>/seats/api', methods=['GET'])
+@login_required
+def get_seats_with_availability_api(screen_id, show_id):
+    """API endpoint to get seat data with availability for a specific show"""
+    layout_data = get_seat_layout_with_availability(screen_id, show_id)
+    
+    if not layout_data:
+        return jsonify({'error': 'Screen or show not found'}), 404
+    
+    return jsonify(layout_data)
+
+@bp.route('/cleanup-expired-locks', methods=['POST'])
+@login_required
+@admin_required
+def cleanup_expired_locks_route():
+    """Clean up expired seat locks"""
+    try:
+        count = cleanup_expired_locks()
+        flash(f'Cleaned up {count} expired seat locks.', 'success')
+    except Exception as e:
+        flash(f'Error cleaning up expired locks: {str(e)}', 'danger')
+    
+    return redirect(url_for('screens.index'))
+
+@bp.route('/api/shows/<int:screen_id>')
+@login_required
+def get_shows_for_screen(screen_id):
+    """API endpoint to get shows for a specific screen"""
+    from app.shows.models import Show
+    
+    shows = Show.query.filter_by(
+        screen_id=screen_id,
+        status='scheduled'
+    ).filter(
+        Show.show_date >= datetime.now().date()
+    ).order_by(Show.show_date, Show.show_time).all()
+    
+    shows_data = [(0, 'Select a show')]
+    shows_data.extend([(s.id, f"{s.show_date.strftime('%Y-%m-%d')} {s.show_time.strftime('%H:%M')} - {s.movie.name}") for s in shows])
+    
+    return jsonify(shows_data)
+
+@bp.route('/<int:screen_id>/pricing-matrix', methods=['GET'])
+@login_required
+def pricing_matrix(screen_id):
+    """View pricing matrix for a screen"""
+    from app.screens.utils import get_seat_pricing_matrix
+    
+    pricing_data = get_seat_pricing_matrix(screen_id)
+    
+    if not pricing_data:
+        flash('Screen not found', 'danger')
+        return redirect(url_for('screens.index'))
+    
+    return render_template('screens/pricing_matrix.html',
+                          title=f'Pricing Matrix - {pricing_data["screen"]["name"]}',
+                          pricing_data=pricing_data)
+
+@bp.route('/<int:screen_id>/dynamic-pricing', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def dynamic_pricing(screen_id):
+    """Apply dynamic pricing rules"""
+    from app.screens.utils import apply_dynamic_pricing
+    
+    if request.method == 'GET':
+        screen = Screen.query.get_or_404(screen_id)
+        return render_template('screens/dynamic_pricing.html',
+                              title=f'Dynamic Pricing - {screen.name}',
+                              screen=screen)
+    
+    elif request.method == 'POST':
+        show_id = request.form.get('show_id', type=int)
+        weekend_surcharge = float(request.form.get('weekend_surcharge', 1.2))
+        matinee_discount = float(request.form.get('matinee_discount', 0.9))
+        evening_surcharge = float(request.form.get('evening_surcharge', 1.1))
+        holiday_surcharge = float(request.form.get('holiday_surcharge', 1.5))
+        
+        pricing_rules = {
+            'weekend_surcharge': weekend_surcharge,
+            'matinee_discount': matinee_discount,
+            'evening_surcharge': evening_surcharge,
+            'holiday_surcharge': holiday_surcharge
+        }
+        
+        result = apply_dynamic_pricing(screen_id, show_id, pricing_rules)
+        
+        if result['success']:
+            flash(f'Dynamic pricing has been applied successfully!', 'success')
+        else:
+            flash(f'Error applying dynamic pricing: {result.get("message", "Unknown error")}', 'danger')
+        
+        return redirect(url_for('screens.manage_seats', screen_id=screen_id))
+
+@bp.route('/<int:screen_id>/shows/<int:show_id>/availability-summary', methods=['GET'])
+@login_required
+def seat_availability_summary(screen_id, show_id):
+    """Get detailed seat availability summary for a show"""
+    from app.screens.utils import get_seat_availability_summary
+    
+    summary_data = get_seat_availability_summary(screen_id, show_id)
+    
+    if not summary_data:
+        flash('Screen or show not found', 'danger')
+        return redirect(url_for('screens.index'))
+    
+    return render_template('screens/availability_summary.html',
+                          title=f'Seat Availability - {summary_data["screen"]["name"]}',
+                          summary_data=summary_data)
+
+
+@bp.route('/<int:screen_id>/shows/<int:show_id>/lock-seats', methods=['POST'])
+@login_required
+def lock_seats(screen_id, show_id):
+    """Lock seats for a show"""
+    seat_ids = request.json.get('seat_ids', [])
+    
+    if not seat_ids:
+        return jsonify({'success': False, 'message': 'No seats selected'}), 400
+    
+    try:
+        result = lock_seats_for_booking(seat_ids, show_id, current_user.id)
+        
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'message': f'Successfully locked {len(result["locked_seats"])} seats',
+                'locked_seats': [seat.id for seat in result['locked_seats']],
+                'errors': result['errors']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to lock seats',
+                'errors': result['errors']
+            }), 400
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/<int:screen_id>/shows/<int:show_id>/release-seats', methods=['POST'])
+@login_required
+def release_seats(screen_id, show_id):
+    """Release locked seats for a show"""
+    seat_ids = request.json.get('seat_ids', [])
+    
+    if not seat_ids:
+        return jsonify({'success': False, 'message': 'No seats selected'}), 400
+    
+    try:
+        released_count = release_seat_locks(seat_ids, show_id, current_user.id)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully released {released_count} seat locks',
+            'released_count': released_count
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/shows/<int:show_id>/locked-seats', methods=['GET'])
+@login_required
+def get_locked_seats(show_id):
+    """Get all locked seats for a show"""
+    try:
+        locked_seats = SeatLock.get_locked_seats_for_show(show_id)
+        
+        seats_data = []
+        for lock in locked_seats:
+            seats_data.append({
+                'id': lock.seat.id,
+                'seat_number': lock.seat.seat_number,
+                'row': lock.seat.row,
+                'column': lock.seat.column,
+                'type': lock.seat.type,
+                'user_id': lock.user_id,
+                'lock_time': lock.lock_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'expires_at': lock.expires_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        return jsonify({
+            'success': True,
+            'locked_seats': seats_data,
+            'count': len(seats_data)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500

@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Seat Layout - {{ show.movie.name }}</h1>
+            <div class="btn-group">
+                <a href="{{ url_for('shows.view', id=show.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Show Details
+                </a>
+            </div>
+        </div>
+        
+        <!-- Show Information -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Date</h5>
+                        <h4>{{ show.show_date.strftime('%d %b %Y') }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Time</h5>
+                        <h4>{{ show.show_time.strftime('%I:%M %p') }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Screen</h5>
+                        <h4>{{ show.screen.name }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Type</h5>
+                        <h4>{{ show.show_type.title() }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seat Layout -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Seat Layout - {{ show.screen.name }}</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" id="toggle-legend">
+                        <i class="fas fa-info-circle"></i> Legend
+                    </button>
+                    <button class="btn btn-outline-secondary" id="refresh-seats">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="seat-legend" class="alert alert-info mb-3" style="display: none;">
+                    <h6>Seat Status:</h6>
+                    <div class="d-flex gap-3">
+                        <span><i class="fas fa-chair text-success"></i> Available</span>
+                        <span><i class="fas fa-chair text-danger"></i> Booked</span>
+                        <span><i class="fas fa-chair text-warning"></i> Locked</span>
+                    </div>
+                    <h6 class="mt-2">Seat Types:</h6>
+                    <div class="d-flex gap-3">
+                        <span><i class="fas fa-chair text-success"></i> Normal</span>
+                        <span><i class="fas fa-chair text-warning"></i> Premium</span>
+                        <span><i class="fas fa-chair text-danger"></i> VIP</span>
+                    </div>
+                </div>
+
+                {% if layout_data and layout_data.layout %}
+                <div class="seat-container">
+                    <div class="screen-view mb-3">
+                        <div class="text-center text-muted">SCREEN</div>
+                        <hr style="border-top: 3px solid #666;">
+                    </div>
+                    
+                    <div class="seat-layout">
+                        {% for row_letter in range(layout_data.screen.total_rows) %}
+                        {% set row_char = chr(65 + row_letter) %}
+                        <div class="seat-row">
+                            <div class="seat-label">{{ row_char }}</div>
+                            {% for col in range(1, layout_data.screen.total_columns + 1) %}
+                                {% if row_char in layout_data.layout and col in layout_data.layout[row_char] %}
+                                    {% set seat = layout_data.layout[row_char][col] %}
+                                    <div class="seat seat-{{ seat.type }} seat-{{ seat.status }} seat-item" 
+                                         data-seat-id="{{ seat.id }}"
+                                         data-seat-name="{{ seat.name }}"
+                                         data-seat-type="{{ seat.type }}"
+                                         data-seat-price="{{ seat.price }}"
+                                         data-seat-status="{{ seat.status }}"
+                                         title="{{ seat.name }} - {{ seat.type.title() }} - ₹{{ seat.price }} - {{ seat.status.title() }}">
+                                        {{ col }}
+                                    </div>
+                                {% else %}
+                                    <div class="seat seat-empty" title="Empty seat position">
+                                        {{ col }}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                            <div class="seat-label">{{ row_char }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Column numbers -->
+                    <div class="seat-row">
+                        <div class="seat-label"></div>
+                        {% for col in range(1, layout_data.screen.total_columns + 1) %}
+                        <div class="seat-number">{{ col }}</div>
+                        {% endfor %}
+                        <div class="seat-label"></div>
+                    </div>
+                </div>
+                
+                <!-- Seat Statistics -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Available</h5>
+                                <h2 class="mb-0" id="available-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Booked</h5>
+                                <h2 class="mb-0" id="booked-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Locked</h5>
+                                <h2 class="mb-0" id="locked-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Occupancy</h5>
+                                <h2 class="mb-0" id="occupancy-percent">0%</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-th fa-3x text-muted mb-3"></i>
+                    <h5>No Seat Layout Found</h5>
+                    <p class="text-muted">This screen doesn't have any seats configured.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle legend visibility
+    const toggleLegend = document.getElementById('toggle-legend');
+    const seatLegend = document.getElementById('seat-legend');
+    
+    if (toggleLegend && seatLegend) {
+        toggleLegend.addEventListener('click', function() {
+            if (seatLegend.style.display === 'none') {
+                seatLegend.style.display = 'block';
+            } else {
+                seatLegend.style.display = 'none';
+            }
+        });
+    }
+    
+    // Refresh seats
+    const refreshButton = document.getElementById('refresh-seats');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function() {
+            location.reload();
+        });
+    }
+    
+    // Calculate seat statistics
+    function calculateStatistics() {
+        const seatItems = document.querySelectorAll('.seat-item');
+        let availableCount = 0;
+        let bookedCount = 0;
+        let lockedCount = 0;
+        
+        seatItems.forEach(seat => {
+            const status = seat.dataset.seatStatus;
+            if (status === 'available') {
+                availableCount++;
+            } else if (status === 'booked') {
+                bookedCount++;
+            } else if (status === 'locked') {
+                lockedCount++;
+            }
+        });
+        
+        const totalSeats = seatItems.length;
+        const occupiedCount = bookedCount + lockedCount;
+        const occupancyPercent = totalSeats > 0 ? Math.round((occupiedCount / totalSeats) * 100) : 0;
+        
+        // Update statistics
+        const availableCountEl = document.getElementById('available-count');
+        const bookedCountEl = document.getElementById('booked-count');
+        const lockedCountEl = document.getElementById('locked-count');
+        const occupancyPercentEl = document.getElementById('occupancy-percent');
+        
+        if (availableCountEl) availableCountEl.textContent = availableCount;
+        if (bookedCountEl) bookedCountEl.textContent = bookedCount;
+        if (lockedCountEl) lockedCountEl.textContent = lockedCount;
+        if (occupancyPercentEl) occupancyPercentEl.textContent = occupancyPercent + '%';
+    }
+    
+    // Calculate statistics on page load
+    calculateStatistics();
+    
+    // Seat hover effects
+    const seatItems = document.querySelectorAll('.seat-item');
+    seatItems.forEach(function(seat) {
+        seat.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.1)';
+            this.style.zIndex = '10';
+        });
+        
+        seat.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+            this.style.zIndex = '1';
+        });
+    });
+});
+</script>
+
+<style>
+.seat-container {
+    overflow-x: auto;
+    padding: 20px;
+}
+
+.screen-view {
+    margin-bottom: 20px;
+}
+
+.seat-layout {
+    display: inline-block;
+}
+
+.seat-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.seat-label {
+    width: 30px;
+    text-align: center;
+    font-weight: bold;
+    color: #666;
+}
+
+.seat-number {
+    width: 30px;
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+}
+
+.seat {
+    width: 35px;
+    height: 35px;
+    margin: 2px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    border: 2px solid;
+}
+
+/* Seat types */
+.seat-normal {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.seat-premium {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.seat-vip {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+/* Seat statuses */
+.seat-available {
+    opacity: 1.0;
+}
+
+.seat-booked {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.seat-locked {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 5px,
+        rgba(0,0,0,.1) 5px,
+        rgba(0,0,0,.1) 10px
+    );
+}
+
+.seat-empty {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #6c757d;
+    opacity: 0.5;
+}
+
+.seat:hover {
+    transform: scale(1.1);
+    z-index: 10;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+</style>
+{% endblock %}

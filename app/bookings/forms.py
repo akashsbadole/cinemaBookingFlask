@@ -8,8 +8,11 @@ from wtforms.widgets import TextArea
 from datetime import datetime, time
 import re
 from app.validators import (
-    BusinessValidators, DataValidators, InputSanitizer, 
+    BusinessValidators, DataValidators, InputSanitizer,
     SecurityValidator, CrossFieldValidators, validate_seat_availability
+)
+from app.enhanced_validators import (
+    BusinessRuleValidators, DatabaseConstraintValidators, ValidationAuditor
 )
 from app.shows.models import Show
 from app.movies.models import Movie
@@ -127,12 +130,12 @@ class BookingForm(FlaskForm):
             field.data = sanitized
     
     def validate_total_amount(self, field):
-        """Validate total amount"""
+        """Validate total amount with business rules"""
         if field.data:
             # Sanitize numeric input
             sanitized = InputSanitizer.sanitize_numeric(
-                field.data, 
-                min_val=0.01, 
+                field.data,
+                min_val=0.01,
                 max_val=50000,  # Maximum reasonable amount
                 decimal_places=2
             )
@@ -140,8 +143,35 @@ class BookingForm(FlaskForm):
             if sanitized is None:
                 raise ValidationError('Invalid amount format')
             
+            # Validate payment method limits
+            payment_method = self.payment_method.data if self.payment_method.data else None
+            if payment_method:
+                from flask_login import current_user
+                user_id = current_user.id if current_user.is_authenticated else None
+                
+                payment_valid, payment_error = BusinessRuleValidators.validate_payment_method_limits(
+                    user_id, payment_method, sanitized
+                )
+                
+                if not payment_valid:
+                    raise ValidationError(payment_error)
+            
             # Update field data with sanitized version
             field.data = sanitized
+    
+    def validate_show_id(self, field):
+        """Validate show selection with business rules"""
+        if field.data and field.data > 0:
+            from flask_login import current_user
+            
+            # Validate booking time restrictions
+            time_valid, time_error = BusinessRuleValidators.validate_booking_time_restrictions(
+                field.data,
+                current_user.id if current_user.is_authenticated else None
+            )
+            
+            if not time_valid:
+                raise ValidationError(time_error)
 
 
 class SeatSelectionForm(FlaskForm):
@@ -156,7 +186,7 @@ class SeatSelectionForm(FlaskForm):
     submit = SubmitField('Submit')
     
     def validate_selected_seats(self, field):
-        """Validate selected seats format and availability"""
+        """Validate selected seats format and availability with enhanced checks"""
         if field.data:
             # Parse seat data (expecting format like "A1,A2,A3")
             seat_ids = [int(sid.strip()) for sid in field.data.split(',') if sid.strip()]
@@ -176,9 +206,14 @@ class SeatSelectionForm(FlaskForm):
             # Validate seat availability if show_id is provided
             show_id = self.show_id.data
             if show_id:
+                # Use existing validator for basic availability
                 is_valid, error_message = BusinessValidators.validate_seat_availability(show_id, seat_ids)
                 if not is_valid:
                     raise ValidationError(error_message)
+                
+                # Enhanced validation: Check pricing rules
+                # We'll need the total amount for this, but it's not in this form
+                # This could be added as a hidden field or validated at the next step
 
 
 class ShowSelectionForm(FlaskForm):

@@ -31,33 +31,42 @@ def create_app(config_name=None):
     login_manager.init_app(app)
     csrf.init_app(app)
     
-    # Initialize security headers with CSP
+    # Initialize security headers with CSP - updated to allow external CDNs
     csp = {
         'default-src': "'self'",
         'script-src': [
             "'self'",
             "'unsafe-inline'",  # Allow inline scripts for validation
             'https://www.paypal.com',
-            'https://www.sandbox.paypal.com'
+            'https://www.sandbox.paypal.com',
+            'https://cdn.jsdelivr.net',
+            'https://cdnjs.cloudflare.com'
         ],
         'style-src': [
             "'self'",
             "'unsafe-inline'",  # Allow inline styles
-            'https://fonts.googleapis.com'
+            'https://fonts.googleapis.com',
+            'https://cdn.jsdelivr.net',
+            'https://cdnjs.cloudflare.com'
         ],
         'font-src': [
             "'self'",
-            'https://fonts.gstatic.com'
+            'https://fonts.gstatic.com',
+            'https://cdnjs.cloudflare.com'
         ],
         'img-src': [
             "'self'",
             'data:',
-            'https:'
+            'https:',
+            'https://cdn.jsdelivr.net',
+            'https://cdnjs.cloudflare.com'
         ],
         'connect-src': [
             "'self'",
             'https://api.sandbox.paypal.com',
-            'https://api.paypal.com'
+            'https://api.paypal.com',
+            'https://cdn.jsdelivr.net',
+            'https://cdnjs.cloudflare.com'
         ]
     }
     
@@ -100,6 +109,9 @@ def create_app(config_name=None):
     
     from app.shows import bp as shows_bp
     app.register_blueprint(shows_bp, url_prefix='/shows')
+    
+    from app.validation_api import validation_api
+    app.register_blueprint(validation_api)
     
     # Import models to ensure they are registered with SQLAlchemy
     from app import models

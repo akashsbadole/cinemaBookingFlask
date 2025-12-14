@@ -5,4 +5,4 @@ from flask import Blueprint
 
 bp = Blueprint('reports', __name__)
 
-from app.reports import routes, models
+from app.reports import routes, models, seat_utilization_routes
