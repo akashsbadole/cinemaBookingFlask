@@ -1,10 +1,11 @@
 """
 Booking Routes
 """
+from app.search import BookingSearch, SearchAnalytics, get_search_params_from_request
 from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, make_response, send_file, abort
 from flask_login import login_required, current_user
 from app.bookings import bp
-from app.bookings.forms import BookingForm, ShowSelectionForm, BookingSearchForm
+from app.bookings.forms import BookingForm, ShowSelectionForm, BookingSearchForm, AdvancedBookingSearchForm
 from app.bookings.models import Booking, BookingSeat
 from app.bookings.utils import generate_qr_code, get_available_seats, validate_booking_rules
 from app.movies.models import Movie
@@ -165,118 +166,93 @@ def new_booking(show_id):
 def index():
     """List all bookings with search and filtering"""
     try:
-        # Get search parameters
-        search_term = request.args.get('search', '')
-        search_type = request.args.get('search_type', 'all')
-        date_from = request.args.get('date_from', '')
-        date_to = request.args.get('date_to', '')
+        # Get search parameters using centralized utility
+        params = get_search_params_from_request(request, [
+            'search', 'search_type', 'date_from', 'date_to', 'booking_status', 'payment_status',
+            'payment_method', 'amount_min', 'amount_max', 'show_id', 'customer_email',
+            'customer_phone', 'seat_number', 'sort_by', 'page', 'per_page'
+        ])
         
         # Create search form
         search_form = BookingSearchForm()
-        search_form.search.data = search_term
-        search_form.search_type.data = search_type
-        search_form.date_from.data = date_from
-        search_form.date_to.data = date_to
         
-        # Security check for injection attempts
-        if SecurityValidator.detect_sql_injection([search_term, search_type]):
-            ErrorLogger.log_security_event(
-                'sql_injection_attempt',
-                f'SQL injection attempt detected in booking search: {search_term}',
-                request,
+        # Use BookingSearch from centralized utility
+        booking_search = BookingSearch()
+        
+        # Apply search parameters
+        if params.get('search'):
+            booking_search.set_search_term(params['search'])
+        
+        if params.get('search_type'):
+            booking_search.set_search_type(params['search_type'])
+        
+        if params.get('date_from'):
+            booking_search.set_date_range(params['date_from'], params.get('date_to'))
+        
+        if params.get('booking_status'):
+            booking_search.set_booking_status(params['booking_status'])
+        
+        if params.get('payment_status'):
+            booking_search.set_payment_status(params['payment_status'])
+        
+        if params.get('payment_method'):
+            booking_search.set_payment_method(params['payment_method'])
+        
+        if params.get('amount_min') or params.get('amount_max'):
+            booking_search.set_amount_range(params.get('amount_min'), params.get('amount_max'))
+        
+        if params.get('show_id'):
+            booking_search.set_show_id(params['show_id'])
+        
+        if params.get('customer_email'):
+            booking_search.set_customer_email(params['customer_email'])
+        
+        if params.get('customer_phone'):
+            booking_search.set_customer_phone(params['customer_phone'])
+        
+        if params.get('seat_number'):
+            booking_search.set_seat_number(params['seat_number'])
+        
+        if params.get('sort_by'):
+            booking_search.set_sort_by(params['sort_by'])
+        
+        # Set pagination
+        page = params.get('page', 1)
+        per_page = params.get('per_page', 20)
+        booking_search.set_pagination(page, per_page)
+        
+        # Execute search
+        search_result = booking_search.execute()
+        
+        # Track search analytics
+        try:
+            analytics = SearchAnalytics()
+            analytics.track_search(
                 user_id=current_user.id,
-                severity='high'
+                module='bookings',
+                search_term=params.get('search', ''),
+                filters=params,
+                result_count=search_result['total']
             )
-            abort(400, "Invalid input detected")
+        except Exception as e:
+            # Log analytics error but don't fail the search
+            ErrorLogger.log_error(e, request, context={'analytics_error': True})
         
-        # Validate search type
-        valid_search_types = ['all', 'customer', 'movie', 'booking_id']
-        if search_type not in valid_search_types:
-            search_type = 'all'
-        
-        # Start with base query
-        query = Booking.query
-        
-        # Apply search filters with validation
-        if search_term:
-            if search_type == 'customer':
-                # Validate customer name format
-                if DataValidators.validate_name_format(search_term):
-                    query = query.filter(Booking.customer_name.ilike(f'%{search_term}%'))
-                else:
-                    flash('Invalid customer name format', 'warning')
-            elif search_type == 'movie':
-                query = query.join(Show).join(Movie).filter(Movie.title.ilike(f'%{search_term}%'))
-            elif search_type == 'booking_id':
-                try:
-                    if search_term.startswith('BK'):
-                        # Search by reference number
-                        query = query.filter(Booking.reference_number.ilike(f'%{search_term}%'))
-                    else:
-                        # Search by ID
-                        booking_id = int(search_term)
-                        if booking_id > 0:
-                            query = query.filter(Booking.id == booking_id)
-                except ValueError:
-                    flash('Invalid booking ID format', 'warning')
-        
-        # Apply date filters with validation
-        if date_from:
-            try:
-                date_int = int(date_from)
-                date_obj = datetime.strptime(str(date_int), '%Y%m%d').date()
-                if date_obj <= datetime.now().date():
-                    query = query.filter(Booking.booking_time >= date_obj)
-                else:
-                    flash('Start date cannot be in the future', 'warning')
-            except ValueError:
-                flash('Invalid start date format', 'warning')
-        
-        if date_to:
-            try:
-                date_int = int(date_to)
-                date_obj = datetime.strptime(str(date_int), '%Y%m%d').date()
-                query = query.filter(Booking.booking_time <= date_obj + timedelta(days=1))
-            except ValueError:
-                flash('Invalid end date format', 'warning')
-        
-        # Get filtered bookings
-        bookings = query.order_by(Booking.booking_time.desc()).all()
-        
-        # Format booking data for template
-        formatted_bookings = []
-        for booking in bookings:
-            try:
-                # Get seats for this booking
-                seats = booking.get_seats_list()
-                
-                formatted_bookings.append({
-                    'id': booking.id,
-                    'reference_number': booking.reference_number,
-                    'customer_name': booking.customer_name,
-                    'movie_title': booking.show.movie.title if booking.show.movie else 'N/A',
-                    'screen_name': booking.show.screen.name if booking.show.screen else 'N/A',
-                    'show_date': booking.show.show_date.strftime('%d %b %Y') if booking.show.show_date else 'N/A',
-                    'show_time': booking.show.show_time.strftime('%I:%M %p') if booking.show.show_time else 'N/A',
-                    'seats': ', '.join(seats),
-                    'total_amount': float(booking.total_amount) if booking.total_amount else 0,
-                    'booking_time': booking.booking_time.strftime('%d %b %Y %I:%M %p'),
-                    'status': booking.status,
-                    'payment_method': booking.payment_method
-                })
-            except Exception as e:
-                ErrorLogger.log_error(e, request, context={'booking_id': booking.id})
-                continue
-        
-        return render_template('bookings/index.html', title='Bookings',
-                             bookings=formatted_bookings, search_form=search_form)
+        return render_template('bookings/index.html',
+                             title='Bookings',
+                             bookings=search_result['items'],
+                             search_form=search_form,
+                             pagination=search_result['pagination'],
+                             search_params=params)
     
     except Exception as e:
         ErrorLogger.log_error(e, request, user_id=current_user.id)
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while loading bookings', 'danger')
-        return render_template('bookings/index.html', title='Bookings',
-                             bookings=[], search_form=BookingSearchForm())
+        return render_template('bookings/index.html',
+                             title='Bookings',
+                             bookings=[],
+                             search_form=BookingSearchForm())
 
 @bp.route('/new')
 @login_required
@@ -296,6 +272,37 @@ def new():
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while initializing booking', 'danger')
         return redirect(url_for('index'))
+
+@bp.route('/advanced_search')
+@login_required
+def advanced_search():
+    """Advanced search page for bookings"""
+    try:
+        # Create advanced search form
+        form = AdvancedBookingSearchForm()
+        
+        # Pre-fill form with current search parameters if coming from main search
+        params = get_search_params_from_request(request, [
+            'search', 'search_type', 'date_from', 'date_to', 'booking_status', 'payment_status',
+            'payment_method', 'amount_min', 'amount_max', 'show_id', 'customer_email',
+            'customer_phone', 'seat_number', 'sort_by', 'page', 'per_page'
+        ])
+        
+        # Populate form with existing parameters
+        for key, value in params.items():
+            if hasattr(form, key) and value:
+                getattr(form, key).data = value
+        
+        return render_template('bookings/advanced_search.html',
+                             title='Advanced Booking Search',
+                             form=form,
+                             search_params=params)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while loading advanced search', 'danger')
+        return redirect(url_for('bookings.index'))
 
 @bp.route('/select_show', methods=['POST'])
 @login_required
@@ -1301,3 +1308,109 @@ def generate_ticket_pdf(booking_data):
     buffer.close()
     
     return pdf_data
+
+@bp.route('/api/search/autocomplete')
+@login_required
+def api_search_autocomplete():
+    """API endpoint for booking search autocomplete"""
+    try:
+        query = request.args.get('q', '').strip()
+        search_type = request.args.get('type', 'all')
+        
+        if not query or len(query) < 2:
+            return jsonify({'suggestions': []})
+        
+        # Use BookingSearch for autocomplete
+        booking_search = BookingSearch()
+        suggestions = booking_search.get_autocomplete_suggestions(query, search_type)
+        
+        return jsonify({'suggestions': suggestions})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'suggestions': []})
+
+@bp.route('/api/saved_searches', methods=['GET', 'POST'])
+@login_required
+def api_saved_searches():
+    """API endpoint for managing saved searches"""
+    try:
+        if request.method == 'GET':
+            # Get saved searches for current user
+            saved_searches = SavedSearch.get_user_saved_searches(current_user.id, 'bookings')
+            return jsonify({'saved_searches': [s.to_dict() for s in saved_searches]})
+        
+        else:  # POST
+            # Save a new search
+            data = request.get_json()
+            if not data or not data.get('name') or not data.get('parameters'):
+                return jsonify({'error': 'Name and parameters are required'}), 400
+            
+            saved_search = SavedSearch(
+                user_id=current_user.id,
+                name=data['name'],
+                module='bookings',
+                parameters=data['parameters']
+            )
+            
+            db.session.add(saved_search)
+            db.session.commit()
+            
+            return jsonify({'success': True, 'id': saved_search.id})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        if request.method == 'GET':
+            return jsonify({'saved_searches': []})
+        else:
+            return jsonify({'error': 'Failed to save search'}), 500
+
+@bp.route('/api/saved_searches/<int:search_id>', methods=['DELETE'])
+@login_required
+def api_delete_saved_search(search_id):
+    """API endpoint for deleting a saved search"""
+    try:
+        saved_search = SavedSearch.query.filter_by(
+            id=search_id,
+            user_id=current_user.id
+        ).first()
+        
+        if not saved_search:
+            return jsonify({'error': 'Saved search not found'}), 404
+        
+        db.session.delete(saved_search)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'error': 'Failed to delete saved search'}), 500
+
+@bp.route('/search_analytics')
+@login_required
+@admin_required
+def search_analytics():
+    """Show search analytics for bookings"""
+    try:
+        analytics = SearchAnalytics()
+        
+        # Get popular search terms
+        popular_terms = analytics.get_popular_searches('bookings', limit=20)
+        
+        # Get recent search history
+        recent_searches = analytics.get_recent_searches('bookings', limit=50)
+        
+        # Get search performance metrics
+        performance_metrics = analytics.get_search_performance('bookings')
+        
+        return render_template('bookings/search_analytics.html',
+                             title='Booking Search Analytics',
+                             popular_terms=popular_terms,
+                             recent_searches=recent_searches,
+                             performance_metrics=performance_metrics)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        flash('An error occurred while loading search analytics', 'danger')
+        return redirect(url_for('bookings.index'))

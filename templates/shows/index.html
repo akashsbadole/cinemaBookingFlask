@@ -5,53 +5,130 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Shows</h1>
-            {% if current_user.is_admin() %}
-            <a href="{{ url_for('shows.add') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i>Add Show
-            </a>
-            {% endif %}
+            <div>
+                <a href="{{ url_for('shows.advanced_search') }}" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-search-plus me-1"></i>Advanced Search
+                </a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('shows.add') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Add Show
+                </a>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Filters -->
+<!-- Advanced Search Form -->
 <div class="card mb-4">
     <div class="card-body">
         <form method="GET" class="row g-3">
             <div class="col-md-3">
-                <label for="movie_id" class="form-label">Movie</label>
-                <select name="movie_id" id="movie_id" class="form-select">
-                    <option value="">All Movies</option>
-                    {% for movie in movies %}
-                    <option value="{{ movie.id }}" {% if request.args.get('movie_id') == movie.id|string %}selected{% endif %}>
-                        {{ movie.name }}
-                    </option>
-                    {% endfor %}
-                </select>
+                <label for="{{ form.search.id }}" class="form-label">{{ form.search.label.text }}</label>
+                <div class="input-group">
+                    <input type="text" name="search_term" id="{{ form.search.id }}" class="form-control"
+                           placeholder="Search shows..." value="{{ search_params.get('search_term', '') }}">
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
             </div>
             <div class="col-md-3">
-                <label for="screen_id" class="form-label">Screen</label>
-                <select name="screen_id" id="screen_id" class="form-select">
-                    <option value="">All Screens</option>
-                    {% for screen in screens %}
-                    <option value="{{ screen.id }}" {% if request.args.get('screen_id') == screen.id|string %}selected{% endif %}>
-                        {{ screen.name }}
-                    </option>
-                    {% endfor %}
-                </select>
+                <label for="{{ form.movie_id.id }}" class="form-label">{{ form.movie_id.label.text }}</label>
+                {{ form.movie_id(class="form-select") }}
             </div>
             <div class="col-md-3">
-                <label for="date" class="form-label">Date</label>
-                <input type="date" name="date" id="date" class="form-control" 
-                       value="{{ request.args.get('date') or '' }}">
+                <label for="{{ form.screen_id.id }}" class="form-label">{{ form.screen_id.label.text }}</label>
+                {{ form.screen_id(class="form-select") }}
             </div>
-            <div class="col-md-3 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">Filter</button>
-                <a href="{{ url_for('shows.index') }}" class="btn btn-outline-secondary">Clear</a>
+            <div class="col-md-3">
+                <label for="{{ form.show_type.id }}" class="form-label">{{ form.show_type.label.text }}</label>
+                {{ form.show_type(class="form-select") }}
+            </div>
+            
+            <!-- Advanced Filters (collapsed by default) -->
+            <div class="collapse" id="advancedFilters">
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <label for="{{ form.date_from.id }}" class="form-label small">{{ form.date_from.label.text }}</label>
+                        <input type="date" name="date_from" class="form-control" value="{{ search_params.get('date_from', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="{{ form.date_to.id }}" class="form-label small">{{ form.date_to.label.text }}</label>
+                        <input type="date" name="date_to" class="form-control" value="{{ search_params.get('date_to', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="{{ form.time_from.id }}" class="form-label small">{{ form.time_from.label.text }}</label>
+                        <input type="time" name="time_from" class="form-control" value="{{ search_params.get('time_from', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="{{ form.time_to.id }}" class="form-label small">{{ form.time_to.label.text }}</label>
+                        <input type="time" name="time_to" class="form-control" value="{{ search_params.get('time_to', '') }}">
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <label for="{{ form.min_price.id }}" class="form-label small">{{ form.min_price.label.text }}</label>
+                        <input type="number" name="min_price" class="form-control" value="{{ search_params.get('min_price', '') }}" min="0" step="0.01">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="{{ form.max_price.id }}" class="form-label small">{{ form.max_price.label.text }}</label>
+                        <input type="number" name="max_price" class="form-control" value="{{ search_params.get('max_price', '') }}" min="0" step="0.01">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="{{ form.status.id }}" class="form-label small">{{ form.status.label.text }}</label>
+                        {{ form.status(class="form-select") }}
+                    </div>
+                    <div class="col-md-3">
+                        <label for="{{ form.sort_by.id }}" class="form-label small">{{ form.sort_by.label.text }}</label>
+                        {{ form.sort_by(class="form-select") }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <label for="{{ form.sort_order.id }}" class="form-label small">{{ form.sort_order.label.text }}</label>
+                    {{ form.sort_order(class="form-select") }}
+                </div>
+                <div class="col-md-3">
+                    <label for="{{ form.per_page.id }}" class="form-label small">{{ form.per_page.label.text }}</label>
+                    {{ form.per_page(class="form-select") }}
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">Search</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm me-2" data-bs-toggle="collapse" data-bs-target="#advancedFilters">
+                        <i class="fas fa-filter me-1"></i>Advanced Filters
+                    </button>
+                    {% if search_params and any(search_params.get(key) for key in ['movie_id', 'screen_id', 'show_type', 'status', 'date_from', 'date_to', 'min_price', 'max_price']) %}
+                    <a href="{{ url_for('shows.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times me-1"></i>Clear Filters
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Search Results Summary -->
+{% if pagination and pagination.total > 0 %}
+<div class="alert alert-info">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-info-circle me-2"></i>
+            Found <strong>{{ pagination.total }}</strong> show{{ 's' if pagination.total != 1 else '' }}
+            {% if search_params.get('search_term') %}
+            matching "{{ search_params.get('search_term') }}"
+            {% endif %}
+        </div>
+        <div class="text-muted small">
+            Page {{ pagination.page }} of {{ pagination.pages }}
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Shows Table -->
 <div class="card">
@@ -143,10 +220,152 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Pagination -->
+{% if pagination and pagination.pages > 1 %}
+<div class="d-flex justify-content-center mt-4">
+    <nav>
+        <ul class="pagination">
+            {% set current_page = pagination.page %}
+            {% set total_pages = pagination.pages %}
+            {% set max_visible = 5 %}
+            
+            <!-- Previous page -->
+            {% if current_page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('shows.index', page=current_page-1, **search_params) }}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+            
+            <!-- Page numbers -->
+            {% for page_num in range(1, total_pages + 1) %}
+                {% if page_num == 1 or page_num == total_pages or (page_num >= current_page - 2 and page_num <= current_page + 2) %}
+                    <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('shows.index', page=page_num, **search_params) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                {% elif page_num == current_page - 3 or page_num == current_page + 3 %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            <!-- Next page -->
+            {% if current_page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('shows.index', page=current_page+1, **search_params) }}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-complete for search
+        const searchInput = document.querySelector('input[name="search_term"]');
+        if (searchInput) {
+            let timeout;
+            
+            searchInput.addEventListener('input', function() {
+                clearTimeout(timeout);
+                const query = this.value.trim();
+                
+                if (query.length < 2) {
+                    // Hide any existing autocomplete results
+                    const existingDropdown = document.getElementById('searchDropdown');
+                    if (existingDropdown) {
+                        existingDropdown.remove();
+                    }
+                    return;
+                }
+                
+                timeout = setTimeout(function() {
+                    fetch(`/shows/api/autocomplete?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            showAutocompleteResults(data, searchInput);
+                        })
+                        .catch(error => {
+                            console.error('Autocomplete error:', error);
+                        });
+                }, 300);
+            });
+            
+            // Hide autocomplete when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target)) {
+                    const existingDropdown = document.getElementById('searchDropdown');
+                    if (existingDropdown) {
+                        existingDropdown.remove();
+                    }
+                }
+            });
+        }
+    });
+    
+    function showAutocompleteResults(shows, searchInput) {
+        // Remove existing dropdown
+        const existingDropdown = document.getElementById('searchDropdown');
+        if (existingDropdown) {
+            existingDropdown.remove();
+        }
+        
+        if (shows.length === 0) {
+            return;
+        }
+        
+        // Create dropdown
+        const dropdown = document.createElement('div');
+        dropdown.id = 'searchDropdown';
+        dropdown.className = 'position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm';
+        dropdown.style.zIndex = '1000';
+        dropdown.style.maxHeight = '300px';
+        dropdown.style.overflowY = 'auto';
+        
+        // Add show suggestions
+        shows.forEach(show => {
+            const item = document.createElement('div');
+            item.className = 'px-3 py-2 border-bottom d-flex align-items-center search-suggestion';
+            item.style.cursor = 'pointer';
+            
+            item.innerHTML = `
+                <div class="flex-grow-1">
+                    <div class="fw-bold">${show.movie_name}</div>
+                    <div class="small text-muted">
+                        ${show.screen_name} • ${show.date || ''} ${show.time || ''} • ${show.show_type}
+                    </div>
+                </div>
+            `;
+            
+            item.addEventListener('click', function() {
+                searchInput.value = `${show.movie_name} - ${show.screen_name}`;
+                searchInput.form.submit();
+            });
+            
+            dropdown.appendChild(item);
+        });
+        
+        // Position dropdown below search input
+        const rect = searchInput.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+        dropdown.style.left = (rect.left + window.scrollX) + 'px';
+        dropdown.style.width = rect.width + 'px';
+        
+        // Add to page
+        document.body.appendChild(dropdown);
+    }
+    
     function deleteShow(showId) {
         if (confirm('Are you sure you want to delete this show?')) {
             const form = document.createElement('form');
@@ -167,4 +386,10 @@
         }
     }
 </script>
+
+<style>
+.search-suggestion:hover {
+    background-color: #f8f9fa;
+}
+</style>
 {% endblock %}

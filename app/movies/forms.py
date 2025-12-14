@@ -197,7 +197,48 @@ class MovieSearchForm(FlaskForm):
         ('R', 'R - Restricted'),
         ('NC-17', 'NC-17 - Adults Only')
     ], validators=[Optional()])
+    
+    # Advanced filters
+    release_date_from = DateField('Release Date From', validators=[Optional()])
+    release_date_to = DateField('Release Date To', validators=[Optional()])
+    min_duration = IntegerField('Min Duration (minutes)', validators=[
+        Optional(),
+        NumberRange(min=1, max=600, message='Duration must be between 1 and 600 minutes')
+    ])
+    max_duration = IntegerField('Max Duration (minutes)', validators=[
+        Optional(),
+        NumberRange(min=1, max=600, message='Duration must be between 1 and 600 minutes')
+    ])
+    
+    # Sorting options
+    sort_by = SelectField('Sort By', choices=[
+        ('name', 'Title'),
+        ('release_date', 'Release Date'),
+        ('duration', 'Duration'),
+        ('rating', 'Rating'),
+        ('created_at', 'Date Added')
+    ], default='name', validators=[Optional()])
+    sort_order = SelectField('Sort Order', choices=[
+        ('asc', 'Ascending'),
+        ('desc', 'Descending')
+    ], default='asc', validators=[Optional()])
+    
+    # Pagination
+    per_page = SelectField('Results per page', choices=[
+        ('12', '12'),
+        ('24', '24'),
+        ('48', '48'),
+        ('96', '96')
+    ], default='12', validators=[Optional()])
+    
+    # Actions
     submit = SubmitField('Search')
+    clear = SubmitField('Clear Filters')
+    save_search = SubmitField('Save Search')
+    search_name = StringField('Search Name', validators=[
+        Optional(),
+        Length(max=100, message='Search name cannot exceed 100 characters')
+    ])
     
     def validate_search(self, field):
         """Validate and sanitize search term"""
@@ -219,3 +260,56 @@ class MovieSearchForm(FlaskForm):
             # Check for empty search after sanitization
             if not sanitized.strip():
                 raise ValidationError('Please enter a valid search term')
+    
+    def validate_release_date_to(self, field):
+        """Validate date range"""
+        if field.data and self.release_date_from.data:
+            if field.data < self.release_date_from.data:
+                raise ValidationError('End date must be after start date')
+    
+    def validate_min_duration(self, field):
+        """Validate duration range"""
+        if field.data and self.max_duration.data:
+            if field.data > self.max_duration.data:
+                raise ValidationError('Minimum duration cannot be greater than maximum duration')
+
+
+class AdvancedMovieSearchForm(MovieSearchForm):
+    """Extended form for advanced movie search with additional filters"""
+    
+    # Cast and crew filters (for future implementation)
+    director = StringField('Director', validators=[
+        Optional(),
+        Length(max=100, message='Director name cannot exceed 100 characters')
+    ])
+    cast = StringField('Cast Members', validators=[
+        Optional(),
+        Length(max=255, message='Cast list cannot exceed 255 characters')
+    ])
+    
+    # Additional sorting options
+    sort_by = SelectField('Sort By', choices=[
+        ('name', 'Title'),
+        ('release_date', 'Release Date'),
+        ('duration', 'Duration'),
+        ('rating', 'Rating'),
+        ('created_at', 'Date Added'),
+        ('popularity', 'Popularity'),
+        ('show_count', 'Number of Shows')
+    ], default='name', validators=[Optional()])
+    
+    def validate_director(self, field):
+        """Validate and sanitize director name"""
+        if field.data:
+            sanitized = InputSanitizer.sanitize_string(field.data, max_length=100)
+            if SecurityValidator.detect_sql_injection(field.data):
+                raise ValidationError('Invalid characters detected in director name')
+            field.data = sanitized
+    
+    def validate_cast(self, field):
+        """Validate and sanitize cast list"""
+        if field.data:
+            sanitized = InputSanitizer.sanitize_string(field.data, max_length=255)
+            if SecurityValidator.detect_sql_injection(field.data):
+                raise ValidationError('Invalid characters detected in cast list')
+            field.data = sanitized

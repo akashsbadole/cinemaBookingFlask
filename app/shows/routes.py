@@ -5,46 +5,105 @@ from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from app.shows import bp
 from app.auth.decorators import admin_required
-from app.shows.forms import ShowForm
+from app.shows.forms import ShowForm, ShowSearchForm, AdvancedShowSearchForm
 from app.shows.models import Show
 from app.movies.models import Movie
 from app.screens.models import Screen
 from app.database import db
+from app.search import ShowSearch, SearchAnalytics, get_search_params_from_request
 from datetime import datetime, time, timedelta
+import json
 
 
 @bp.route('/')
 @login_required
 def index():
-    """Shows listing page"""
-    # Get filter parameters
-    movie_id = request.args.get('movie_id', type=int)
-    screen_id = request.args.get('screen_id', type=int)
-    date_filter = request.args.get('date')
+    """Shows listing page with advanced search and filtering"""
+    # Get search parameters from request
+    params = get_search_params_from_request()
     
-    # Build query
-    query = Show.query
+    # Create advanced show search
+    show_search = ShowSearch()
     
-    # Apply filters
-    if movie_id:
-        query = query.filter(Show.movie_id == movie_id)
-    if screen_id:
-        query = query.filter(Show.screen_id == screen_id)
-    if date_filter:
-        try:
-            filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
-            query = query.filter(Show.show_date == filter_date)
-        except ValueError:
-            pass
+    # Apply search filters
+    show_search.search_shows(
+        search_term=params.get('search_term'),
+        movie_id=params.get('movie_id'),
+        screen_id=params.get('screen_id'),
+        show_date_from=params.get('date_from'),
+        show_date_to=params.get('date_to'),
+        show_time_from=params.get('time_from'),
+        show_time_to=params.get('time_to'),
+        show_type=params.get('show_type'),
+        status=params.get('status'),
+        min_price=params.get('min_price'),
+        max_price=params.get('max_price'),
+        sort_by=params.get('sort_by', 'show_date'),
+        sort_order=params.get('sort_order', 'asc')
+    )
     
-    # Get shows ordered by date and time
-    shows = query.order_by(Show.show_date.desc(), Show.show_time.asc()).all()
+    # Set pagination
+    show_search.set_pagination(params.get('page', 1), params.get('per_page', 25))
+    
+    # Execute search
+    search_results = show_search.execute()
+    shows = search_results['results']
+    
+    # Track search analytics
+    if params.get('search_term') or any(params.get(key) for key in ['movie_id', 'screen_id', 'show_type', 'status']):
+        SearchAnalytics.track_search(
+            user_id=current_user.id,
+            module='shows',
+            search_term=params.get('search_term'),
+            search_params=json.dumps(params),
+            result_count=search_results['total']
+        )
     
     # Get filter options
     movies = Movie.query.filter_by(status='active').order_by(Movie.name).all()
     screens = Screen.query.order_by(Screen.name).all()
     
-    return render_template('shows/index.html', title='Shows', shows=shows, movies=movies, screens=screens)
+    # Create search form
+    form = ShowSearchForm()
+    
+    # Pre-populate form with current search parameters
+    if params.get('search_term'):
+        form.search.data = params.get('search_term')
+    if params.get('movie_id'):
+        form.movie_id.data = params.get('movie_id')
+    if params.get('screen_id'):
+        form.screen_id.data = params.get('screen_id')
+    if params.get('show_type'):
+        form.show_type.data = params.get('show_type')
+    if params.get('status'):
+        form.status.data = params.get('status')
+    if params.get('date_from'):
+        form.date_from.data = params.get('date_from')
+    if params.get('date_to'):
+        form.date_to.data = params.get('date_to')
+    if params.get('time_from'):
+        form.time_from.data = params.get('time_from')
+    if params.get('time_to'):
+        form.time_to.data = params.get('time_to')
+    if params.get('min_price'):
+        form.min_price.data = params.get('min_price')
+    if params.get('max_price'):
+        form.max_price.data = params.get('max_price')
+    if params.get('sort_by'):
+        form.sort_by.data = params.get('sort_by')
+    if params.get('sort_order'):
+        form.sort_order.data = params.get('sort_order')
+    if params.get('per_page'):
+        form.per_page.data = params.get('per_page')
+    
+    return render_template('shows/index.html',
+                          title='Shows',
+                          shows=shows,
+                          movies=movies,
+                          screens=screens,
+                          form=form,
+                          search_params=params,
+                          pagination=search_results)
 
 
 @bp.route('/add', methods=['GET', 'POST'])
@@ -274,3 +333,112 @@ def seat_layout(id):
                         available_seats=available_seats,
                         booked_seats=booked_seats,
                         locked_seats=locked_seats)
+
+
+@bp.route('/api/autocomplete')
+@login_required
+def api_autocomplete():
+    """API endpoint for show autocomplete suggestions"""
+    search_term = request.args.get('q', '', type=str)
+    
+    if not search_term or len(search_term) < 2:
+        return jsonify([])
+    
+    # Use advanced search for autocomplete
+    show_search = ShowSearch()
+    show_search.search_shows(search_term=search_term)
+    show_search.set_pagination(1, 10)
+    
+    search_results = show_search.execute()
+    
+    # Format results for autocomplete
+    suggestions = []
+    for show in search_results['results']:
+        suggestions.append({
+            'id': show.id,
+            'movie_name': show.movie.name if show.movie else 'Unknown',
+            'screen_name': show.screen.name if show.screen else 'Unknown',
+            'date': show.show_date.strftime('%Y-%m-%d') if show.show_date else None,
+            'time': show.show_time.strftime('%H:%M') if show.show_time else None,
+            'show_type': show.show_type
+        })
+    
+    return jsonify(suggestions)
+
+
+@bp.route('/api/saved-searches')
+@login_required
+def api_saved_searches():
+    """API endpoint to get saved searches"""
+    saved_searches = SearchAnalytics.get_saved_searches(current_user.id, 'shows')
+    return jsonify([{
+        'id': search.id,
+        'name': search.name,
+        'params': json.loads(search.search_params),
+        'is_default': search.is_default
+    } for search in saved_searches])
+
+
+@bp.route('/api/save-search', methods=['POST'])
+@login_required
+def api_save_search():
+    """API endpoint to save a search"""
+    data = request.get_json()
+    
+    if not data or not data.get('name') or not data.get('search_params'):
+        return jsonify({'error': 'Name and search parameters are required'}), 400
+    
+    try:
+        saved_search = SearchAnalytics.save_search(
+            user_id=current_user.id,
+            name=data['name'],
+            module='shows',
+            search_params=json.dumps(data['search_params']),
+            is_default=data.get('is_default', False)
+        )
+        
+        return jsonify({
+            'success': True,
+            'id': saved_search.id,
+            'name': saved_search.name
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/advanced-search')
+@login_required
+def advanced_search():
+    """Advanced search page for shows"""
+    form = AdvancedShowSearchForm()
+    
+    # Get saved searches
+    saved_searches = SearchAnalytics.get_saved_searches(current_user.id, 'shows')
+    
+    return render_template('shows/advanced_search.html',
+                          title='Advanced Show Search',
+                          form=form,
+                          saved_searches=saved_searches)
+
+
+@bp.route('/search-analytics')
+@login_required
+@admin_required
+def search_analytics():
+    """Show search analytics for shows"""
+    # Get popular search terms
+    popular_terms = SearchAnalytics.get_popular_search_terms(days=30)
+    
+    # Get search performance metrics
+    performance_metrics = SearchAnalytics.get_search_performance_by_module(days=30)
+    
+    # Get recent search history
+    recent_searches = SearchHistory.query.filter_by(module='shows')\
+        .order_by(SearchHistory.created_at.desc())\
+        .limit(20).all()
+    
+    return render_template('shows/search_analytics.html',
+                          title='Show Search Analytics',
+                          popular_terms=popular_terms,
+                          performance_metrics=performance_metrics,
+                          recent_searches=recent_searches)

@@ -2,7 +2,7 @@
 Payments Forms
 """
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, HiddenField, DecimalField, SubmitField, TextAreaField
+from wtforms import StringField, SelectField, HiddenField, DecimalField, SubmitField, TextAreaField, IntegerField, EmailField, TelField
 from wtforms.validators import DataRequired, Length, NumberRange, Optional, Regexp, ValidationError
 from wtforms.widgets import TextArea
 import re
@@ -782,6 +782,222 @@ class EmailReceiptForm(FlaskForm):
             
             # Update field data with sanitized version
             field.data = sanitized
+
+
+class AdvancedPaymentSearchForm(FlaskForm):
+    """Advanced search form for payments with comprehensive filtering"""
+    # Basic search
+    search_term = StringField('Search Term', validators=[
+        Optional(),
+        Length(max=100, message='Search term cannot exceed 100 characters')
+    ])
+    search_type = SelectField('Search By', choices=[
+        ('all', 'All Fields'),
+        ('transaction_id', 'Transaction ID'),
+        ('booking_id', 'Booking ID'),
+        ('reference_id', 'Reference ID'),
+        ('customer', 'Customer Name'),
+        ('customer_email', 'Customer Email'),
+        ('customer_phone', 'Customer Phone'),
+        ('payment_method', 'Payment Method')
+    ], default='all')
+    
+    # Date range
+    date_from = StringField('From Date', validators=[Optional()])
+    date_to = StringField('To Date', validators=[Optional()])
+    
+    # Status and method filters
+    status = SelectField('Payment Status', choices=[
+        ('', 'All Status'),
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+        ('cancelled', 'Cancelled')
+    ], validators=[Optional()])
+    
+    payment_method = SelectField('Payment Method', choices=[
+        ('', 'All Methods'),
+        ('cash', 'Cash'),
+        ('card', 'Credit/Debit Card'),
+        ('upi', 'UPI'),
+        ('paypal', 'PayPal'),
+        ('netbanking', 'Net Banking'),
+        ('wallet', 'Digital Wallet')
+    ], validators=[Optional()])
+    
+    # Amount range
+    amount_min = DecimalField('Min Amount', validators=[
+        Optional(),
+        NumberRange(min=0, message='Amount must be positive')
+    ], places=2)
+    amount_max = DecimalField('Max Amount', validators=[
+        Optional(),
+        NumberRange(min=0, message='Amount must be positive')
+    ], places=2)
+    
+    # Customer filters
+    customer_name = StringField('Customer Name', validators=[
+        Optional(),
+        Length(max=100, message='Name cannot exceed 100 characters')
+    ])
+    customer_email = EmailField('Customer Email', validators=[Optional()])
+    customer_phone = TelField('Customer Phone', validators=[Optional()])
+    
+    # Booking and transaction filters
+    booking_id = IntegerField('Booking ID', validators=[Optional()])
+    reference_id = StringField('Reference ID', validators=[
+        Optional(),
+        Length(max=100, message='Reference ID cannot exceed 100 characters')
+    ])
+    transaction_id = StringField('Transaction ID', validators=[
+        Optional(),
+        Length(max=100, message='Transaction ID cannot exceed 100 characters')
+    ])
+    
+    # Sorting and pagination
+    sort_by = SelectField('Sort By', choices=[
+        ('created_at_desc', 'Payment Date (Newest)'),
+        ('created_at_asc', 'Payment Date (Oldest)'),
+        ('amount_desc', 'Amount (High to Low)'),
+        ('amount_asc', 'Amount (Low to High)'),
+        ('booking_id_desc', 'Booking ID (High to Low)'),
+        ('booking_id_asc', 'Booking ID (Low to High)'),
+        ('customer_name_asc', 'Customer Name (A-Z)'),
+        ('customer_name_desc', 'Customer Name (Z-A)'),
+        ('payment_method_asc', 'Payment Method (A-Z)'),
+        ('payment_method_desc', 'Payment Method (Z-A)'),
+        ('status_asc', 'Status (A-Z)'),
+        ('status_desc', 'Status (Z-A)')
+    ], default='created_at_desc')
+    
+    per_page = SelectField('Per Page', choices=[
+        (10, '10'),
+        (20, '20'),
+        (50, '50'),
+        (100, '100')
+    ], default=20, coerce=int)
+    
+    # Form actions
+    submit = SubmitField('Search')
+    save_search = SubmitField('Save Search')
+    clear = SubmitField('Clear')
+    
+    def validate_search_term(self, field):
+        """Validate and sanitize search term"""
+        if field.data:
+            # Sanitize input
+            sanitized = InputSanitizer.sanitize_string(field.data, max_length=100)
+            
+            # Check for SQL injection
+            if SecurityValidator.detect_sql_injection(field.data):
+                raise ValidationError('Invalid characters detected in search term')
+            
+            # Check for XSS
+            if SecurityValidator.detect_xss(field.data):
+                raise ValidationError('Invalid characters detected in search term')
+            
+            # Update field data with sanitized version
+            field.data = sanitized
+    
+    def validate_customer_name(self, field):
+        """Validate and sanitize customer name"""
+        if field.data:
+            # Sanitize input
+            sanitized = InputSanitizer.sanitize_string(field.data, max_length=100)
+            
+            # Check for SQL injection
+            if SecurityValidator.detect_sql_injection(field.data):
+                raise ValidationError('Invalid characters detected in customer name')
+            
+            # Update field data with sanitized version
+            field.data = sanitized
+    
+    def validate_customer_email(self, field):
+        """Validate customer email"""
+        if field.data:
+            # Sanitize email
+            sanitized = InputSanitizer.sanitize_email(field.data)
+            if not sanitized:
+                raise ValidationError('Please enter a valid email address')
+            
+            # Update field data with sanitized version
+            field.data = sanitized
+    
+    def validate_customer_phone(self, field):
+        """Validate customer phone"""
+        if field.data:
+            # Sanitize phone number
+            sanitized = InputSanitizer.sanitize_phone(field.data)
+            if not sanitized:
+                raise ValidationError('Please enter a valid phone number')
+            
+            # Update field data with sanitized version
+            field.data = sanitized
+    
+    def validate_booking_id(self, field):
+        """Validate booking ID"""
+        if field.data and field.data > 0:
+            # Validate booking ID is reasonable
+            if field.data > 999999:
+                raise ValidationError('Invalid booking ID')
+    
+    def validate_reference_id(self, field):
+        """Validate and sanitize reference ID"""
+        if field.data:
+            # Sanitize input
+            sanitized = InputSanitizer.sanitize_string(field.data, max_length=100)
+            
+            # Check for SQL injection
+            if SecurityValidator.detect_sql_injection(field.data):
+                raise ValidationError('Invalid characters detected in reference ID')
+            
+            # Update field data with sanitized version
+            field.data = sanitized
+    
+    def validate_transaction_id(self, field):
+        """Validate and sanitize transaction ID"""
+        if field.data:
+            # Sanitize input
+            sanitized = InputSanitizer.sanitize_string(field.data, max_length=100)
+            
+            # Check for SQL injection
+            if SecurityValidator.detect_sql_injection(field.data):
+                raise ValidationError('Invalid characters detected in transaction ID')
+            
+            # Update field data with sanitized version
+            field.data = sanitized
+    
+    def validate_date_range(self):
+        """Validate date range"""
+        date_from = self.date_from.data
+        date_to = self.date_to.data
+        
+        if date_from and date_to:
+            try:
+                # Parse dates (assuming YYYY-MM-DD format)
+                from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+                to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+                
+                if from_date > to_date:
+                    raise ValidationError('From date cannot be after to date')
+                
+                # Limit date range to 1 year
+                if (to_date - from_date).days > 365:
+                    raise ValidationError('Date range cannot exceed 1 year')
+                
+            except ValueError:
+                raise ValidationError('Invalid date format. Use YYYY-MM-DD format.')
+    
+    def validate_amount_range(self):
+        """Validate amount range"""
+        amount_min = self.amount_min.data
+        amount_max = self.amount_max.data
+        
+        if amount_min is not None and amount_max is not None:
+            if amount_min > amount_max:
+                raise ValidationError('Minimum amount cannot be greater than maximum amount')
     
     def validate_message(self, field):
         """Validate and sanitize additional message"""

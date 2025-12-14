@@ -5,42 +5,114 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Movies</h1>
-            {% if current_user.is_admin() %}
-            <a href="{{ url_for('movies.add') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i>Add Movie
-            </a>
-            {% endif %}
+            <div>
+                <a href="{{ url_for('movies.advanced_search') }}" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-search-plus me-1"></i>Advanced Search
+                </a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('movies.add') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Add Movie
+                </a>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Search Form -->
 <form method="GET" action="{{ url_for('movies.index') }}" class="mb-4">
-    <div class="row">
-        <div class="col-md-6">
-            <div class="input-group">
-                <input type="text" class="form-control" placeholder="Search movies..." name="search" value="{{ search_query }}">
-                <button class="btn btn-outline-secondary" type="submit">
-                    <i class="fas fa-search"></i>
-                </button>
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search movies..." name="search_term" value="{{ search_params.get('search_term', '') }}">
+                        <button class="btn btn-outline-secondary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    {{ form.genre(class="form-select") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.language(class="form-select") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.status(class="form-select") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.rating(class="form-select") }}
+                </div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <select class="form-select" name="status" onchange="this.form.submit()">
-                <option value="">All Status</option>
-                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
-                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <select class="form-select" name="language" onchange="this.form.submit()">
-                <option value="">All Languages</option>
-                {% for language in languages %}
-                <option value="{{ language }}" {% if language_filter == language %}selected{% endif %}>{{ language }}</option>
-                {% endfor %}
-            </select>
+            
+            <!-- Advanced Filters (collapsed by default) -->
+            <div class="collapse" id="advancedFilters">
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <label class="form-label small">Release Date From</label>
+                        <input type="date" class="form-control" name="release_date_from" value="{{ search_params.get('release_date_from', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Release Date To</label>
+                        <input type="date" class="form-control" name="release_date_to" value="{{ search_params.get('release_date_to', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Min Duration (min)</label>
+                        <input type="number" class="form-control" name="min_duration" value="{{ search_params.get('min_duration', '') }}" min="1" max="600">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Max Duration (min)</label>
+                        <input type="number" class="form-control" name="max_duration" value="{{ search_params.get('max_duration', '') }}" min="1" max="600">
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        {{ form.sort_by(class="form-select") }}
+                    </div>
+                    <div class="col-md-4">
+                        {{ form.sort_order(class="form-select") }}
+                    </div>
+                    <div class="col-md-4">
+                        {{ form.per_page(class="form-select") }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#advancedFilters">
+                        <i class="fas fa-filter me-1"></i>Advanced Filters
+                    </button>
+                    {% if search_params and any(search_params.get(key) for key in ['genre', 'language', 'status', 'rating', 'release_date_from', 'release_date_to', 'min_duration', 'max_duration']) %}
+                    <a href="{{ url_for('movies.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times me-1"></i>Clear Filters
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </form>
+
+<!-- Search Results Summary -->
+{% if pagination and pagination.total > 0 %}
+<div class="alert alert-info">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-info-circle me-2"></i>
+            Found <strong>{{ pagination.total }}</strong> movie{{ 's' if pagination.total != 1 else '' }}
+            {% if search_params.get('search_term') %}
+            matching "{{ search_params.get('search_term') }}"
+            {% endif %}
+        </div>
+        <div class="text-muted small">
+            Page {{ pagination.page }} of {{ pagination.pages }}
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Grid View -->
 <div class="row" id="gridView">
@@ -212,6 +284,52 @@
     </div>
 </div>
 
+<!-- Pagination -->
+{% if pagination and pagination.pages > 1 %}
+<div class="d-flex justify-content-center mt-4">
+    <nav>
+        <ul class="pagination">
+            {% set current_page = pagination.page %}
+            {% set total_pages = pagination.pages %}
+            {% set max_visible = 5 %}
+            
+            <!-- Previous page -->
+            {% if current_page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('movies.index', page=current_page-1, **search_params) }}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+            
+            <!-- Page numbers -->
+            {% for page_num in range(1, total_pages + 1) %}
+                {% if page_num == 1 or page_num == total_pages or (page_num >= current_page - 2 and page_num <= current_page + 2) %}
+                    <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('movies.index', page=page_num, **search_params) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                {% elif page_num == current_page - 3 or page_num == current_page + 3 %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            <!-- Next page -->
+            {% if current_page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('movies.index', page=current_page+1, **search_params) }}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -236,6 +354,113 @@
             gridViewBtn.classList.remove('active');
             tableViewBtn.classList.add('active');
         });
+        
+        // Auto-complete for search
+        const searchInput = document.querySelector('input[name="search_term"]');
+        if (searchInput) {
+            let timeout;
+            
+            searchInput.addEventListener('input', function() {
+                clearTimeout(timeout);
+                const query = this.value.trim();
+                
+                if (query.length < 2) {
+                    // Hide any existing autocomplete results
+                    const existingDropdown = document.getElementById('searchDropdown');
+                    if (existingDropdown) {
+                        existingDropdown.remove();
+                    }
+                    return;
+                }
+                
+                timeout = setTimeout(function() {
+                    fetch(`/movies/api/autocomplete?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            showAutocompleteResults(data, searchInput);
+                        })
+                        .catch(error => {
+                            console.error('Autocomplete error:', error);
+                        });
+                }, 300);
+            });
+            
+            // Hide autocomplete when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target)) {
+                    const existingDropdown = document.getElementById('searchDropdown');
+                    if (existingDropdown) {
+                        existingDropdown.remove();
+                    }
+                }
+            });
+        }
     });
+    
+    function showAutocompleteResults(movies, searchInput) {
+        // Remove existing dropdown
+        const existingDropdown = document.getElementById('searchDropdown');
+        if (existingDropdown) {
+            existingDropdown.remove();
+        }
+        
+        if (movies.length === 0) {
+            return;
+        }
+        
+        // Create dropdown
+        const dropdown = document.createElement('div');
+        dropdown.id = 'searchDropdown';
+        dropdown.className = 'position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm';
+        dropdown.style.zIndex = '1000';
+        dropdown.style.maxHeight = '300px';
+        dropdown.style.overflowY = 'auto';
+        
+        // Add movie suggestions
+        movies.forEach(movie => {
+            const item = document.createElement('div');
+            item.className = 'px-3 py-2 border-bottom d-flex align-items-center search-suggestion';
+            item.style.cursor = 'pointer';
+            
+            let posterHtml = '';
+            if (movie.poster_url) {
+                posterHtml = `<img src="${movie.poster_url}" alt="${movie.name}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;" class="me-3">`;
+            } else {
+                posterHtml = `<div class="bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; border-radius: 4px;"><i class="fas fa-film fa-sm"></i></div>`;
+            }
+            
+            item.innerHTML = `
+                ${posterHtml}
+                <div class="flex-grow-1">
+                    <div class="fw-bold">${movie.name}</div>
+                    <div class="small text-muted">
+                        ${movie.genre || ''} ${movie.year ? '(' + movie.year + ')' : ''}
+                    </div>
+                </div>
+            `;
+            
+            item.addEventListener('click', function() {
+                searchInput.value = movie.name;
+                searchInput.form.submit();
+            });
+            
+            dropdown.appendChild(item);
+        });
+        
+        // Position dropdown below search input
+        const rect = searchInput.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+        dropdown.style.left = (rect.left + window.scrollX) + 'px';
+        dropdown.style.width = rect.width + 'px';
+        
+        // Add to page
+        document.body.appendChild(dropdown);
+    }
 </script>
+
+<style>
+.search-suggestion:hover {
+    background-color: #f8f9fa;
+}
+</style>
 {% endblock %}

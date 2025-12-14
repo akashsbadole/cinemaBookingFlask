@@ -113,6 +113,10 @@ def create_app(config_name=None):
     from app.validation_api import validation_api
     app.register_blueprint(validation_api)
     
+    # Register integration blueprint
+    from app.integration import bp as integration_bp
+    app.register_blueprint(integration_bp)
+    
     # Import models to ensure they are registered with SQLAlchemy
     from app import models
     from app.auth import models as auth_models
@@ -121,6 +125,7 @@ def create_app(config_name=None):
     from app.bookings import models as bookings_models
     from app.payments import models as payments_models
     from app.shows import models as shows_models
+    from app.integration.notifications import Notification, NotificationTemplate
     
     # Import validation and security components
     from app.validators import InputSanitizer, SecurityValidator

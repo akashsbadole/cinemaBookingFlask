@@ -14,40 +14,79 @@
 
 <!-- Search and Filter Form -->
 <div class="card mb-4">
-    <div class="card-header">
-        <h5><i class="fas fa-search me-2"></i>Search & Filter</h5>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-search me-2"></i>Search & Filter</h5>
+        <div>
+            <a href="{{ url_for('payments.advanced_search') }}" class="btn btn-outline-primary">
+                <i class="fas fa-search me-1"></i>Advanced Search
+            </a>
+            <a href="{{ url_for('payments.search_analytics') }}" class="btn btn-outline-info">
+                <i class="fas fa-chart-bar me-1"></i>Analytics
+            </a>
+        </div>
     </div>
     <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-3">
-                {{ search_form.search_term(class="form-control", placeholder="Search payments...") }}
-            </div>
-            <div class="col-md-2">
-                {{ search_form.search_type(class="form-select") }}
-            </div>
-            <div class="col-md-2">
-                {{ search_form.status_filter(class="form-select") }}
-            </div>
-            <div class="col-md-2">
-                {{ search_form.payment_method_filter(class="form-select") }}
-            </div>
-            <div class="col-md-2">
-                <div class="input-group">
-                    {{ search_form.date_from(class="form-control", type="date") }}
+        <form method="GET" action="{{ url_for('payments.index') }}" id="quickSearchForm">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ search_form.search_term.label(class="form-label") }}
+                    <div class="position-relative">
+                        {{ search_form.search_term(class="form-control", placeholder="Search payments...", id="searchInput") }}
+                        <div id="searchSuggestions" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom" style="z-index: 1000; display: none;"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-1">
-                <div class="input-group">
-                    {{ search_form.date_to(class="form-control", type="date") }}
-                    {{ search_form.submit(class="btn btn-primary d-none") }}
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i>
-                    </button>
+                <div class="col-md-2 mb-3">
+                    {{ search_form.search_type.label(class="form-label") }}
+                    {{ search_form.search_type(class="form-select", id="searchType") }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    {{ search_form.status_filter.label(class="form-label") }}
+                    {{ search_form.status_filter(class="form-select") }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    {{ search_form.payment_method_filter.label(class="form-label") }}
+                    {{ search_form.payment_method_filter(class="form-select") }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="input-group">
+                        {{ search_form.date_from(class="form-control", type="date") }}
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="input-group">
+                        {{ search_form.date_to(class="form-control", type="date") }}
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    {{ search_form.submit(class="btn btn-primary me-2") }}
+                    <a href="{{ url_for('payments.index') }}" class="btn btn-outline-secondary">Clear</a>
                 </div>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Search Results Summary -->
+{% if pagination %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted">
+                Showing {{ pagination.from }} to {{ pagination.to }} of {{ pagination.total }} payments
+            </span>
+            <div class="d-flex align-items-center">
+                <label class="me-2">Per page:</label>
+                <select class="form-select form-select-sm" style="width: auto;" onchange="changePerPage(this.value)">
+                    <option value="10" {% if search_params.per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if search_params.per_page == 20 %}selected{% endif %}>20</option>
+                    <option value="50" {% if search_params.per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if search_params.per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Summary Cards -->
 <div class="row mb-4">
@@ -145,27 +184,27 @@
                                     <td>{{ payment.seats or '-' }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{{ url_for('payments.receipt', id=payment.id) }}" 
-                                               class="btn btn-outline-primary" 
+                                            <a href="{{ url_for('payments.receipt', id=payment.id) }}"
+                                               class="btn btn-outline-primary"
                                                title="View Receipt">
                                                 <i class="fas fa-receipt"></i>
                                             </a>
                                             <div class="btn-group" role="group">
-                                                <button type="button" class="btn btn-outline-secondary dropdown-toggle" 
-                                                        data-bs-toggle="dropdown" 
+                                                <button type="button" class="btn btn-outline-secondary dropdown-toggle"
+                                                        data-bs-toggle="dropdown"
                                                         aria-expanded="false"
                                                         title="More Actions">
                                                     <i class="fas fa-ellipsis-v"></i>
                                                 </button>
                                                 <ul class="dropdown-menu">
                                                     <li>
-                                                        <a class="dropdown-item" 
+                                                        <a class="dropdown-item"
                                                            href="{{ url_for('payments.status_history', id=payment.id) }}">
                                                             <i class="fas fa-history me-2"></i>View History
                                                         </a>
                                                     </li>
                                                     <li>
-                                                        <a class="dropdown-item" 
+                                                        <a class="dropdown-item"
                                                            href="{{ url_for('payments.audit_trail', id=payment.id) }}">
                                                             <i class="fas fa-shield-alt me-2"></i>Audit Trail
                                                         </a>
@@ -174,14 +213,14 @@
                                                         <li><hr class="dropdown-divider"></li>
                                                         {% if payment.status == 'completed' %}
                                                         <li>
-                                                            <a class="dropdown-item text-warning" 
+                                                            <a class="dropdown-item text-warning"
                                                                href="{{ url_for('payments.refund', id=payment.id) }}">
                                                                 <i class="fas fa-undo me-2"></i>Process Refund
                                                             </a>
                                                         </li>
                                                         {% endif %}
                                                         <li>
-                                                            <a class="dropdown-item text-info" 
+                                                            <a class="dropdown-item text-info"
                                                                href="{{ url_for('payments.update_status', id=payment.id) }}">
                                                                 <i class="fas fa-edit me-2"></i>Update Status
                                                             </a>
@@ -209,10 +248,122 @@
     </div>
 </div>
 
+<!-- Pagination -->
+{% if pagination and pagination.pages > 1 %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="Payment pagination">
+            <ul class="pagination justify-content-center">
+                {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('payments.index', page=pagination.prev_num, **search_params) }}">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                {% endif %}
+                
+                {% for p in pagination.iter_pages() %}
+                    {% if p %}
+                        {% if p != pagination.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('payments.index', page=p, **search_params) }}">{{ p }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ p }}</span>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('payments.index', page=pagination.next_num, **search_params) }}">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+let searchTimeout;
+
+// Search autocomplete functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchSuggestions = document.getElementById('searchSuggestions');
+    const searchType = document.getElementById('searchType');
+    
+    if (searchInput && searchSuggestions) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                searchSuggestions.style.display = 'none';
+                return;
+            }
+            
+            // Debounce search requests
+            searchTimeout = setTimeout(function() {
+                fetch(`{{ url_for('payments.autocomplete') }}?q=${encodeURIComponent(query)}&type=${searchType.value}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        searchSuggestions.innerHTML = '';
+                        
+                        if (data.suggestions && data.suggestions.length > 0) {
+                            data.suggestions.forEach(suggestion => {
+                                const item = document.createElement('a');
+                                item.className = 'd-block px-3 py-2 text-decoration-none border-bottom hover-bg-light';
+                                item.href = '#';
+                                item.innerHTML = `
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>${suggestion.text}</span>
+                                        <small class="text-muted">${suggestion.type}</small>
+                                    </div>
+                                `;
+                                
+                                item.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    searchInput.value = suggestion.text;
+                                    searchSuggestions.style.display = 'none';
+                                    document.getElementById('quickSearchForm').submit();
+                                });
+                                
+                                searchSuggestions.appendChild(item);
+                            });
+                            searchSuggestions.style.display = 'block';
+                        } else {
+                            searchSuggestions.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Search error:', error);
+                        searchSuggestions.style.display = 'none';
+                    });
+            }, 300);
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
+                searchSuggestions.style.display = 'none';
+            }
+        });
+    }
+});
+
 function exportPayments() {
     // Get current URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -240,5 +391,13 @@ document.querySelector('input[name="date_from"]').addEventListener('change', fun
 document.querySelector('input[name="date_to"]').addEventListener('change', function() {
     this.closest('form').submit();
 });
+
+// Per page change handler
+function changePerPage(perPage) {
+    const url = new URL(window.location);
+    url.searchParams.set('per_page', perPage);
+    url.searchParams.set('page', '1'); // Reset to first page
+    window.location.href = url.toString();
+}
 </script>
 {% endblock %}

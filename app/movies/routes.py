@@ -6,55 +6,80 @@ from flask_login import login_required, current_user
 from app.movies import bp
 from app.auth.decorators import admin_required
 from app.movies.models import Movie
-from app.movies.forms import MovieForm
+from app.movies.forms import MovieForm, MovieSearchForm, AdvancedMovieSearchForm
 from app.database import db
-from sqlalchemy import or_
+from app.search import MovieSearch, SearchAnalytics, get_search_params_from_request
+import json
 
 
 @bp.route('/')
 @login_required
 def index():
-    """Movies listing page with search and filtering"""
-    # Get query parameters for search and filtering
-    search_query = request.args.get('search', '', type=str)
-    status_filter = request.args.get('status', '', type=str)
-    language_filter = request.args.get('language', '', type=str)
+    """Movies listing page with advanced search and filtering"""
+    # Get search parameters from request
+    params = get_search_params_from_request()
     
-    # Build the base query
-    query = Movie.query
+    # Create advanced movie search
+    movie_search = MovieSearch()
     
-    # Apply search filter
-    if search_query:
-        query = query.filter(
-            or_(
-                Movie.name.ilike(f'%{search_query}%'),
-                Movie.description.ilike(f'%{search_query}%'),
-                Movie.genre.ilike(f'%{search_query}%')
-            )
+    # Apply search filters
+    movie_search.search_movies(
+        search_term=params.get('search_term'),
+        genre=params.get('genre'),
+        language=params.get('language'),
+        rating=params.get('rating'),
+        status=params.get('status'),
+        min_duration=params.get('min_duration'),
+        max_duration=params.get('max_duration'),
+        release_date_from=params.get('release_date_from'),
+        release_date_to=params.get('release_date_to'),
+        sort_by=params.get('sort_by', 'name'),
+        sort_order=params.get('sort_order', 'asc')
+    )
+    
+    # Set pagination
+    movie_search.set_pagination(params.get('page', 1), params.get('per_page', 12))
+    
+    # Execute search
+    search_results = movie_search.execute()
+    movies = search_results['results']
+    
+    # Track search analytics
+    if params.get('search_term') or any(params.get(key) for key in ['genre', 'language', 'rating', 'status']):
+        SearchAnalytics.track_search(
+            user_id=current_user.id,
+            module='movies',
+            search_term=params.get('search_term'),
+            search_params=json.dumps(params),
+            result_count=search_results['total']
         )
-    
-    # Apply status filter
-    if status_filter:
-        query = query.filter(Movie.status == status_filter)
-    
-    # Apply language filter
-    if language_filter:
-        query = query.filter(Movie.language == language_filter)
-    
-    # Order by name and execute query
-    movies = query.order_by(Movie.name).all()
     
     # Get unique languages for filter dropdown
     languages = db.session.query(Movie.language).distinct().all()
     languages = [lang[0] for lang in languages if lang[0]]
     
+    # Create search form
+    form = MovieSearchForm()
+    
+    # Pre-populate form with current search parameters
+    if params.get('search_term'):
+        form.search.data = params.get('search_term')
+    if params.get('genre'):
+        form.genre.data = params.get('genre')
+    if params.get('language'):
+        form.language.data = params.get('language')
+    if params.get('rating'):
+        form.rating.data = params.get('rating')
+    if params.get('status'):
+        form.status.data = params.get('status')
+    
     return render_template('movies/index.html',
                           title='Movies',
                           movies=movies,
                           languages=languages,
-                          search_query=search_query,
-                          status_filter=status_filter,
-                          language_filter=language_filter)
+                          form=form,
+                          search_params=params,
+                          pagination=search_results)
 
 
 @bp.route('/add', methods=['GET', 'POST'])
@@ -186,3 +211,111 @@ def api_get_movie(id):
     """API endpoint to get movie details"""
     movie = Movie.query.get_or_404(id)
     return jsonify(movie.to_dict())
+
+
+@bp.route('/api/autocomplete')
+@login_required
+def api_autocomplete():
+    """API endpoint for movie autocomplete suggestions"""
+    search_term = request.args.get('q', '', type=str)
+    
+    if not search_term or len(search_term) < 2:
+        return jsonify([])
+    
+    # Use advanced search for autocomplete
+    movie_search = MovieSearch()
+    movie_search.search_movies(search_term=search_term)
+    movie_search.set_pagination(1, 10)
+    
+    search_results = movie_search.execute()
+    
+    # Format results for autocomplete
+    suggestions = []
+    for movie in search_results['results']:
+        suggestions.append({
+            'id': movie.id,
+            'name': movie.name,
+            'genre': movie.genre,
+            'year': movie.release_date.year if movie.release_date else None,
+            'poster_url': movie.poster_url
+        })
+    
+    return jsonify(suggestions)
+
+
+@bp.route('/api/saved-searches')
+@login_required
+def api_saved_searches():
+    """API endpoint to get saved searches"""
+    saved_searches = SearchAnalytics.get_saved_searches(current_user.id, 'movies')
+    return jsonify([{
+        'id': search.id,
+        'name': search.name,
+        'params': json.loads(search.search_params),
+        'is_default': search.is_default
+    } for search in saved_searches])
+
+
+@bp.route('/api/save-search', methods=['POST'])
+@login_required
+def api_save_search():
+    """API endpoint to save a search"""
+    data = request.get_json()
+    
+    if not data or not data.get('name') or not data.get('search_params'):
+        return jsonify({'error': 'Name and search parameters are required'}), 400
+    
+    try:
+        saved_search = SearchAnalytics.save_search(
+            user_id=current_user.id,
+            name=data['name'],
+            module='movies',
+            search_params=json.dumps(data['search_params']),
+            is_default=data.get('is_default', False)
+        )
+        
+        return jsonify({
+            'success': True,
+            'id': saved_search.id,
+            'name': saved_search.name
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/advanced-search')
+@login_required
+def advanced_search():
+    """Advanced search page for movies"""
+    form = AdvancedMovieSearchForm()
+    
+    # Get saved searches
+    saved_searches = SearchAnalytics.get_saved_searches(current_user.id, 'movies')
+    
+    return render_template('movies/advanced_search.html',
+                          title='Advanced Movie Search',
+                          form=form,
+                          saved_searches=saved_searches)
+
+
+@bp.route('/search-analytics')
+@login_required
+@admin_required
+def search_analytics():
+    """Show search analytics for movies"""
+    # Get popular search terms
+    popular_terms = SearchAnalytics.get_popular_search_terms(days=30)
+    
+    # Get search performance metrics
+    performance_metrics = SearchAnalytics.get_search_performance_by_module(days=30)
+    
+    # Get recent search history
+    recent_searches = SearchHistory.query.filter_by(module='movies')\
+        .order_by(SearchHistory.created_at.desc())\
+        .limit(20).all()
+    
+    return render_template('movies/search_analytics.html',
+                          title='Movie Search Analytics',
+                          popular_terms=popular_terms,
+                          performance_metrics=performance_metrics,
+                          recent_searches=recent_searches)

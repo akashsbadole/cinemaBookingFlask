@@ -2,6 +2,7 @@
 Payments Models
 """
 from datetime import datetime
+import re
 
 # Import db from database module to avoid circular imports
 from app.database import db
@@ -9,62 +10,93 @@ from app.database import db
 class Payment(db.Model):
     """Payment model"""
     id = db.Column(db.Integer, primary_key=True)
-    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False)
-    amount = db.Column(db.Numeric(10, 2), nullable=False)
-    mode = db.Column(db.Enum('cash', 'card', 'upi', 'paypal', 'netbanking', 'wallet', name='payment_modes'), nullable=False)
-    reference_id = db.Column(db.String(50))
-    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False,
+                            comment="ID of the booking")
+    amount = db.Column(db.Numeric(10, 2), nullable=False,
+                      comment="Payment amount")
+    mode = db.Column(db.Enum('cash', 'card', 'upi', 'paypal', 'netbanking', 'wallet', name='payment_modes'),
+                      nullable=False, comment="Payment mode")
+    reference_id = db.Column(db.String(50), comment="Payment reference ID")
+    payment_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False,
+                            comment="Payment date")
     
     # PayPal specific fields
-    paypal_order_id = db.Column(db.String(50))
-    paypal_capture_id = db.Column(db.String(50))
-    paypal_payment_status = db.Column(db.String(20))
+    paypal_order_id = db.Column(db.String(50), comment="PayPal order ID")
+    paypal_capture_id = db.Column(db.String(50), comment="PayPal capture ID")
+    paypal_payment_status = db.Column(db.String(20), comment="PayPal payment status")
     
     # Payment status and workflow
-    status = db.Column(db.Enum('pending', 'processing', 'completed', 'failed', 'refunded', 'cancelled', name='payment_status'), default='pending')
-    notes = db.Column(db.Text)
+    status = db.Column(db.Enum('pending', 'processing', 'completed', 'failed', 'refunded', 'cancelled', name='payment_status'),
+                      default='pending', nullable=False, comment="Current payment status")
+    notes = db.Column(db.Text, comment="Payment notes")
     
     # Payment processing timestamps
-    initiated_at = db.Column(db.DateTime, default=datetime.utcnow)
-    processed_at = db.Column(db.DateTime)
-    completed_at = db.Column(db.DateTime)
-    failed_at = db.Column(db.DateTime)
-    refunded_at = db.Column(db.DateTime)
+    initiated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False,
+                            comment="Payment initiation timestamp")
+    processed_at = db.Column(db.DateTime, comment="Payment processing timestamp")
+    completed_at = db.Column(db.DateTime, comment="Payment completion timestamp")
+    failed_at = db.Column(db.DateTime, comment="Payment failure timestamp")
+    refunded_at = db.Column(db.DateTime, comment="Payment refund timestamp")
     
     # Card payment specific fields
-    card_type = db.Column(db.String(20))
-    card_last_4 = db.Column(db.String(4))
-    card_expiry_month = db.Column(db.String(2))
-    card_expiry_year = db.Column(db.String(4))
-    card_authorization_code = db.Column(db.String(50))
+    card_type = db.Column(db.String(20), comment="Card type (visa, mastercard, etc.)")
+    card_last_4 = db.Column(db.String(4), comment="Last 4 digits of card")
+    card_expiry_month = db.Column(db.String(2), comment="Card expiry month")
+    card_expiry_year = db.Column(db.String(4), comment="Card expiry year")
+    card_authorization_code = db.Column(db.String(50), comment="Card authorization code")
     
     # UPI payment specific fields
-    upi_id = db.Column(db.String(100))
-    upi_transaction_id = db.Column(db.String(50))
-    utr_number = db.Column(db.String(50))
+    upi_id = db.Column(db.String(100), comment="UPI ID")
+    upi_transaction_id = db.Column(db.String(50), comment="UPI transaction ID")
+    utr_number = db.Column(db.String(50), comment="UTR number")
     
     # Net Banking specific fields
-    bank_name = db.Column(db.String(50))
-    netbanking_transaction_id = db.Column(db.String(50))
-    account_last_4 = db.Column(db.String(4))
+    bank_name = db.Column(db.String(50), comment="Bank name")
+    netbanking_transaction_id = db.Column(db.String(50), comment="Net banking transaction ID")
+    account_last_4 = db.Column(db.String(4), comment="Last 4 digits of account")
     
     # Wallet payment specific fields
-    wallet_type = db.Column(db.String(30))
-    wallet_mobile = db.Column(db.String(10))
-    wallet_transaction_id = db.Column(db.String(50))
+    wallet_type = db.Column(db.String(30), comment="Wallet type")
+    wallet_mobile = db.Column(db.String(10), comment="Wallet mobile number")
+    wallet_transaction_id = db.Column(db.String(50), comment="Wallet transaction ID")
     
     # Refund specific fields
-    refund_amount = db.Column(db.Numeric(10, 2))
-    refund_reason = db.Column(db.String(100))
-    refund_method = db.Column(db.String(30))
-    refund_reference_id = db.Column(db.String(50))
-    refund_notes = db.Column(db.Text)
+    refund_amount = db.Column(db.Numeric(10, 2), comment="Refund amount")
+    refund_reason = db.Column(db.String(100), comment="Reason for refund")
+    refund_method = db.Column(db.String(30), comment="Refund method")
+    refund_reference_id = db.Column(db.String(50), comment="Refund reference ID")
+    refund_notes = db.Column(db.Text, comment="Refund notes")
     
     # Audit fields
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
-    updated_by = db.Column(db.Integer, db.ForeignKey('user.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), comment="User who created payment")
+    updated_by = db.Column(db.Integer, db.ForeignKey('user.id'), comment="User who last updated payment")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False,
+                          comment="Creation timestamp")
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow,
+                          comment="Last update timestamp")
+    
+    # Constraints
+    __table_args__ = (
+        db.CheckConstraint('amount >= 0', name='check_payment_amount_positive'),
+        db.CheckConstraint('refund_amount >= 0 OR refund_amount IS NULL', name='check_refund_amount_positive'),
+        db.CheckConstraint('refund_amount <= amount OR refund_amount IS NULL', name='check_refund_amount_not_exceed_payment'),
+        db.CheckConstraint("status IN ('pending', 'processing', 'completed', 'failed', 'refunded', 'cancelled')", name='check_payment_status'),
+        db.CheckConstraint("mode IN ('cash', 'card', 'upi', 'paypal', 'netbanking', 'wallet')", name='check_payment_mode'),
+        db.CheckConstraint("card_last_4 ~* '^[0-9]{4}$' OR card_last_4 IS NULL", name='check_card_last_4'),
+        db.CheckConstraint("card_expiry_month ~* '^(0[1-9]|1[0-2])$' OR card_expiry_month IS NULL", name='check_card_expiry_month'),
+        db.CheckConstraint("card_expiry_year ~* '^[0-9]{4}$' OR card_expiry_year IS NULL", name='check_card_expiry_year'),
+        db.CheckConstraint("wallet_mobile ~* '^[0-9]{10}$' OR wallet_mobile IS NULL", name='check_wallet_mobile'),
+        db.CheckConstraint("account_last_4 ~* '^[0-9]{4}$' OR account_last_4 IS NULL", name='check_account_last_4'),
+        db.CheckConstraint("completed_at IS NULL OR completed_at >= initiated_at", name='check_completion_time'),
+        db.CheckConstraint("failed_at IS NULL OR failed_at >= initiated_at", name='check_failure_time'),
+        db.CheckConstraint("refunded_at IS NULL OR refunded_at >= completed_at", name='check_refund_time'),
+        db.Index('idx_payment_booking', 'booking_id'),
+        db.Index('idx_payment_status', 'status'),
+        db.Index('idx_payment_mode', 'mode'),
+        db.Index('idx_payment_date', 'payment_date'),
+        db.Index('idx_payment_reference', 'reference_id'),
+        db.UniqueConstraint('booking_id', 'status', name='uq_booking_payment_status'),
+    )
     
     # Relationships
     refund_payments = db.relationship('PaymentRefund', backref='original_payment', lazy=True)

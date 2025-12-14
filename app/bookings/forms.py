@@ -2,7 +2,7 @@
 Bookings Forms
 """
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, HiddenField, DecimalField, SubmitField, TelField, EmailField
+from wtforms import StringField, SelectField, HiddenField, DecimalField, SubmitField, TelField, EmailField, IntegerField
 from wtforms.validators import DataRequired, Length, NumberRange, Optional, Email, ValidationError
 from wtforms.widgets import TextArea
 from datetime import datetime, time
@@ -353,3 +353,210 @@ class SeatLockForm(FlaskForm):
             
             if invalid_seats:
                 raise ValidationError(f'Invalid seat IDs: {invalid_seats}')
+
+
+class AdvancedBookingSearchForm(FlaskForm):
+    """Advanced search form for bookings with comprehensive filtering"""
+    # Basic search
+    search_term = StringField('Search Term', validators=[
+        Optional(),
+        Length(max=100, message='Search term cannot exceed 100 characters')
+    ])
+    search_type = SelectField('Search By', choices=[
+        ('all', 'All Fields'),
+        ('customer', 'Customer Name'),
+        ('email', 'Email'),
+        ('phone', 'Phone'),
+        ('movie', 'Movie Title'),
+        ('booking_id', 'Booking ID'),
+        ('reference', 'Reference Number'),
+        ('seat', 'Seat Number')
+    ], default='all')
+    
+    # Date range
+    date_from = StringField('From Date', validators=[Optional()])
+    date_to = StringField('To Date', validators=[Optional()])
+    
+    # Status filters
+    booking_status = SelectField('Booking Status', choices=[
+        ('', 'All Statuses'),
+        ('confirmed', 'Confirmed'),
+        ('pending', 'Pending'),
+        ('cancelled', 'Cancelled')
+    ], validators=[Optional()])
+    
+    payment_status = SelectField('Payment Status', choices=[
+        ('', 'All Payment Status'),
+        ('completed', 'Completed'),
+        ('pending', 'Pending'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded')
+    ], validators=[Optional()])
+    
+    payment_method = SelectField('Payment Method', choices=[
+        ('', 'All Methods'),
+        ('cash', 'Cash'),
+        ('card', 'Credit/Debit Card'),
+        ('upi', 'UPI'),
+        ('net_banking', 'Net Banking')
+    ], validators=[Optional()])
+    
+    # Amount range
+    amount_min = DecimalField('Min Amount', validators=[
+        Optional(),
+        NumberRange(min=0, message='Amount must be positive')
+    ], places=2)
+    amount_max = DecimalField('Max Amount', validators=[
+        Optional(),
+        NumberRange(min=0, message='Amount must be positive')
+    ], places=2)
+    
+    # Show filter
+    show_id = SelectField('Show', coerce=int, validators=[Optional()])
+    
+    # Customer filters
+    customer_email = EmailField('Customer Email', validators=[Optional()])
+    customer_phone = TelField('Customer Phone', validators=[Optional()])
+    
+    # Seat filter
+    seat_number = StringField('Seat Number', validators=[
+        Optional(),
+        Length(max=10, message='Seat number cannot exceed 10 characters')
+    ])
+    
+    # Sorting and pagination
+    sort_by = SelectField('Sort By', choices=[
+        ('booking_time_desc', 'Booking Time (Newest)'),
+        ('booking_time_asc', 'Booking Time (Oldest)'),
+        ('show_date_asc', 'Show Date (Upcoming)'),
+        ('show_date_desc', 'Show Date (Past)'),
+        ('customer_name_asc', 'Customer Name (A-Z)'),
+        ('customer_name_desc', 'Customer Name (Z-A)'),
+        ('total_amount_desc', 'Amount (High to Low)'),
+        ('total_amount_asc', 'Amount (Low to High)'),
+        ('movie_title_asc', 'Movie Title (A-Z)'),
+        ('movie_title_desc', 'Movie Title (Z-A)')
+    ], default='booking_time_desc')
+    
+    per_page = SelectField('Per Page', choices=[
+        (10, '10'),
+        (20, '20'),
+        (50, '50'),
+        (100, '100')
+    ], default=20, coerce=int)
+    
+    # Form actions
+    submit = SubmitField('Search')
+    save_search = SubmitField('Save Search')
+    clear = SubmitField('Clear')
+    
+    def __init__(self, *args, **kwargs):
+        super(AdvancedBookingSearchForm, self).__init__(*args, **kwargs)
+        self._populate_show_choices()
+    
+    def _populate_show_choices(self):
+        """Populate show choices with available shows"""
+        from app.shows.models import Show
+        from app.movies.models import Movie
+        
+        shows = Show.query.join(Movie).filter(
+            Movie.status == 'active',
+            Show.show_date >= datetime.now().date() - timedelta(days=30)  # Last 30 days
+        ).order_by(Show.show_date.desc(), Show.show_time.desc()).limit(100).all()
+        
+        self.show_id.choices = [(0, 'All Shows')]
+        for show in shows:
+            display_text = f"{show.movie.title} - {show.show_date.strftime('%d %b %Y')} at {show.show_time.strftime('%I:%M %p')} - {show.screen.name}"
+            self.show_id.choices.append((show.id, display_text))
+    
+    def validate_search_term(self, field):
+        """Validate and sanitize search term"""
+        if field.data:
+            # Sanitize input
+            sanitized = InputSanitizer.sanitize_string(field.data, max_length=100)
+            
+            # Check for SQL injection
+            if SecurityValidator.detect_sql_injection(field.data):
+                raise ValidationError('Invalid characters detected in search term')
+            
+            # Check for XSS
+            if SecurityValidator.detect_xss(field.data):
+                raise ValidationError('Invalid characters detected in search term')
+            
+            # Update field data with sanitized version
+            field.data = sanitized
+    
+    def validate_customer_email(self, field):
+        """Validate customer email"""
+        if field.data:
+            # Sanitize email
+            sanitized = InputSanitizer.sanitize_email(field.data)
+            if not sanitized:
+                raise ValidationError('Please enter a valid email address')
+            
+            # Update field data with sanitized version
+            field.data = sanitized
+    
+    def validate_customer_phone(self, field):
+        """Validate customer phone"""
+        if field.data:
+            # Sanitize phone number
+            sanitized = InputSanitizer.sanitize_phone(field.data)
+            if not sanitized:
+                raise ValidationError('Please enter a valid phone number')
+            
+            # Update field data with sanitized version
+            field.data = sanitized
+    
+    def validate_seat_number(self, field):
+        """Validate seat number format"""
+        if field.data:
+            # Basic seat number format validation (e.g., "A1", "B12", "C-5")
+            seat_pattern = r'^[A-Za-z][0-9\-]+$'
+            if not re.match(seat_pattern, field.data.strip()):
+                raise ValidationError('Invalid seat number format (e.g., A1, B12, C-5)')
+            
+            # Sanitize input
+            sanitized = InputSanitizer.sanitize_string(field.data, max_length=10)
+            field.data = sanitized
+    
+    def validate_date_range(self):
+        """Validate date range"""
+        date_from = self.date_from.data
+        date_to = self.date_to.data
+        
+        if date_from and date_to:
+            try:
+                # Parse dates (assuming YYYY-MM-DD format)
+                from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+                to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+                
+                if from_date > to_date:
+                    raise ValidationError('From date cannot be after to date')
+                
+                # Limit date range to 1 year
+                if (to_date - from_date).days > 365:
+                    raise ValidationError('Date range cannot exceed 1 year')
+                
+            except ValueError:
+                raise ValidationError('Invalid date format. Use YYYY-MM-DD format.')
+    
+    def validate_amount_range(self):
+        """Validate amount range"""
+        amount_min = self.amount_min.data
+        amount_max = self.amount_max.data
+        
+        if amount_min is not None and amount_max is not None:
+            if amount_min > amount_max:
+                raise ValidationError('Minimum amount cannot be greater than maximum amount')
+    
+    def validate_date_format(self):
+        """Validate date format"""
+        date_fields = [self.date_from, self.date_to]
+        
+        for field in date_fields:
+            if field.data:
+                try:
+                    datetime.strptime(field.data, '%Y-%m-%d')
+                except ValueError:
+                    field.errors.append('Invalid date format. Use YYYY-MM-DD format.')

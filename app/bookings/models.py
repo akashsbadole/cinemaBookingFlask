@@ -2,6 +2,7 @@
 Bookings Models
 """
 from datetime import datetime
+import re
 
 # Import db from database module to avoid circular imports
 from app.database import db
@@ -9,21 +10,54 @@ from app.database import db
 class Booking(db.Model):
     """Booking model"""
     id = db.Column(db.Integer, primary_key=True)
-    reference_number = db.Column(db.String(20), unique=True, nullable=False)
-    show_id = db.Column(db.Integer, db.ForeignKey('show.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    booking_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    total_amount = db.Column(db.Numeric(10, 2), nullable=False)
-    payment_method = db.Column(db.Enum('cash', 'card', 'upi', name='payment_methods'), nullable=False)
-    customer_name = db.Column(db.String(100), nullable=False)
-    customer_phone = db.Column(db.String(20))
-    customer_email = db.Column(db.String(120))
-    payment_reference = db.Column(db.String(100))
-    status = db.Column(db.Enum('pending', 'confirmed', 'cancelled', name='booking_status'), default='pending')
+    reference_number = db.Column(db.String(20), unique=True, nullable=False,
+                              comment="Unique booking reference number")
+    show_id = db.Column(db.Integer, db.ForeignKey('show.id'), nullable=False,
+                        comment="ID of the show")
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False,
+                        comment="ID of the user who made the booking")
+    booking_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False,
+                            comment="Timestamp when booking was made")
+    total_amount = db.Column(db.Numeric(10, 2), nullable=False,
+                            comment="Total amount for the booking")
+    payment_method = db.Column(db.Enum('cash', 'card', 'upi', 'paypal', 'netbanking', 'wallet', name='payment_methods'),
+                             nullable=False, comment="Payment method used")
+    customer_name = db.Column(db.String(100), nullable=False,
+                            comment="Name of the customer")
+    customer_phone = db.Column(db.String(20),
+                             comment="Customer phone number")
+    customer_email = db.Column(db.String(120),
+                             comment="Customer email address")
+    payment_reference = db.Column(db.String(100),
+                                comment="Payment reference number")
+    status = db.Column(db.Enum('pending', 'confirmed', 'cancelled', name='booking_status'),
+                      default='pending', nullable=False, comment="Current booking status")
+    notes = db.Column(db.Text, comment="Additional notes")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False,
+                          comment="Creation timestamp")
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow,
+                          comment="Last update timestamp")
     
     # Relationships
     booking_seats = db.relationship('BookingSeat', backref='booking', lazy=True, cascade='all, delete-orphan')
     payments = db.relationship('Payment', backref='booking', lazy=True)
+    
+    # Constraints
+    __table_args__ = (
+        db.CheckConstraint('total_amount >= 0', name='check_booking_amount_positive'),
+        db.CheckConstraint('length(reference_number) >= 5', name='check_reference_length'),
+        db.CheckConstraint('length(customer_name) >= 2', name='check_customer_name_length'),
+        db.CheckConstraint("status IN ('pending', 'confirmed', 'cancelled')", name='check_booking_status'),
+        db.CheckConstraint("payment_method IN ('cash', 'card', 'upi', 'paypal', 'netbanking', 'wallet')", name='check_payment_method'),
+        db.CheckConstraint("customer_phone ~* '^[0-9+\-\s()]*$' OR customer_phone IS NULL", name='check_phone_format'),
+        db.CheckConstraint("customer_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$' OR customer_email IS NULL", name='check_email_format'),
+        db.Index('idx_booking_reference', 'reference_number'),
+        db.Index('idx_booking_status', 'status'),
+        db.Index('idx_booking_show', 'show_id'),
+        db.Index('idx_booking_user', 'user_id'),
+        db.Index('idx_booking_time', 'booking_time'),
+        db.UniqueConstraint('show_id', 'customer_email', 'customer_phone', name='uq_booking_customer_show'),
+    )
     
     def __repr__(self):
         return f'<Booking {self.reference_number}>'

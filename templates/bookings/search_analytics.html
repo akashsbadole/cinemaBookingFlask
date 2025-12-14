@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Booking Search Analytics</h1>
+            <a href="{{ url_for('bookings.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Bookings
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Popular Search Terms -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Popular Search Terms</h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshAnalytics()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                {% if popular_terms %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Search Term</th>
+                                <th>Count</th>
+                                <th>Last Used</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for term in popular_terms %}
+                            <tr>
+                                <td>
+                                    <strong>{{ term.search_term }}</strong>
+                                    {% if term.search_type %}
+                                    <span class="badge bg-light text-dark ms-2">{{ term.search_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ term.count }}</span>
+                                </td>
+                                <td class="text-muted">{{ term.last_used.strftime('%d %b %Y %H:%M') if term.last_used else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-search fa-2x text-muted mb-3"></i>
+                    <p class="text-muted">No search data available yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Search Performance</h5>
+            </div>
+            <div class="card-body">
+                {% if performance_metrics %}
+                <div class="row text-center">
+                    <div class="col-md-4 mb-3">
+                        <div class="performance-metric">
+                            <h3 class="text-primary">{{ performance_metrics.total_searches }}</h3>
+                            <p class="text-muted mb-0">Total Searches</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="performance-metric">
+                            <h3 class="text-success">{{ "%.1f"|format(performance_metrics.avg_results) }}</h3>
+                            <p class="text-muted mb-0">Avg Results</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="performance-metric">
+                            <h3 class="text-info">{{ "%.2f"|format(performance_metrics.success_rate) }}%</h3>
+                            <p class="text-muted mb-0">Success Rate</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Search Types</h6>
+                        {% for type, count in performance_metrics.search_types.items() %}
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>{{ type|title }}</span>
+                            <span class="badge bg-secondary">{{ count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Filter Usage</h6>
+                        {% for filter, count in performance_metrics.filter_usage.items() %}
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>{{ filter|title }}</span>
+                            <span class="badge bg-secondary">{{ count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-chart-line fa-2x text-muted mb-3"></i>
+                    <p class="text-muted">No performance data available yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Search History -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Search History</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-warning" onclick="clearSearchHistory()">
+                        <i class="fas fa-trash me-1"></i>Clear History
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshAnalytics()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if recent_searches %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>User</th>
+                                <th>Search Term</th>
+                                <th>Type</th>
+                                <th>Filters</th>
+                                <th>Results</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for search in recent_searches %}
+                            <tr>
+                                <td>{{ search.timestamp.strftime('%d %b %Y %H:%M:%S') }}</td>
+                                <td>{{ search.username or 'Unknown' }}</td>
+                                <td>
+                                    <strong>{{ search.search_term or '-' }}</strong>
+                                </td>
+                                <td>
+                                    {% if search.search_type %}
+                                    <span class="badge bg-light text-dark">{{ search.search_type }}</span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if search.filters %}
+                                    <button class="btn btn-sm btn-outline-info" onclick="showFilters({{ search.id }})">
+                                        <i class="fas fa-filter"></i> View
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted">None</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if search.result_count is not none %}
+                                    <span class="badge bg-{{ 'success' if search.result_count > 0 else 'secondary' }}">
+                                        {{ search.result_count }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if search.duration_ms %}
+                                    <span class="text-muted">{{ "%.0f"|format(search.duration_ms) }}ms</span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="replaySearch({{ search.id }})">
+                                        <i class="fas fa-redo"></i> Replay
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-history fa-2x text-muted mb-3"></i>
+                    <p class="text-muted">No search history available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Parameters Modal -->
+<div class="modal fade" id="searchParamsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Search Parameters</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="searchParamsContent" class="bg-light p-3 rounded"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const searchHistory = {{ recent_searches|tojson }};
+
+function refreshAnalytics() {
+    location.reload();
+}
+
+function showFilters(searchId) {
+    const search = searchHistory.find(s => s.id === searchId);
+    if (search && search.filters) {
+        const content = document.getElementById('searchParamsContent');
+        content.textContent = JSON.stringify(search.filters, null, 2);
+        
+        const modal = new bootstrap.Modal(document.getElementById('searchParamsModal'));
+        modal.show();
+    }
+}
+
+function replaySearch(searchId) {
+    const search = searchHistory.find(s => s.id === searchId);
+    if (search) {
+        // Build URL with search parameters
+        const params = new URLSearchParams();
+        
+        if (search.search_term) {
+            params.set('search', search.search_term);
+        }
+        
+        if (search.search_type) {
+            params.set('search_type', search.search_type);
+        }
+        
+        if (search.filters) {
+            Object.keys(search.filters).forEach(key => {
+                if (search.filters[key]) {
+                    params.set(key, search.filters[key]);
+                }
+            });
+        }
+        
+        // Redirect to bookings with search parameters
+        window.location.href = `{{ url_for('bookings.index') }}?${params.toString()}`;
+    }
+}
+
+function clearSearchHistory() {
+    if (confirm('Are you sure you want to clear all search history? This action cannot be undone.')) {
+        fetch('{{ url_for("analytics.clear_search_history", module="bookings") }}', {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                throw new Error('Failed to clear search history');
+            }
+        })
+        .catch(error => {
+            console.error('Error clearing search history:', error);
+            alert('Failed to clear search history: ' + error.message);
+        });
+    }
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+
+<style>
+.performance-metric {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+    transition: transform 0.2s;
+}
+
+.performance-metric:hover {
+    transform: translateY(-2px);
+}
+
+.performance-metric h3 {
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.performance-metric p {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.modal-content pre {
+    font-size: 0.875rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.card {
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+</style>
+{% endblock %}

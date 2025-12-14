@@ -1,353 +1,318 @@
 {% extends "base.html" %}
 
+{% block title %}Dashboard - {{ app_name }}{% endblock %}
+
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1 class="mb-0">Dashboard</h1>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary" onclick="refreshDashboard()">
-                    <i class="fas fa-sync-alt me-1"></i>Refresh
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="refreshDashboard()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-info" onclick="toggleNotifications()">
+                <i class="fas fa-bell"></i> Notifications
+                <span id="notification-badge" class="badge badge-danger badge-counter" style="display: none;">0</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Global Search -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Global Search</h6>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="global-search-input" 
+                               placeholder="Search movies, bookings, payments, users...">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" type="button" onclick="performGlobalSearch()">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                    <div id="search-suggestions" class="position-absolute w-100 bg-white border rounded shadow-sm" 
+                         style="z-index: 1000; display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row">
+        <!-- Movies Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Movies</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="movies-count">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-film fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    <div class="row no-gutters align-items-center mt-2">
+                        <div class="col-12">
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                     style="width: 0%" id="movies-progress"></div>
+                            </div>
+                            <small class="text-muted">Active: <span id="movies-active">0</span></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screens Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Screens</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="screens-count">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-tv fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    <div class="row no-gutters align-items-center mt-2">
+                        <div class="col-12">
+                            <small class="text-muted">Total Seats: <span id="total-seats">0</span></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shows Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Shows</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="shows-count">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    <div class="row no-gutters align-items-center mt-2">
+                        <div class="col-12">
+                            <small class="text-muted">Today: <span id="shows-today">0</span></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bookings Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Bookings</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="bookings-count">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-ticket-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    <div class="row no-gutters align-items-center mt-2">
+                        <div class="col-12">
+                            <small class="text-muted">Pending: <span id="bookings-pending">0</span></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue and Activity -->
+    <div class="row">
+        <!-- Revenue Chart -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Revenue Overview</h6>
+                    <div class="dropdown no-arrow">
+                        <a class="dropdown-toggle" href="#" role="button" id="revenue-period-dropdown" 
+                           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in">
+                            <a class="dropdown-item" href="#" onclick="updateRevenuePeriod('today')">Today</a>
+                            <a class="dropdown-item" href="#" onclick="updateRevenuePeriod('week')">This Week</a>
+                            <a class="dropdown-item" href="#" onclick="updateRevenuePeriod('month')">This Month</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="revenue-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Health -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">System Health</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="system-health-chart"></canvas>
+                    </div>
+                    <div class="mt-4 text-center small">
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-success"></i> Healthy
+                        </span>
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-warning"></i> Warning
+                        </span>
+                        <span>
+                            <i class="fas fa-circle text-danger"></i> Critical
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <!-- Recent Bookings -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Bookings</h6>
+                </div>
+                <div class="card-body">
+                    <div id="recent-bookings-list">
+                        <div class="text-center">
+                            <span class="spinner-border" role="status"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Payments -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Payments</h6>
+                </div>
+                <div class="card-body">
+                    <div id="recent-payments-list">
+                        <div class="text-center">
+                            <span class="spinner-border" role="status"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="{{ url_for('movies.add') }}" class="btn btn-primary btn-block">
+                                <i class="fas fa-plus"></i> Add Movie
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="{{ url_for('shows.add') }}" class="btn btn-success btn-block">
+                                <i class="fas fa-plus"></i> Schedule Show
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="{{ url_for('bookings.new') }}" class="btn btn-info btn-block">
+                                <i class="fas fa-plus"></i> New Booking
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="{{ url_for('reports.index') }}" class="btn btn-warning btn-block">
+                                <i class="fas fa-chart-bar"></i> View Reports
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notifications Panel -->
+<div id="notifications-panel" class="position-fixed top-0 right-0 h-100 w-25 bg-white shadow-lg" 
+     style="z-index: 1050; display: none; transform: translateX(100%); transition: transform 0.3s;">
+    <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+        <h5 class="mb-0">Notifications</h5>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleNotifications()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="p-3" style="max-height: calc(100vh - 60px); overflow-y: auto;">
+        <div id="notifications-list">
+            <div class="text-center text-muted">
+                <i class="fas fa-bell fa-2x mb-3"></i>
+                <p>No notifications</p>
+            </div>
+        </div>
+        <div class="border-top p-2">
+            <button type="button" class="btn btn-sm btn-outline-primary btn-block" 
+                    onclick="markAllNotificationsRead()">
+                Mark All as Read
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Search Results Modal -->
+<div class="modal fade" id="search-results-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Search Results</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
                 </button>
-                <button class="btn btn-primary" onclick="exportReport()">
-                    <i class="fas fa-download me-1"></i>Export Report
-                </button>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Quick Actions -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card bg-gradient-primary text-white">
-            <div class="card-body">
-                <h5 class="card-title mb-3">
-                    <i class="fas fa-bolt me-2"></i>Quick Actions
-                </h5>
-                <div class="row">
-                    <div class="col-md-3 col-sm-6 mb-3">
-                        <a href="{{ url_for('bookings.new') }}" class="btn btn-light w-100">
-                            <i class="fas fa-plus-circle me-2"></i>New Booking
-                        </a>
+            <div class="modal-body">
+                <div id="search-results-container">
+                    <div class="text-center">
+                        <span class="spinner-border" role="status"></span>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
-                        <a href="{{ url_for('movies.add') }}" class="btn btn-light w-100">
-                            <i class="fas fa-film me-2"></i>Add Movie
-                        </a>
-                    </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
-                        <a href="{{ url_for('screens.add') }}" class="btn btn-light w-100">
-                            <i class="fas fa-tv me-2"></i>Add Screen
-                        </a>
-                    </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
-                        <a href="{{ url_for('shows.add') }}" class="btn btn-light w-100">
-                            <i class="fas fa-clock me-2"></i>Add Show
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Main Action Cards -->
-<div class="row mb-4">
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card h-100 border-0 shadow-sm dashboard-card">
-            <div class="card-body text-center">
-                <div class="icon-box bg-primary bg-gradient text-white rounded-circle mx-auto mb-3">
-                    <i class="fas fa-plus fa-2x"></i>
-                </div>
-                <h5 class="card-title">New Booking</h5>
-                <p class="card-text text-muted">Create a new ticket booking quickly</p>
-                <a href="{{ url_for('bookings.new') }}" class="btn btn-primary">
-                    <i class="fas fa-arrow-right me-1"></i>Book Now
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card h-100 border-0 shadow-sm dashboard-card">
-            <div class="card-body text-center">
-                <div class="icon-box bg-success bg-gradient text-white rounded-circle mx-auto mb-3">
-                    <i class="fas fa-calendar-day fa-2x"></i>
-                </div>
-                <h5 class="card-title">Today's Bookings</h5>
-                <p class="card-text text-muted">View and manage today's bookings</p>
-                <a href="{{ url_for('bookings.index') }}" class="btn btn-success">
-                    <i class="fas fa-arrow-right me-1"></i>View Bookings
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card h-100 border-0 shadow-sm dashboard-card">
-            <div class="card-body text-center">
-                <div class="icon-box bg-info bg-gradient text-white rounded-circle mx-auto mb-3">
-                    <i class="fas fa-film fa-2x"></i>
-                </div>
-                <h5 class="card-title">Movies</h5>
-                <p class="card-text text-muted">Manage movie listings and details</p>
-                <a href="{{ url_for('movies.index') }}" class="btn btn-info">
-                    <i class="fas fa-arrow-right me-1"></i>Manage Movies
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card h-100 border-0 shadow-sm dashboard-card">
-            <div class="card-body text-center">
-                <div class="icon-box bg-warning bg-gradient text-white rounded-circle mx-auto mb-3">
-                    <i class="fas fa-tv fa-2x"></i>
-                </div>
-                <h5 class="card-title">Screens</h5>
-                <p class="card-text text-muted">Manage theater screens and seating</p>
-                <a href="{{ url_for('screens.index') }}" class="btn btn-warning">
-                    <i class="fas fa-arrow-right me-1"></i>Manage Screens
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% if current_user.role == 'admin' %}
-<!-- Admin Panel -->
-<div class="row mb-4">
-    <div class="col-12">
-        <h2 class="mb-3">
-            <i class="fas fa-user-shield me-2"></i>Admin Panel
-        </h2>
-    </div>
-    
-    <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card h-100 border-0 shadow-sm admin-card">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="icon-box bg-primary bg-gradient text-white rounded-circle me-3">
-                        <i class="fas fa-chart-bar"></i>
-                    </div>
-                    <div>
-                        <h5 class="card-title mb-0">Reports</h5>
-                        <p class="text-muted mb-0">Analytics & insights</p>
-                    </div>
-                </div>
-                <p class="card-text">View comprehensive sales, occupancy, and performance reports</p>
-                <a href="{{ url_for('reports.index') }}" class="btn btn-primary">
-                    <i class="fas fa-chart-line me-1"></i>View Reports
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card h-100 border-0 shadow-sm admin-card">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="icon-box bg-success bg-gradient text-white rounded-circle me-3">
-                        <i class="fas fa-credit-card"></i>
-                    </div>
-                    <div>
-                        <h5 class="card-title mb-0">Payments</h5>
-                        <p class="text-muted mb-0">Transaction management</p>
-                    </div>
-                </div>
-                <p class="card-text">Manage payment history, refunds, and transaction details</p>
-                <a href="{{ url_for('payments.index') }}" class="btn btn-success">
-                    <i class="fas fa-money-bill-wave me-1"></i>View Payments
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-4 col-md-6 mb-4">
-        <div class="card h-100 border-0 shadow-sm admin-card">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="icon-box bg-info bg-gradient text-white rounded-circle me-3">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div>
-                        <h5 class="card-title mb-0">Users</h5>
-                        <p class="text-muted mb-0">User management</p>
-                    </div>
-                </div>
-                <p class="card-text">Manage system users, roles, and permissions</p>
-                <a href="{{ url_for('auth.register') }}" class="btn btn-info">
-                    <i class="fas fa-user-plus me-1"></i>Manage Users
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<!-- Statistics Dashboard -->
-<div class="row mb-4">
-    <div class="col-12">
-        <h2 class="mb-3">
-            <i class="fas fa-chart-pie me-2"></i>Today's Statistics
-        </h2>
-    </div>
-    
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card border-0 shadow-sm stat-card">
-            <div class="card-body dashboard-stats">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h3 class="counter" data-target="{{ today_bookings or 0 }}">0</h3>
-                        <p class="text-muted mb-0">Today's Bookings</p>
-                    </div>
-                    <div class="icon-box bg-primary bg-gradient text-white rounded-circle">
-                        <i class="fas fa-ticket-alt"></i>
-                    </div>
-                </div>
-                <div class="progress mt-3" style="height: 4px;">
-                    <div class="progress-bar bg-primary" style="width: 75%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card border-0 shadow-sm stat-card">
-            <div class="card-body dashboard-stats">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h3 class="counter" data-target="{{ today_revenue or 0 }}">0</h3>
-                        <p class="text-muted mb-0">Today's Revenue</p>
-                    </div>
-                    <div class="icon-box bg-success bg-gradient text-white rounded-circle">
-                        <i class="fas fa-dollar-sign"></i>
-                    </div>
-                </div>
-                <div class="progress mt-3" style="height: 4px;">
-                    <div class="progress-bar bg-success" style="width: 60%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card border-0 shadow-sm stat-card">
-            <div class="card-body dashboard-stats">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h3 class="counter" data-target="{{ active_movies or 0 }}">0</h3>
-                        <p class="text-muted mb-0">Active Movies</p>
-                    </div>
-                    <div class="icon-box bg-info bg-gradient text-white rounded-circle">
-                        <i class="fas fa-film"></i>
-                    </div>
-                </div>
-                <div class="progress mt-3" style="height: 4px;">
-                    <div class="progress-bar bg-info" style="width: 85%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card border-0 shadow-sm stat-card">
-            <div class="card-body dashboard-stats">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h3 class="counter" data-target="{{ total_screens or 0 }}">0</h3>
-                        <p class="text-muted mb-0">Total Screens</p>
-                    </div>
-                    <div class="icon-box bg-warning bg-gradient text-white rounded-circle">
-                        <i class="fas fa-tv"></i>
-                    </div>
-                </div>
-                <div class="progress mt-3" style="height: 4px;">
-                    <div class="progress-bar bg-warning" style="width: 90%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Activity -->
-<div class="row">
-    <div class="col-lg-8 mb-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fas fa-history me-2"></i>Recent Activity
-                    </h5>
-                    <a href="{{ url_for('bookings.index') }}" class="btn btn-sm btn-outline-primary">
-                        View All
-                    </a>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="activity-feed">
-                    {% if recent_bookings %}
-                        {% for booking in recent_bookings %}
-                        <div class="activity-item d-flex align-items-center mb-3">
-                            <div class="activity-icon bg-primary bg-gradient text-white rounded-circle me-3">
-                                <i class="fas fa-ticket-alt"></i>
-                            </div>
-                            <div class="activity-content flex-grow-1">
-                                <h6 class="mb-1">{{ booking.movie_title or 'Unknown Movie' }}</h6>
-                                <p class="text-muted mb-0">
-                                    {{ booking.seats }} seats • Screen {{ booking.screen_name or 'N/A' }} • 
-                                    {{ booking.booking_time.strftime('%H:%M') if booking.booking_time else '' }}
-                                </p>
-                            </div>
-                            <div class="activity-amount">
-                                <strong>${{ "%.2f"|format(booking.amount or 0) }}</strong>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="text-center py-4">
-                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">No recent activity found</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-4 mb-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0">
-                <h5 class="mb-0">
-                    <i class="fas fa-fire me-2"></i>Trending Movies
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="trending-movies">
-                    {% if trending_movies %}
-                        {% for movie in trending_movies %}
-                        <div class="trending-item d-flex align-items-center mb-3">
-                            <div class="trending-rank bg-primary text-white rounded-circle me-3">
-                                {{ loop.index }}
-                            </div>
-                            <div class="trending-content flex-grow-1">
-                                <h6 class="mb-1">{{ movie.title }}</h6>
-                                <div class="progress" style="height: 4px;">
-                                    <div class="progress-bar bg-primary" style="width: {{ movie.percentage or 70 }}%"></div>
-                                </div>
-                            </div>
-                            <div class="trending-percentage">
-                                <small class="text-muted">{{ movie.percentage or 70 }}%</small>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="text-center py-4">
-                            <i class="fas fa-film fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">No trending data available</p>
-                        </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -355,187 +320,530 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Dashboard JavaScript -->
 <script>
+let dashboardData = {};
+let notificationCount = 0;
+
+// Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
-    // Animate counters
-    const counters = document.querySelectorAll('.counter');
-    const speed = 200;
+    loadDashboardData();
+    loadNotifications();
     
-    counters.forEach(counter => {
-        const animate = () => {
-            const value = +counter.getAttribute('data-target');
-            const data = +counter.innerText;
-            const time = value / speed;
-            
-            if (data < value) {
-                counter.innerText = Math.ceil(data + time);
-                setTimeout(animate, 1);
-            } else {
-                counter.innerText = value;
-            }
-        }
-        
-        // Start animation when element is in view
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    animate();
-                    observer.unobserve(entry.target);
-                }
-            });
-        });
-        
-        observer.observe(counter);
-    });
+    // Auto-refresh every 5 minutes
+    setInterval(loadDashboardData, 300000);
     
-    // Add hover effects to cards
-    const cards = document.querySelectorAll('.dashboard-card, .admin-card, .stat-card');
-    cards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-10px)';
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-    });
+    // Check notifications every 2 minutes
+    setInterval(loadNotifications, 120000);
 });
 
-function refreshDashboard() {
-    // Show loading state
-    const btn = event.target.closest('button');
-    const originalContent = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
-    btn.disabled = true;
-    
-    // Simulate refresh (in real app, this would fetch new data)
-    setTimeout(() => {
-        btn.innerHTML = originalContent;
-        btn.disabled = false;
-        
-        // Show success message
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-success alert-dismissible fade show animate__animated animate__fadeInDown';
-        alert.innerHTML = `
-            <i class="fas fa-check-circle me-2"></i>Dashboard refreshed successfully!
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        const main = document.querySelector('main');
-        main.insertBefore(alert, main.firstChild);
-        
-        // Auto-dismiss after 3 seconds
-        setTimeout(() => {
-            alert.remove();
-        }, 3000);
-    }, 1500);
+// Load dashboard data
+function loadDashboardData() {
+    fetch('/api/integration/dashboard')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                dashboardData = data.data;
+                updateDashboardUI(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading dashboard data:', error);
+        });
 }
 
-function exportReport() {
-    // Show loading state
-    const btn = event.target.closest('button');
-    const originalContent = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
-    btn.disabled = true;
+// Update dashboard UI
+function updateDashboardUI(data) {
+    // Update movie statistics
+    document.getElementById('movies-count').innerHTML = data.movies.total;
+    document.getElementById('movies-active').textContent = data.movies.active;
+    document.getElementById('movies-progress').style.width = 
+        (data.movies.total > 0 ? (data.movies.active / data.movies.total * 100) : 0) + '%';
     
-    // Simulate report generation
-    setTimeout(() => {
-        btn.innerHTML = originalContent;
-        btn.disabled = false;
+    // Update screen statistics
+    document.getElementById('screens-count').innerHTML = data.screens.total;
+    document.getElementById('total-seats').textContent = data.screens.total_seats;
+    
+    // Update show statistics
+    document.getElementById('shows-count').innerHTML = data.shows.total;
+    document.getElementById('shows-today').textContent = data.shows.today;
+    
+    // Update booking statistics
+    document.getElementById('bookings-count').innerHTML = 
+        (data.bookings.recent.length + data.bookings.today);
+    document.getElementById('bookings-pending').textContent = data.bookings.pending;
+    
+    // Update recent bookings
+    updateRecentBookings(data.bookings.recent);
+    
+    // Update recent payments
+    updateRecentPayments(data.payments.recent);
+    
+    // Update revenue chart
+    updateRevenueChart(data.payments.today_revenue);
+    
+    // Update system health
+    updateSystemHealth(data.system_health);
+}
+
+// Update recent bookings list
+function updateRecentBookings(bookings) {
+    const container = document.getElementById('recent-bookings-list');
+    
+    if (bookings.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No recent bookings</p>';
+        return;
+    }
+    
+    let html = '<div class="list-group list-group-flush">';
+    bookings.slice(0, 5).forEach(booking => {
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${booking.reference_number}</strong>
+                        <div class="small text-muted">${booking.customer_name}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="small text-muted">${booking.movie_title}</div>
+                        <strong>₹${booking.total_amount}</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// Update recent payments list
+function updateRecentPayments(payments) {
+    const container = document.getElementById('recent-payments-list');
+    
+    if (payments.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No recent payments</p>';
+        return;
+    }
+    
+    let html = '<div class="list-group list-group-flush">';
+    payments.slice(0, 5).forEach(payment => {
+        const statusClass = getStatusBadgeClass(payment.status);
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${payment.reference_id || payment.id}</strong>
+                        <div class="small text-muted">${payment.mode}</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="badge ${statusClass}">${payment.status}</span>
+                        <div class="small text-muted">${payment.payment_date}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// Get status badge class
+function getStatusBadgeClass(status) {
+    switch(status.toLowerCase()) {
+        case 'completed': return 'badge-success';
+        case 'pending': return 'badge-warning';
+        case 'failed': return 'badge-danger';
+        case 'refunded': return 'badge-secondary';
+        default: return 'badge-light';
+    }
+}
+
+// Update revenue chart
+function updateRevenueChart(todayRevenue) {
+    const ctx = document.getElementById('revenue-chart').getContext('2d');
+    
+    // Generate sample data for the week
+    const labels = [];
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        labels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+        data.push(i === 0 ? todayRevenue : Math.random() * 10000 + 5000);
+    }
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Revenue',
+                data: data,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Update system health chart
+function updateSystemHealth(health) {
+    const ctx = document.getElementById('system-health-chart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Healthy', 'Warning', 'Critical'],
+            datasets: [{
+                data: [
+                    health.overall_status === 'healthy' ? 1 : 0,
+                    health.overall_status === 'needs_attention' ? 1 : 0,
+                    0
+                ],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(220, 53, 69, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+// Global search functionality
+function performGlobalSearch() {
+    const query = document.getElementById('global-search-input').value;
+    if (!query.trim()) return;
+    
+    fetch(`/api/integration/search?q=${encodeURIComponent(query)}&limit=20`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displaySearchResults(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error performing search:', error);
+        });
+}
+
+// Display search results
+function displaySearchResults(results) {
+    const container = document.getElementById('search-results-container');
+    
+    if (results.total_results === 0) {
+        container.innerHTML = '<p class="text-center text-muted">No results found</p>';
+        return;
+    }
+    
+    let html = '<div class="row">';
+    
+    Object.entries(results.modules).forEach(([module, items]) => {
+        if (items.length === 0) return;
         
-        // Show success message
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-success alert-dismissible fade show animate__animated animate__fadeInDown';
-        alert.innerHTML = `
-            <i class="fas fa-check-circle me-2"></i>Report exported successfully!
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        html += `
+            <div class="col-12 mb-3">
+                <h6 class="text-capitalize">${module}</h6>
+                <div class="list-group">
         `;
         
-        const main = document.querySelector('main');
-        main.insertBefore(alert, main.firstChild);
+        items.forEach(item => {
+            html += `
+                <a href="${item.url}" class="list-group-item list-group-item-action">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${item.title || item.name || item.reference_number}</strong>
+                            <div class="small text-muted">${getSearchItemDescription(item)}</div>
+                        </div>
+                        <div class="text-right">
+                            ${getSearchItemBadge(item)}
+                        </div>
+                    </div>
+                </a>
+            `;
+        });
         
-        // Auto-dismiss after 3 seconds
-        setTimeout(() => {
-            alert.remove();
-        }, 3000);
-    }, 2000);
+        html += '</div></div>';
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    // Show modal
+    $('#search-results-modal').modal('show');
 }
+
+// Get search item description
+function getSearchItemDescription(item) {
+    switch(item.type) {
+        case 'movie': return `${item.genre} • ${item.language}`;
+        case 'booking': return `${item.customer_name} • ${item.movie_title}`;
+        case 'payment': return `${item.mode} • ₹${item.amount}`;
+        case 'show': return `${item.movie_title} • ${item.screen_name}`;
+        case 'user': return `${item.role} • ${item.email}`;
+        default: return '';
+    }
+}
+
+// Get search item badge
+function getSearchItemBadge(item) {
+    switch(item.type) {
+        case 'booking': return `<span class="badge badge-primary">${item.status}</span>`;
+        case 'payment': return `<span class="badge badge-success">${item.status}</span>`;
+        case 'movie': return `<span class="badge badge-info">${item.status}</span>`;
+        default: return '';
+    }
+}
+
+// Search suggestions
+document.getElementById('global-search-input').addEventListener('input', function(e) {
+    const query = e.target.value;
+    if (query.length < 2) {
+        document.getElementById('search-suggestions').style.display = 'none';
+        return;
+    }
+    
+    fetch(`/api/integration/search/suggestions?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displaySearchSuggestions(data.data.suggestions);
+            }
+        })
+        .catch(error => {
+            console.error('Error getting suggestions:', error);
+        });
+});
+
+// Display search suggestions
+function displaySearchSuggestions(suggestions) {
+    const container = document.getElementById('search-suggestions');
+    
+    let html = '';
+    Object.entries(suggestions).forEach(([type, items]) => {
+        items.slice(0, 3).forEach(item => {
+            html += `<div class="p-2 border-bottom search-suggestion" onclick="selectSuggestion('${item}')">${item}</div>`;
+        });
+    });
+    
+    if (html) {
+        container.innerHTML = html;
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+// Select search suggestion
+function selectSuggestion(suggestion) {
+    document.getElementById('global-search-input').value = suggestion;
+    document.getElementById('search-suggestions').style.display = 'none';
+    performGlobalSearch();
+}
+
+// Hide suggestions when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#global-search-input') && !e.target.closest('#search-suggestions')) {
+        document.getElementById('search-suggestions').style.display = 'none';
+    }
+});
+
+// Notifications functionality
+function loadNotifications() {
+    fetch('/api/integration/notifications?limit=10')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateNotificationsUI(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading notifications:', error);
+        });
+}
+
+function updateNotificationsUI(notifications) {
+    const container = document.getElementById('notifications-list');
+    const badge = document.getElementById('notification-badge');
+    
+    notificationCount = notifications.filter(n => !n.is_read).length;
+    
+    if (notificationCount > 0) {
+        badge.textContent = notificationCount;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+    
+    if (notifications.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-bell fa-2x mb-3"></i>
+                <p>No notifications</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    notifications.forEach(notification => {
+        const readClass = notification.is_read ? 'read' : 'unread';
+        html += `
+            <div class="notification-item ${readClass} p-2 border-bottom" 
+                 onclick="markNotificationRead(${notification.id})">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">${notification.title}</h6>
+                        <p class="mb-1 small">${notification.message}</p>
+                        <small class="text-muted">${formatDate(notification.created_at)}</small>
+                    </div>
+                    ${!notification.is_read ? '<div class="dot bg-primary rounded-circle"></div>' : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function toggleNotifications() {
+    const panel = document.getElementById('notifications-panel');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        setTimeout(() => {
+            panel.style.transform = 'translateX(0)';
+        }, 10);
+    } else {
+        panel.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            panel.style.display = 'none';
+        }, 300);
+    }
+}
+
+function markNotificationRead(notificationId) {
+    fetch(`/api/integration/notifications/${notificationId}/read`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadNotifications();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking notification as read:', error);
+    });
+}
+
+function markAllNotificationsRead() {
+    fetch('/api/integration/notifications/read-all', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadNotifications();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking all notifications as read:', error);
+    });
+}
+
+// Utility functions
+function refreshDashboard() {
+    loadDashboardData();
+    loadNotifications();
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString();
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'completed': return 'text-success';
+        case 'pending': return 'text-warning';
+        case 'failed': return 'text-danger';
+        default: return 'text-muted';
+    }
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl+K for global search
+    if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('global-search-input').focus();
+    }
+    
+    // Escape to close notifications
+    if (e.key === 'Escape') {
+        const panel = document.getElementById('notifications-panel');
+        if (panel.style.display !== 'none') {
+            toggleNotifications();
+        }
+    }
+});
 </script>
 
 <style>
-.icon-box {
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all var(--transition-normal);
+.notification-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
-.dashboard-card:hover .icon-box,
-.admin-card:hover .icon-box {
-    transform: scale(1.1);
+.notification-item:hover {
+    background-color: #f8f9fa;
 }
 
-.activity-item {
-    transition: all var(--transition-fast);
+.notification-item.unread {
+    background-color: #e3f2fd;
 }
 
-.activity-item:hover {
-    background-color: var(--gray-50);
-    border-radius: var(--border-radius-lg);
-    padding: var(--spacing-sm);
+.dot {
+    width: 8px;
+    height: 8px;
+    margin-left: 8px;
 }
 
-.activity-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+.search-suggestion {
+    cursor: pointer;
 }
 
-.trending-item {
-    transition: all var(--transition-fast);
+.search-suggestion:hover {
+    background-color: #f8f9fa;
 }
 
-.trending-item:hover {
-    background-color: var(--gray-50);
-    border-radius: var(--border-radius-lg);
-    padding: var(--spacing-sm);
-}
-
-.trending-rank {
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: var(--font-size-sm);
-    flex-shrink: 0;
-}
-
-.dashboard-card,
-.admin-card,
-.stat-card {
-    transition: all var(--transition-normal);
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
-}
-
-.progress {
-    background-color: var(--gray-200);
-    border-radius: var(--border-radius-lg);
-}
-
-.progress-bar {
-    border-radius: var(--border-radius-lg);
-    transition: width var(--transition-slow);
+#search-suggestions {
+    max-height: 200px;
+    overflow-y: auto;
 }
 </style>
 {% endblock %}

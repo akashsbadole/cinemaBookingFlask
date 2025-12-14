@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-chart-bar me-2"></i>Payment Search Analytics</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('payments.index') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Payments
+            </a>
+            <a href="{{ url_for('payments.advanced_search') }}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-search me-1"></i>Advanced Search
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Popular Search Terms -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-fire me-2"></i>Popular Search Terms</h5>
+                <span class="badge bg-info">Last 30 days</span>
+            </div>
+            <div class="card-body">
+                {% if popular_searches %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Search Term</th>
+                                    <th>Count</th>
+                                    <th>Results</th>
+                                    <th>Success Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for search in popular_searches %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ search.term }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ search.type }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ search.count }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">{{ search.avg_results }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-{{ 'success' if search.success_rate > 70 else 'warning' if search.success_rate > 40 else 'danger' }}" 
+                                                 role="progressbar" 
+                                                 style="width: {{ search.success_rate }}%"
+                                                 aria-valuenow="{{ search.success_rate }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100">
+                                                {{ "%.1f"|format(search.success_rate) }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No search data available yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search Performance Metrics -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Performance Metrics</h5>
+                <span class="badge bg-info">Last 30 days</span>
+            </div>
+            <div class="card-body">
+                {% if performance_metrics %}
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <div class="card text-center border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary">Total Searches</h5>
+                                    <h2 class="text-primary">{{ performance_metrics.total_searches }}</h2>
+                                    <p class="text-muted">All time</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="card text-center border-success">
+                                <div class="card-body">
+                                    <h5 class="card-title text-success">Avg Response Time</h5>
+                                    <h2 class="text-success">{{ "%.2f"|format(performance_metrics.avg_response_time) }}ms</h2>
+                                    <p class="text-muted">Per search</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="card text-center border-warning">
+                                <div class="card-body">
+                                    <h5 class="card-title text-warning">Zero Results</h5>
+                                    <h2 class="text-warning">{{ performance_metrics.zero_results_pct }}%</h2>
+                                    <p class="text-muted">Of searches</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="card text-center border-info">
+                                <div class="card-body">
+                                    <h5 class="card-title text-info">Unique Users</h5>
+                                    <h2 class="text-info">{{ performance_metrics.unique_searchers }}</h2>
+                                    <p class="text-muted">This month</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6>Search Method Distribution</h6>
+                        {% for method, count in performance_metrics.search_methods.items() %}
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>{{ method.title() }}</span>
+                                <span class="badge bg-secondary">{{ count }}</span>
+                            </div>
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar" 
+                                     role="progressbar" 
+                                     style="width: {{ (count / performance_metrics.total_searches * 100) }}%"
+                                     aria-valuenow="{{ count }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ performance_metrics.total_searches }}">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No performance data available yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Search History -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Search History</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="clearSearchHistory()">
+                        <i class="fas fa-trash me-1"></i>Clear History
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if recent_searches %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Search Term</th>
+                                    <th>Type</th>
+                                    <th>Results</th>
+                                    <th>Response Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for search in recent_searches %}
+                                <tr>
+                                    <td>{{ search.timestamp }}</td>
+                                    <td>
+                                        <a href="{{ url_for('auth.profile', id=search.user_id) }}" class="text-decoration-none">
+                                            {{ search.user_name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <code class="text-primary">{{ search.search_term }}</code>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ search.search_type }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if search.results_count > 0 else 'danger' }}">
+                                            {{ search.results_count }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ search.response_time }}ms</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No search history available</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search Parameters Analysis -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Search Parameters</h5>
+            </div>
+            <div class="card-body">
+                {% if search_parameters %}
+                    <h6>Most Used Filters</h6>
+                    <div class="mb-3">
+                        {% for param, usage in search_parameters.most_used.items() %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-capitalize">{{ param.replace('_', ' ') }}</span>
+                            <span class="badge bg-primary">{{ usage.count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <h6>Filter Combinations</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Combination</th>
+                                    <th>Usage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for combo in search_parameters.combinations[:5] %}
+                                <tr>
+                                    <td>
+                                        <small class="text-muted">{{ combo.filters }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ combo.count }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-filter fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No parameter data available</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Optimization Suggestions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Optimization Suggestions</h5>
+            </div>
+            <div class="card-body">
+                {% if optimization_suggestions %}
+                    <div class="row">
+                        {% for suggestion in optimization_suggestions %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-{{ suggestion.priority_color }}">
+                                <div class="card-body">
+                                    <h6 class="card-title text-{{ suggestion.priority_color }}">
+                                        <i class="fas fa-{{ suggestion.icon }} me-2"></i>{{ suggestion.title }}
+                                    </h6>
+                                    <p class="card-text">{{ suggestion.description }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">Impact: {{ suggestion.impact }}</small>
+                                        <button class="btn btn-sm btn-outline-{{ suggestion.priority_color }}" 
+                                                onclick="implementSuggestion('{{ suggestion.type }}')">
+                                            Implement
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <p class="text-muted">Search performance is optimal!</p>
+                        <p class="text-muted small">No optimization suggestions at this time.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function clearSearchHistory() {
+    if (confirm('Are you sure you want to clear all search history? This action cannot be undone.')) {
+        fetch('{{ url_for("payments.clear_search_history") }}', {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error clearing search history: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error clearing search history');
+        });
+    }
+}
+
+function implementSuggestion(type) {
+    // Implementation logic for different suggestion types
+    switch(type) {
+        case 'index_optimization':
+            alert('Index optimization would be implemented by the database administrator.');
+            break;
+        case 'query_refinement':
+            alert('Query refinement suggestions would be applied to the search algorithms.');
+            break;
+        case 'ui_improvement':
+            alert('UI improvements would be implemented in the search interface.');
+            break;
+        case 'performance_tuning':
+            alert('Performance tuning would be applied to the search system.');
+            break;
+        default:
+            alert('Suggestion implementation would be handled by the development team.');
+    }
+}
+
+// Auto-refresh analytics every 5 minutes
+setTimeout(function() {
+    location.reload();
+}, 300000); // 5 minutes
+</script>
+{% endblock %}

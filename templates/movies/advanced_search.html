@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Advanced Movie Search</h1>
+            <a href="{{ url_for('movies.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Movies
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Search Form -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-search me-2"></i>Search Criteria</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('movies.index') }}" id="advancedSearchForm">
+                    <!-- Basic Search -->
+                    <div class="mb-3">
+                        <label for="{{ form.search.id }}" class="form-label">{{ form.search.label.text }}</label>
+                        {{ form.search(class="form-control", placeholder="Search by title, description, or genre...") }}
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.genre.id }}" class="form-label">{{ form.genre.label.text }}</label>
+                            {{ form.genre(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.language.id }}" class="form-label">{{ form.language.label.text }}</label>
+                            {{ form.language(class="form-select") }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.rating.id }}" class="form-label">{{ form.rating.label.text }}</label>
+                            {{ form.rating(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.status.id }}" class="form-label">{{ form.status.label.text }}</label>
+                            {{ form.status(class="form-select") }}
+                        </div>
+                    </div>
+                    
+                    <!-- Date Range -->
+                    <h6 class="text-primary mt-4 mb-3">Release Date Range</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.release_date_from.id }}" class="form-label">{{ form.release_date_from.label.text }}</label>
+                            {{ form.release_date_from(class="form-control") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.release_date_to.id }}" class="form-label">{{ form.release_date_to.label.text }}</label>
+                            {{ form.release_date_to(class="form-control") }}
+                        </div>
+                    </div>
+                    
+                    <!-- Duration Range -->
+                    <h6 class="text-primary mt-4 mb-3">Duration Range (minutes)</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.min_duration.id }}" class="form-label">{{ form.min_duration.label.text }}</label>
+                            {{ form.min_duration(class="form-control") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.max_duration.id }}" class="form-label">{{ form.max_duration.label.text }}</label>
+                            {{ form.max_duration(class="form-control") }}
+                        </div>
+                    </div>
+                    
+                    <!-- Sorting -->
+                    <h6 class="text-primary mt-4 mb-3">Sort Results</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.sort_by.id }}" class="form-label">{{ form.sort_by.label.text }}</label>
+                            {{ form.sort_by(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.sort_order.id }}" class="form-label">{{ form.sort_order.label.text }}</label>
+                            {{ form.sort_order(class="form-select") }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.per_page.id }}" class="form-label">{{ form.per_page.label.text }}</label>
+                            {{ form.per_page(class="form-select") }}
+                        </div>
+                    </div>
+                    
+                    <!-- Save Search -->
+                    <h6 class="text-primary mt-4 mb-3">Save This Search</h6>
+                    <div class="mb-3">
+                        <label for="{{ form.search_name.id }}" class="form-label">{{ form.search_name.label.text }}</label>
+                        <div class="input-group">
+                            {{ form.search_name(class="form-control", placeholder="Enter a name for this search...") }}
+                            <button type="button" class="btn btn-outline-primary" id="saveSearchBtn">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        {{ form.clear(class="btn btn-outline-secondary", onclick="clearSearchForm()") }}
+                    </div>
+                    
+                    <!-- Hidden fields -->
+                    {{ form.sort_by(id="sort_by") }}
+                    {{ form.sort_order(id="sort_order") }}
+                    {{ form.per_page(id="per_page") }}
+                    {{ form.submit(style="display:none") }}
+                </form>
+            </div>
+        </div>
+        
+        <!-- Saved Searches -->
+        {% if saved_searches %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bookmark me-2"></i>Saved Searches</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for search in saved_searches %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">{{ search.name }}</h6>
+                            <small class="text-muted">Saved on {{ search.created_at.strftime('%b %d, %Y') }}</small>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadSavedSearch({{ search.id }})">
+                                <i class="fas fa-search"></i> Load
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSavedSearch({{ search.id }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Search Results Preview -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Search Results Preview</h5>
+            </div>
+            <div class="card-body">
+                <div id="searchResults">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-search fa-3x mb-3"></i>
+                        <h5>No Search Yet</h5>
+                        <p>Configure your search criteria and click "Search" to see results here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search History Modal -->
+<div class="modal fade" id="searchHistoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Search History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="searchHistoryContent">
+                    <!-- Search history will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentSearchParams = {};
+    
+    // Clear search form
+    function clearSearchForm() {
+        document.getElementById('advancedSearchForm').reset();
+        currentSearchParams = {};
+        updateSearchResults();
+    }
+    
+    // Load saved search
+    async function loadSavedSearch(searchId) {
+        try {
+            const response = await fetch(`/movies/api/saved-searches`);
+            const savedSearches = await response.json();
+            const search = savedSearches.find(s => s.id === searchId);
+            
+            if (search) {
+                const params = search.params;
+                
+                // Load form fields
+                if (params.search_term) document.getElementById('{{ form.search.id }}').value = params.search_term;
+                if (params.genre) document.getElementById('{{ form.genre.id }}').value = params.genre;
+                if (params.language) document.getElementById('{{ form.language.id }}').value = params.language;
+                if (params.rating) document.getElementById('{{ form.rating.id }}').value = params.rating;
+                if (params.status) document.getElementById('{{ form.status.id }}').value = params.status;
+                if (params.release_date_from) document.getElementById('{{ form.release_date_from.id }}').value = params.release_date_from;
+                if (params.release_date_to) document.getElementById('{{ form.release_date_to.id }}').value = params.release_date_to;
+                if (params.min_duration) document.getElementById('{{ form.min_duration.id }}').value = params.min_duration;
+                if (params.max_duration) document.getElementById('{{ form.max_duration.id }}').value = params.max_duration;
+                if (params.sort_by) document.getElementById('{{ form.sort_by.id }}').value = params.sort_by;
+                if (params.sort_order) document.getElementById('{{ form.sort_order.id }}').value = params.sort_order;
+                if (params.per_page) document.getElementById('{{ form.per_page.id }}').value = params.per_page;
+                
+                currentSearchParams = params;
+                
+                // Show success message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success alert-dismissible fade show';
+                alert.innerHTML = `
+                    <i class="fas fa-check-circle me-2"></i>Search "${search.name}" loaded successfully.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.card-body').prepend(alert);
+                
+                // Update preview
+                updateSearchResults();
+            }
+        } catch (error) {
+            console.error('Error loading saved search:', error);
+            alert('Error loading saved search');
+        }
+    }
+    
+    // Delete saved search
+    async function deleteSavedSearch(searchId) {
+        if (!confirm('Are you sure you want to delete this saved search?')) return;
+        
+        try {
+            // This would need a proper endpoint implementation
+            console.log('Delete saved search:', searchId);
+            location.reload();
+        } catch (error) {
+            console.error('Error deleting saved search:', error);
+            alert('Error deleting saved search');
+        }
+    }
+    
+    // Save current search
+    async function saveCurrentSearch() {
+        const searchName = document.getElementById('{{ form.search_name.id }}').value.trim();
+        
+        if (!searchName) {
+            alert('Please enter a name for this search');
+            return;
+        }
+        
+        if (!currentSearchParams || Object.keys(currentSearchParams).length === 0) {
+            alert('Please configure search criteria first');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/movies/api/save-search`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: searchName,
+                    search_params: currentSearchParams
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                alert(`Search "${result.name}" saved successfully!`);
+                document.getElementById('{{ form.search_name.id }}').value = '';
+                location.reload();
+            } else {
+                const error = await response.json();
+                alert('Error saving search: ' + error.error);
+            }
+        } catch (error) {
+            console.error('Error saving search:', error);
+            alert('Error saving search');
+        }
+    }
+    
+    // Update search results preview
+    async function updateSearchResults() {
+        const resultsDiv = document.getElementById('searchResults');
+        resultsDiv.innerHTML = `
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Searching movies...</p>
+            </div>
+        `;
+        
+        try {
+            // Build search parameters
+            const params = new URLSearchParams();
+            
+            const searchTerm = document.getElementById('{{ form.search.id }}').value;
+            const genre = document.getElementById('{{ form.genre.id }}').value;
+            const language = document.getElementById('{{ form.language.id }}').value;
+            const rating = document.getElementById('{{ form.rating.id }}').value;
+            const status = document.getElementById('{{ form.status.id }}').value;
+            const releaseDateFrom = document.getElementById('{{ form.release_date_from.id }}').value;
+            const releaseDateTo = document.getElementById('{{ form.release_date_to.id }}').value;
+            const minDuration = document.getElementById('{{ form.min_duration.id }}').value;
+            const maxDuration = document.getElementById('{{ form.max_duration.id }}').value;
+            const sortBy = document.getElementById('{{ form.sort_by.id }}').value;
+            const sortOrder = document.getElementById('{{ form.sort_order.id }}').value;
+            
+            if (searchTerm) params.append('search_term', searchTerm);
+            if (genre) params.append('genre', genre);
+            if (language) params.append('language', language);
+            if (rating) params.append('rating', rating);
+            if (status) params.append('status', status);
+            if (releaseDateFrom) params.append('release_date_from', releaseDateFrom);
+            if (releaseDateTo) params.append('release_date_to', releaseDateTo);
+            if (minDuration) params.append('min_duration', minDuration);
+            if (maxDuration) params.append('max_duration', maxDuration);
+            if (sortBy) params.append('sort_by', sortBy);
+            if (sortOrder) params.append('sort_order', sortOrder);
+            
+            // Store current search parameters
+            currentSearchParams = Object.fromEntries(params);
+            
+            const response = await fetch(`/movies/?${params.toString()}`);
+            const html = await response.text();
+            
+            // Extract the movies grid from the response
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const moviesGrid = doc.querySelector('#gridView');
+            
+            if (moviesGrid) {
+                resultsDiv.innerHTML = moviesGrid.outerHTML;
+            } else {
+                resultsDiv.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-film fa-3x mb-3"></i>
+                        <h5>No Movies Found</h5>
+                        <p>No movies match your search criteria.</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error updating search results:', error);
+            resultsDiv.innerHTML = `
+                <div class="text-center text-danger py-5">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <h5>Search Error</h5>
+                    <p>There was an error performing the search.</p>
+                </div>
+            `;
+        }
+    }
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        // Save search button
+        document.getElementById('saveSearchBtn').addEventListener('click', saveCurrentSearch);
+        
+        // Auto-update results when form changes (debounced)
+        let searchTimeout;
+        const formElements = document.querySelectorAll('#advancedSearchForm input, #advancedSearchForm select');
+        
+        formElements.forEach(element => {
+            if (element.type !== 'button') {
+                element.addEventListener('change', function() {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(updateSearchResults, 500);
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

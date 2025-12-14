@@ -1,12 +1,13 @@
 """
 Payment Routes
 """
+from app.search import PaymentSearch, SearchAnalytics, get_search_params_from_request
 from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, abort, make_response
 from flask_login import login_required, current_user
 from app.payments import bp
 from app.payments.forms import (
     PaymentForm, RefundPaymentForm, EmailReceiptForm, PaymentMethodForm,
-    CashPaymentForm, CardPaymentForm, UpiPaymentForm, NetBankingPaymentForm, 
+    CashPaymentForm, CardPaymentForm, UpiPaymentForm, NetBankingPaymentForm,
     WalletPaymentForm, PaymentStatusForm, PaymentSearchForm
 )
 from app.payments.models import Payment, PaymentRefund, PaymentStatusHistory, PaymentAudit
@@ -619,115 +620,107 @@ def update_status(payment_id):
 def index():
     """Payment management dashboard"""
     try:
-        # Get search parameters
+        # Get search parameters using centralized utility
+        params = get_search_params_from_request(request, [
+            'search', 'search_type', 'status', 'payment_method', 'date_from', 'date_to',
+            'amount_min', 'amount_max', 'booking_id', 'customer_name', 'customer_email',
+            'customer_phone', 'reference_id', 'transaction_id', 'sort_by', 'page', 'per_page'
+        ])
+        
+        # Create search form
         search_form = PaymentSearchForm()
         
-        # Sanitize search parameters
-        search_term = InputSanitizer.sanitize_string(request.args.get('search_term', ''), max_length=100)
-        search_type = InputSanitizer.sanitize_string(request.args.get('search_type', 'all'), max_length=20)
-        status_filter = InputSanitizer.sanitize_string(request.args.get('status_filter', 'all'), max_length=20)
-        payment_method_filter = InputSanitizer.sanitize_string(request.args.get('payment_method_filter', 'all'), max_length=20)
-        date_from = request.args.get('date_from')
-        date_to = request.args.get('date_to')
+        # Use PaymentSearch from centralized utility
+        payment_search = PaymentSearch()
         
-        # Security check for injection attempts
-        if SecurityValidator.detect_sql_injection([search_term, search_type, status_filter, payment_method_filter]):
-            ErrorLogger.log_security_event(
-                'sql_injection_attempt',
-                f'SQL injection attempt detected in payment search',
-                request,
+        # Apply search parameters
+        if params.get('search'):
+            payment_search.set_search_term(params['search'])
+        
+        if params.get('search_type'):
+            payment_search.set_search_type(params['search_type'])
+        
+        if params.get('status'):
+            payment_search.set_payment_status(params['status'])
+        
+        if params.get('payment_method'):
+            payment_search.set_payment_method(params['payment_method'])
+        
+        if params.get('date_from'):
+            payment_search.set_date_range(params['date_from'], params.get('date_to'))
+        
+        if params.get('amount_min') or params.get('amount_max'):
+            payment_search.set_amount_range(params.get('amount_min'), params.get('amount_max'))
+        
+        if params.get('booking_id'):
+            payment_search.set_booking_id(params['booking_id'])
+        
+        if params.get('customer_name'):
+            payment_search.set_customer_name(params['customer_name'])
+        
+        if params.get('customer_email'):
+            payment_search.set_customer_email(params['customer_email'])
+        
+        if params.get('customer_phone'):
+            payment_search.set_customer_phone(params['customer_phone'])
+        
+        if params.get('reference_id'):
+            payment_search.set_reference_id(params['reference_id'])
+        
+        if params.get('transaction_id'):
+            payment_search.set_transaction_id(params['transaction_id'])
+        
+        if params.get('sort_by'):
+            payment_search.set_sort_by(params['sort_by'])
+        
+        # Set pagination
+        page = params.get('page', 1)
+        per_page = params.get('per_page', 20)
+        payment_search.set_pagination(page, per_page)
+        
+        # Execute search
+        search_result = payment_search.execute()
+        
+        # Track search analytics
+        try:
+            analytics = SearchAnalytics()
+            analytics.track_search(
                 user_id=current_user.id,
-                severity='high'
+                module='payments',
+                search_term=params.get('search', ''),
+                filters=params,
+                result_count=search_result['total']
             )
-            abort(400, "Invalid input detected")
-        
-        # Start with base query
-        query = Payment.query
-        
-        # Apply search filters
-        if search_term:
-            if search_type == 'all' or search_type == 'transaction_id':
-                query = query.filter(Payment.reference_id.ilike(f'%{search_term}%'))
-            elif search_type == 'booking_id':
-                try:
-                    booking_id = int(search_term)
-                    query = query.filter(Payment.booking_id == booking_id)
-                except ValueError:
-                    flash('Invalid booking ID format', 'warning')
-            elif search_type == 'customer':
-                query = query.join(Booking).filter(Booking.customer_name.ilike(f'%{search_term}%'))
-        
-        # Apply status filter
-        if status_filter != 'all':
-            query = query.filter(Payment.status == status_filter)
-        
-        # Apply payment method filter
-        if payment_method_filter != 'all':
-            query = query.filter(Payment.mode == payment_method_filter)
-        
-        # Apply date filters
-        if date_from:
-            try:
-                from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
-                query = query.filter(Payment.created_at >= from_date)
-            except ValueError:
-                flash('Invalid start date format', 'warning')
-        
-        if date_to:
-            try:
-                to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
-                query = query.filter(Payment.created_at <= to_date)
-            except ValueError:
-                flash('Invalid end date format', 'warning')
-        
-        # Get filtered payments with booking information
-        payments = query.join(Booking).join(Show).join(Movie).order_by(Payment.created_at.desc()).limit(100).all()
-        
-        # Format payment data for template
-        formatted_payments = []
-        for payment in payments:
-            try:
-                formatted_payments.append({
-                    'id': payment.id,
-                    'booking_id': payment.booking_id,
-                    'customer_name': payment.booking.customer_name if payment.booking else 'N/A',
-                    'movie_title': payment.booking.show.movie.title if payment.booking and payment.booking.show and payment.booking.show.movie else 'N/A',
-                    'amount': float(payment.amount) if payment.amount else 0,
-                    'mode': payment.mode,
-                    'payment_method': payment.get_payment_method_display(),
-                    'status': payment.status,
-                    'get_status_badge_class': payment.get_status_badge_class(),
-                    'payment_date': payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A',
-                    'seats': payment.booking.seats if payment.booking and payment.booking.seats else 'N/A'
-                })
-            except Exception as e:
-                ErrorLogger.log_error(e, request, context={'payment_id': payment.id})
-                continue
+        except Exception as e:
+            # Log analytics error but don't fail the search
+            ErrorLogger.log_error(e, request, context={'analytics_error': True})
         
         # Calculate summary statistics
         summary = {
-            'total_payments': len(formatted_payments),
-            'completed_payments': len([p for p in formatted_payments if p['status'] == 'completed']),
-            'pending_payments': len([p for p in formatted_payments if p['status'] == 'pending']),
-            'failed_payments': len([p for p in formatted_payments if p['status'] == 'failed']),
-            'total_revenue': sum([p['amount'] for p in formatted_payments if p['status'] == 'completed'])
+            'total_payments': len(search_result['items']),
+            'completed_payments': len([p for p in search_result['items'] if p.get('status') == 'completed']),
+            'pending_payments': len([p for p in search_result['items'] if p.get('status') == 'pending']),
+            'failed_payments': len([p for p in search_result['items'] if p.get('status') == 'failed']),
+            'total_revenue': sum([p.get('amount', 0) for p in search_result['items'] if p.get('status') == 'completed'])
         }
         
-        return render_template('payments/index.html', 
-                            title='Payments', 
-                            payments=formatted_payments,
-                            summary=summary,
-                            search_form=search_form)
+        return render_template('payments/index.html',
+                             title='Payments',
+                             payments=search_result['items'],
+                             summary=summary,
+                             search_form=search_form,
+                             pagination=search_result['pagination'],
+                             search_params=params)
     
     except Exception as e:
         ErrorLogger.log_error(e, request, user_id=current_user.id)
         logger.error(f"Error loading payments index: {str(e)}")
         flash('An error occurred while loading payments', 'danger')
-        return render_template('payments/index.html', 
-                            title='Payments', 
-                            payments=[],
-                            summary={},
-                            search_form=PaymentSearchForm())
+        return render_template('payments/index.html',
+                             title='Payments',
+                             payments=[],
+                             summary={},
+                             search_form=PaymentSearchForm())
 
 @bp.route('/view/<int:payment_id>')
 @login_required
@@ -955,3 +948,140 @@ def receipt_pdf(payment_id):
         logger.error(f"Error generating PDF receipt: {str(e)}")
         flash('An error occurred while generating PDF receipt', 'danger')
         return redirect(url_for('payments.receipt', id=payment_id))
+
+@bp.route('/api/search/autocomplete')
+@login_required
+def api_search_autocomplete():
+    """API endpoint for payment search autocomplete"""
+    try:
+        query = request.args.get('q', '').strip()
+        search_type = request.args.get('type', 'all')
+        
+        if not query or len(query) < 2:
+            return jsonify({'suggestions': []})
+        
+        # Use PaymentSearch for autocomplete
+        payment_search = PaymentSearch()
+        suggestions = payment_search.get_autocomplete_suggestions(query, search_type)
+        
+        return jsonify({'suggestions': suggestions})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'suggestions': []})
+
+@bp.route('/api/saved_searches', methods=['GET', 'POST'])
+@login_required
+def api_saved_searches():
+    """API endpoint for managing saved searches"""
+    try:
+        if request.method == 'GET':
+            # Get saved searches for current user
+            saved_searches = SavedSearch.get_user_saved_searches(current_user.id, 'payments')
+            return jsonify({'saved_searches': [s.to_dict() for s in saved_searches]})
+        
+        else:  # POST
+            # Save a new search
+            data = request.get_json()
+            if not data or not data.get('name') or not data.get('parameters'):
+                return jsonify({'error': 'Name and parameters are required'}), 400
+            
+            saved_search = SavedSearch(
+                user_id=current_user.id,
+                name=data['name'],
+                module='payments',
+                parameters=data['parameters']
+            )
+            
+            db.session.add(saved_search)
+            db.session.commit()
+            
+            return jsonify({'success': True, 'id': saved_search.id})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        if request.method == 'GET':
+            return jsonify({'saved_searches': []})
+        else:
+            return jsonify({'error': 'Failed to save search'}), 500
+
+@bp.route('/api/saved_searches/<int:search_id>', methods=['DELETE'])
+@login_required
+def api_delete_saved_search(search_id):
+    """API endpoint for deleting a saved search"""
+    try:
+        saved_search = SavedSearch.query.filter_by(
+            id=search_id,
+            user_id=current_user.id
+        ).first()
+        
+        if not saved_search:
+            return jsonify({'error': 'Saved search not found'}), 404
+        
+        db.session.delete(saved_search)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'error': 'Failed to delete saved search'}), 500
+
+@bp.route('/search_analytics')
+@login_required
+def search_analytics():
+    """Show search analytics for payments"""
+    try:
+        analytics = SearchAnalytics()
+        
+        # Get popular search terms
+        popular_terms = analytics.get_popular_searches('payments', limit=20)
+        
+        # Get recent search history
+        recent_searches = analytics.get_recent_searches('payments', limit=50)
+        
+        # Get search performance metrics
+        performance_metrics = analytics.get_search_performance('payments')
+        
+        return render_template('payments/search_analytics.html',
+                             title='Payment Search Analytics',
+                             popular_terms=popular_terms,
+                             recent_searches=recent_searches,
+                             performance_metrics=performance_metrics)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        flash('An error occurred while loading search analytics', 'danger')
+        return redirect(url_for('payments.index'))
+
+@bp.route('/advanced_search')
+@login_required
+def advanced_search():
+    """Advanced search page for payments"""
+    try:
+        from app.payments.forms import AdvancedPaymentSearchForm
+        
+        # Create advanced search form
+        form = AdvancedPaymentSearchForm()
+        
+        # Pre-fill form with current search parameters if coming from main search
+        params = get_search_params_from_request(request, [
+            'search', 'search_type', 'date_from', 'date_to', 'status', 'payment_method',
+            'amount_min', 'amount_max', 'booking_id', 'customer_name', 'customer_email',
+            'customer_phone', 'reference_id', 'transaction_id', 'sort_by', 'page', 'per_page'
+        ])
+        
+        # Populate form with existing parameters
+        for key, value in params.items():
+            if hasattr(form, key) and value:
+                getattr(form, key).data = value
+        
+        return render_template('payments/advanced_search.html',
+                             title='Advanced Payment Search',
+                             form=form,
+                             search_params=params)
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        flash('An error occurred while loading advanced search', 'danger')
+        return redirect(url_for('payments.index'))
