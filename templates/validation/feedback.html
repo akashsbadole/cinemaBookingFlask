@@ -1,0 +1,401 @@
+<!-- Real-time Validation Feedback Template -->
+<div id="validation-feedback" class="validation-feedback-container" style="display: none;">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                <i class="fas fa-shield-alt me-2"></i>Validation Results
+            </h6>
+            <button type="button" class="btn-close btn-sm" onclick="hideValidationFeedback()"></button>
+        </div>
+        <div class="card-body p-3">
+            <div id="validation-status" class="mb-3">
+                <div class="d-flex align-items-center">
+                    <div id="validation-spinner" class="spinner-border spinner-border-sm me-2" role="status" style="display: none;">
+                        <span class="visually-hidden">Validating...</span>
+                    </div>
+                    <div id="validation-icon" class="me-2"></div>
+                    <div id="validation-message" class="flex-grow-1"></div>
+                </div>
+            </div>
+            
+            <div id="validation-details" class="validation-details" style="display: none;">
+                <div class="accordion" id="validationAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="detailsHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#detailsCollapse">
+                                <i class="fas fa-info-circle me-2"></i>Validation Details
+                            </button>
+                        </h2>
+                        <div id="detailsCollapse" class="accordion-collapse collapse" data-bs-parent="#validationAccordion">
+                            <div class="accordion-body">
+                                <div id="validation-details-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="validation-suggestions" class="mt-3" style="display: none;">
+                <h6 class="text-muted">
+                    <i class="fas fa-lightbulb me-2"></i>Suggestions
+                </h6>
+                <ul id="validation-suggestions-list" class="list-unstyled mb-0">
+                </ul>
+            </div>
+            
+            <div id="validation-actions" class="mt-3 d-flex justify-content-end" style="display: none;">
+                <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="retryValidation()">
+                    <i class="fas fa-redo me-1"></i>Retry
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyValidationFix()">
+                    <i class="fas fa-magic me-1"></i>Apply Fix
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Validation Status Icons -->
+<div id="validation-icons" style="display: none;">
+    <!-- Success Icon -->
+    <div id="icon-success" class="text-success">
+        <i class="fas fa-check-circle fa-2x"></i>
+    </div>
+    
+    <!-- Warning Icon -->
+    <div id="icon-warning" class="text-warning">
+        <i class="fas fa-exclamation-triangle fa-2x"></i>
+    </div>
+    
+    <!-- Error Icon -->
+    <div id="icon-error" class="text-danger">
+        <i class="fas fa-times-circle fa-2x"></i>
+    </div>
+    
+    <!-- Info Icon -->
+    <div id="icon-info" class="text-info">
+        <i class="fas fa-info-circle fa-2x"></i>
+    </div>
+    
+    <!-- Loading Icon -->
+    <div id="icon-loading" class="text-primary">
+        <i class="fas fa-spinner fa-spin fa-2x"></i>
+    </div>
+</div>
+
+<!-- Progress Indicator for Long Operations -->
+<div id="validation-progress" class="progress-container" style="display: none;">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <h6 class="card-title mb-3">
+                <i class="fas fa-cog fa-spin me-2"></i>Processing Validation
+            </h6>
+            <div class="progress mb-3" style="height: 6px;">
+                <div id="validation-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%"></div>
+            </div>
+            <div id="validation-progress-text" class="text-muted small">
+                Initializing validation...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Toast for Validation Results -->
+<div id="validation-toast" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+    <div id="validation-toast-content" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i id="toast-icon" class="fas fa-info-circle me-2"></i>
+            <strong id="toast-title" class="me-auto">Validation</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toast-message">
+            Validation complete
+        </div>
+    </div>
+</div>
+
+<!-- Field-level Validation Indicators -->
+<div id="field-validation-templates" style="display: none;">
+    <!-- Valid Field Indicator -->
+    <div class="field-valid-indicator">
+        <div class="input-group">
+            <input type="text" class="form-control is-valid" />
+            <div class="valid-feedback">
+                <i class="fas fa-check-circle me-1"></i>
+                <span class="valid-message">Valid input</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Invalid Field Indicator -->
+    <div class="field-invalid-indicator">
+        <div class="input-group">
+            <input type="text" class="form-control is-invalid" />
+            <div class="invalid-feedback">
+                <i class="fas fa-exclamation-circle me-1"></i>
+                <span class="invalid-message">Invalid input</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Warning Field Indicator -->
+    <div class="field-warning-indicator">
+        <div class="input-group">
+            <input type="text" class="form-control is-warning" />
+            <div class="warning-feedback">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                <span class="warning-message">Warning</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.validation-feedback-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 400px;
+    max-width: 90vw;
+    z-index: 1050;
+}
+
+.validation-details {
+    background-color: #f8f9fa;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 0.5rem;
+}
+
+.validation-suggestions-list {
+    list-style: none;
+    padding: 0;
+}
+
+.validation-suggestions-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.validation-suggestions-list li:last-child {
+    border-bottom: none;
+}
+
+.progress-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    max-width: 90vw;
+    z-index: 1060;
+}
+
+.is-warning {
+    border-color: #ffc107 !important;
+}
+
+.warning-feedback {
+    color: #ffc107;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.field-valid-indicator,
+.field-invalid-indicator,
+.field-warning-indicator {
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .validation-feedback-container {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    .progress-container {
+        width: 95vw;
+    }
+}
+</style>
+
+<script>
+// Global validation feedback functions
+function showValidationFeedback(status, message, details = null, suggestions = null) {
+    const container = document.getElementById('validation-feedback');
+    const iconContainer = document.getElementById('validation-icon');
+    const messageContainer = document.getElementById('validation-message');
+    const detailsContainer = document.getElementById('validation-details');
+    const suggestionsContainer = document.getElementById('validation-suggestions');
+    const actionsContainer = document.getElementById('validation-actions');
+    
+    // Show container
+    container.style.display = 'block';
+    
+    // Set icon based on status
+    iconContainer.innerHTML = '';
+    if (status === 'success') {
+        iconContainer.innerHTML = document.getElementById('icon-success').innerHTML;
+    } else if (status === 'warning') {
+        iconContainer.innerHTML = document.getElementById('icon-warning').innerHTML;
+    } else if (status === 'error') {
+        iconContainer.innerHTML = document.getElementById('icon-error').innerHTML;
+    } else {
+        iconContainer.innerHTML = document.getElementById('icon-info').innerHTML;
+    }
+    
+    // Set message
+    messageContainer.textContent = message;
+    
+    // Show details if provided
+    if (details) {
+        detailsContainer.style.display = 'block';
+        document.getElementById('validation-details-content').innerHTML = details;
+    } else {
+        detailsContainer.style.display = 'none';
+    }
+    
+    // Show suggestions if provided
+    if (suggestions && suggestions.length > 0) {
+        suggestionsContainer.style.display = 'block';
+        const suggestionsList = document.getElementById('validation-suggestions-list');
+        suggestionsList.innerHTML = suggestions.map(s => `<li><i class="fas fa-chevron-right me-2 text-muted"></i>${s}</li>`).join('');
+    } else {
+        suggestionsContainer.style.display = 'none';
+    }
+    
+    // Show actions for non-success status
+    if (status !== 'success') {
+        actionsContainer.style.display = 'flex';
+    } else {
+        actionsContainer.style.display = 'none';
+    }
+    
+    // Auto-hide after 5 seconds for success
+    if (status === 'success') {
+        setTimeout(() => {
+            hideValidationFeedback();
+        }, 5000);
+    }
+}
+
+function hideValidationFeedback() {
+    document.getElementById('validation-feedback').style.display = 'none';
+}
+
+function showValidationProgress(steps) {
+    const container = document.getElementById('validation-progress');
+    const progressBar = document.getElementById('validation-progress-bar');
+    const progressText = document.getElementById('validation-progress-text');
+    
+    container.style.display = 'block';
+    
+    let currentStep = 0;
+    
+    function updateProgress() {
+        if (currentStep < steps.length) {
+            const step = steps[currentStep];
+            const progressPercent = ((currentStep + 1) / steps.length) * 100;
+            
+            progressBar.style.width = `${progressPercent}%`;
+            progressText.textContent = step.text;
+            
+            currentStep++;
+            
+            // Simulate processing time
+            setTimeout(updateProgress, step.duration || 1000);
+        } else {
+            // Hide progress after completion
+            setTimeout(() => {
+                container.style.display = 'none';
+            }, 1000);
+        }
+    }
+    
+    updateProgress();
+}
+
+function showValidationToast(title, message, type = 'info') {
+    const toastContainer = document.getElementById('validation-toast');
+    const toastContent = document.getElementById('validation-toast-content');
+    const toastIcon = document.getElementById('toast-icon');
+    const toastTitle = document.getElementById('toast-title');
+    const toastMessage = document.getElementById('toast-message');
+    
+    // Set icon based on type
+    toastIcon.className = 'fas me-2';
+    if (type === 'success') {
+        toastIcon.classList.add('fa-check-circle', 'text-success');
+    } else if (type === 'warning') {
+        toastIcon.classList.add('fa-exclamation-triangle', 'text-warning');
+    } else if (type === 'error') {
+        toastIcon.classList.add('fa-times-circle', 'text-danger');
+    } else {
+        toastIcon.classList.add('fa-info-circle', 'text-info');
+    }
+    
+    // Set content
+    toastTitle.textContent = title;
+    toastMessage.textContent = message;
+    
+    // Show toast
+    const toast = new bootstrap.Toast(toastContent);
+    toast.show();
+}
+
+function updateFieldValidation(fieldId, status, message = '') {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+    
+    // Remove existing validation classes
+    field.classList.remove('is-valid', 'is-invalid', 'is-warning');
+    
+    // Remove existing feedback
+    const existingFeedback = field.parentNode.querySelector('.valid-feedback, .invalid-feedback, .warning-feedback');
+    if (existingFeedback) {
+        existingFeedback.remove();
+    }
+    
+    // Add new validation status
+    if (status === 'valid') {
+        field.classList.add('is-valid');
+        addFieldFeedback(field, 'valid-feedback', message, 'fa-check-circle');
+    } else if (status === 'invalid') {
+        field.classList.add('is-invalid');
+        addFieldFeedback(field, 'invalid-feedback', message, 'fa-exclamation-circle');
+    } else if (status === 'warning') {
+        field.classList.add('is-warning');
+        addFieldFeedback(field, 'warning-feedback', message, 'fa-exclamation-triangle');
+    }
+}
+
+function addFieldFeedback(field, className, message, iconClass) {
+    const feedback = document.createElement('div');
+    feedback.className = className;
+    feedback.innerHTML = `<i class="fas ${iconClass} me-1"></i>${message}`;
+    
+    // Insert feedback after the field
+    field.parentNode.insertBefore(feedback, field.nextSibling);
+}
+
+function retryValidation() {
+    // This function should be implemented in the specific form
+    console.log('Retry validation requested');
+}
+
+function applyValidationFix() {
+    // This function should be implemented in the specific form
+    console.log('Apply validation fix requested');
+}
+
+// Auto-hide validation feedback on escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        hideValidationFeedback();
+    }
+});
+</script>

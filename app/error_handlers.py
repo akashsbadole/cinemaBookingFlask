@@ -10,6 +10,7 @@ from werkzeug.exceptions import HTTPException
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 from app.database import db
 from app.validators import ValidationError, SecurityValidator
+from app.enhanced_validators import ValidationAuditor
 
 
 # Configure error logging
@@ -287,7 +288,15 @@ class ErrorHandler:
             error: ValidationError instance
             is_json: Whether to return JSON response
         """
-        # Log validation error
+        # Enhanced logging with ValidationAuditor
+        ValidationAuditor.log_validation_attempt(
+            getattr(error, 'field', 'unknown'),
+            getattr(error, 'value', 'unknown'),
+            {'valid': False, 'message': error.message},
+            {'form_name': getattr(error, 'form_name', None)}
+        )
+        
+        # Legacy logging for compatibility
         ErrorLogger.log_validation_error(
             getattr(error, 'field', 'unknown'),
             getattr(error, 'value', 'unknown'),
@@ -350,7 +359,10 @@ class ErrorHandler:
             details: Error details
             is_json: Whether to return JSON response
         """
-        # Log security event
+        # Enhanced logging with ValidationAuditor
+        ValidationAuditor.log_security_violation(error_type, details)
+        
+        # Legacy logging for compatibility
         ErrorLogger.log_security_event(error_type, details)
         
         error_messages = {
