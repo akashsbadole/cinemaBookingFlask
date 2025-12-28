@@ -71,7 +71,7 @@ class Notification(db.Model):
     action_url = db.Column(db.String(255))  # URL for user to take action
     
     # Metadata
-    metadata = db.Column(db.Text)  # JSON string for additional data
+    notification_metadata = db.Column(db.Text)  # JSON string for additional data
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     
     # Relationships
@@ -100,7 +100,7 @@ class Notification(db.Model):
             'related_entity_type': self.related_entity_type,
             'related_entity_id': self.related_entity_id,
             'action_url': self.action_url,
-            'metadata': self.metadata,
+            'metadata': self.notification_metadata,
             'created_at': self.created_at.isoformat()
         }
     
@@ -157,7 +157,7 @@ class NotificationService:
                 related_entity_type=related_entity_type,
                 related_entity_id=related_entity_id,
                 action_url=action_url,
-                metadata=str(metadata) if metadata else None
+                notification_metadata=str(metadata) if metadata else None
             )
             
             if expires_in_hours:

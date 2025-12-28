@@ -1,7 +1,8 @@
 """
 Payment Routes
 """
-from app.search import PaymentSearch, SearchAnalytics, get_search_params_from_request
+# Import locally to avoid circular imports
+# from app.search import PaymentSearch, SearchAnalytics, get_search_params_from_request
 from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, abort, make_response
 from flask_login import login_required, current_user
 from app.payments import bp
@@ -619,6 +620,8 @@ def update_status(payment_id):
 @login_required
 def index():
     """Payment management dashboard"""
+    from app.search import PaymentSearch, SearchAnalytics, get_search_params_from_request
+    
     try:
         # Get search parameters using centralized utility
         params = get_search_params_from_request(request, [
@@ -953,6 +956,8 @@ def receipt_pdf(payment_id):
 @login_required
 def api_search_autocomplete():
     """API endpoint for payment search autocomplete"""
+    from app.search import PaymentSearch
+    
     try:
         query = request.args.get('q', '').strip()
         search_type = request.args.get('type', 'all')
@@ -975,6 +980,8 @@ def api_search_autocomplete():
 def api_saved_searches():
     """API endpoint for managing saved searches"""
     try:
+        from app.search import SavedSearch
+        
         if request.method == 'GET':
             # Get saved searches for current user
             saved_searches = SavedSearch.get_user_saved_searches(current_user.id, 'payments')
@@ -990,6 +997,7 @@ def api_saved_searches():
                 user_id=current_user.id,
                 name=data['name'],
                 module='payments',
+                description=data.get('description', ''),
                 parameters=data['parameters']
             )
             
@@ -1005,11 +1013,98 @@ def api_saved_searches():
         else:
             return jsonify({'error': 'Failed to save search'}), 500
 
+@bp.route('/save_search', methods=['POST'])
+@login_required
+def save_search():
+    """Save current search parameters"""
+    try:
+        from app.search import SavedSearch
+        
+        data = request.get_json()
+        if not data or not data.get('name'):
+            return jsonify({'success': False, 'error': 'Search name is required'}), 400
+        
+        # Get current search parameters from request
+        params = get_search_params_from_request(request, [
+            'search', 'search_type', 'date_from', 'date_to', 'status', 'payment_method',
+            'amount_min', 'amount_max', 'booking_id', 'customer_name', 'customer_email',
+            'customer_phone', 'reference_id', 'transaction_id', 'sort_by', 'sort_order'
+        ])
+        
+        saved_search = SavedSearch(
+            user_id=current_user.id,
+            name=data['name'],
+            module='payments',
+            description=data.get('description', ''),
+            parameters=str(params)
+        )
+        
+        db.session.add(saved_search)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Search saved successfully'})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'success': False, 'error': 'Failed to save search'}), 500
+
+@bp.route('/load_search/<int:search_id>')
+@login_required
+def load_search(search_id):
+    """Load saved search parameters"""
+    try:
+        from app.search import SavedSearch
+        
+        saved_search = SavedSearch.query.filter_by(
+            id=search_id,
+            user_id=current_user.id,
+            module='payments'
+        ).first()
+        
+        if not saved_search:
+            return jsonify({'success': False, 'error': 'Saved search not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'parameters': saved_search.parameters
+        })
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'success': False, 'error': 'Failed to load search'}), 500
+
+@bp.route('/delete_search/<int:search_id>', methods=['DELETE'])
+@login_required
+def delete_search(search_id):
+    """Delete a saved search"""
+    try:
+        from app.search import SavedSearch
+        
+        saved_search = SavedSearch.query.filter_by(
+            id=search_id,
+            user_id=current_user.id,
+            module='payments'
+        ).first()
+        
+        if not saved_search:
+            return jsonify({'success': False, 'error': 'Saved search not found'}), 404
+        
+        db.session.delete(saved_search)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Search deleted successfully'})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'success': False, 'error': 'Failed to delete search'}), 500
+
 @bp.route('/api/saved_searches/<int:search_id>', methods=['DELETE'])
 @login_required
 def api_delete_saved_search(search_id):
     """API endpoint for deleting a saved search"""
     try:
+        from app.search import SavedSearch
+        
         saved_search = SavedSearch.query.filter_by(
             id=search_id,
             user_id=current_user.id
@@ -1027,15 +1122,35 @@ def api_delete_saved_search(search_id):
         ErrorLogger.log_error(e, request, user_id=current_user.id)
         return jsonify({'error': 'Failed to delete saved search'}), 500
 
+@bp.route('/clear_search_history', methods=['DELETE'])
+@login_required
+def clear_search_history():
+    """Clear search history for payments"""
+    try:
+        from app.search import SearchHistory
+        
+        # Clear search history for current user and module
+        SearchHistory.clear_user_history(current_user.id, 'payments')
+        
+        return jsonify({'success': True, 'message': 'Search history cleared successfully'})
+    
+    except Exception as e:
+        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        return jsonify({'success': False, 'error': 'Failed to clear search history'}), 500
+
 @bp.route('/search_analytics')
 @login_required
 def search_analytics():
     """Show search analytics for payments"""
+    from app.search import SearchAnalytics, SavedSearch
+    
     try:
+        from app.search import SearchAnalytics, SavedSearch
+        
         analytics = SearchAnalytics()
         
         # Get popular search terms
-        popular_terms = analytics.get_popular_searches('payments', limit=20)
+        popular_searches = analytics.get_popular_searches('payments', limit=20)
         
         # Get recent search history
         recent_searches = analytics.get_recent_searches('payments', limit=50)
@@ -1043,11 +1158,23 @@ def search_analytics():
         # Get search performance metrics
         performance_metrics = analytics.get_search_performance('payments')
         
+        # Get search parameters analysis
+        search_parameters = analytics.get_search_parameters('payments')
+        
+        # Get optimization suggestions
+        optimization_suggestions = analytics.get_optimization_suggestions('payments')
+        
+        # Get saved searches for current user
+        saved_searches = SavedSearch.get_user_saved_searches(current_user.id, 'payments')
+        
         return render_template('payments/search_analytics.html',
                              title='Payment Search Analytics',
-                             popular_terms=popular_terms,
+                             popular_searches=popular_searches,
                              recent_searches=recent_searches,
-                             performance_metrics=performance_metrics)
+                             performance_metrics=performance_metrics,
+                             search_parameters=search_parameters,
+                             optimization_suggestions=optimization_suggestions,
+                             saved_searches=saved_searches)
     
     except Exception as e:
         ErrorLogger.log_error(e, request, user_id=current_user.id)
@@ -1058,28 +1185,105 @@ def search_analytics():
 @login_required
 def advanced_search():
     """Advanced search page for payments"""
+    from app.search import PaymentSearch, SearchAnalytics, SavedSearch, get_search_params_from_request
+    
     try:
         from app.payments.forms import AdvancedPaymentSearchForm
+        from app.search import SavedSearch
         
         # Create advanced search form
         form = AdvancedPaymentSearchForm()
         
-        # Pre-fill form with current search parameters if coming from main search
+        # Get search parameters
         params = get_search_params_from_request(request, [
             'search', 'search_type', 'date_from', 'date_to', 'status', 'payment_method',
             'amount_min', 'amount_max', 'booking_id', 'customer_name', 'customer_email',
-            'customer_phone', 'reference_id', 'transaction_id', 'sort_by', 'page', 'per_page'
+            'customer_phone', 'reference_id', 'transaction_id', 'sort_by', 'sort_order', 'page', 'per_page'
         ])
+        
+        # Create PaymentSearch instance
+        payment_search = PaymentSearch()
+        
+        # Apply search parameters
+        if params.get('search'):
+            payment_search.set_search_term(params['search'])
+        
+        if params.get('search_type'):
+            payment_search.set_search_type(params['search_type'])
+        
+        if params.get('status'):
+            payment_search.set_payment_status(params['status'])
+        
+        if params.get('payment_method'):
+            payment_search.set_payment_method(params['payment_method'])
+        
+        if params.get('date_from'):
+            payment_search.set_date_range(params['date_from'], params.get('date_to'))
+        
+        if params.get('amount_min') or params.get('amount_max'):
+            payment_search.set_amount_range(params.get('amount_min'), params.get('amount_max'))
+        
+        if params.get('booking_id'):
+            payment_search.set_booking_id(params['booking_id'])
+        
+        if params.get('customer_name'):
+            payment_search.set_customer_name(params['customer_name'])
+        
+        if params.get('customer_email'):
+            payment_search.set_customer_email(params['customer_email'])
+        
+        if params.get('customer_phone'):
+            payment_search.set_customer_phone(params['customer_phone'])
+        
+        if params.get('reference_id'):
+            payment_search.set_reference_id(params['reference_id'])
+        
+        if params.get('transaction_id'):
+            payment_search.set_transaction_id(params['transaction_id'])
+        
+        if params.get('sort_by'):
+            payment_search.set_sort_by(params['sort_by'])
+        
+        if params.get('sort_order'):
+            payment_search.set_sort_order(params['sort_order'])
+        
+        # Set pagination
+        page = params.get('page', 1)
+        per_page = params.get('per_page', 20)
+        payment_search.set_pagination(page, per_page)
+        
+        # Execute search
+        search_result = payment_search.execute()
+        
+        # Track search analytics
+        try:
+            analytics = SearchAnalytics()
+            analytics.track_search(
+                user_id=current_user.id,
+                module='payments',
+                search_term=params.get('search', ''),
+                filters=params,
+                result_count=search_result['total']
+            )
+        except Exception as e:
+            # Log analytics error but don't fail the search
+            ErrorLogger.log_error(e, request, context={'analytics_error': True})
         
         # Populate form with existing parameters
         for key, value in params.items():
             if hasattr(form, key) and value:
                 getattr(form, key).data = value
         
+        # Get saved searches for current user
+        saved_searches = SavedSearch.get_user_saved_searches(current_user.id, 'payments')
+        
         return render_template('payments/advanced_search.html',
                              title='Advanced Payment Search',
-                             form=form,
-                             search_params=params)
+                             advanced_form=form,
+                             search_params=params,
+                             payments=search_result['items'],
+                             pagination=search_result['pagination'],
+                             saved_searches=saved_searches)
     
     except Exception as e:
         ErrorLogger.log_error(e, request, user_id=current_user.id)

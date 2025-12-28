@@ -10,7 +10,8 @@ from app.shows.models import Show
 from app.movies.models import Movie
 from app.screens.models import Screen
 from app.database import db
-from app.search import ShowSearch, SearchAnalytics, get_search_params_from_request
+# Import locally to avoid circular imports
+# from app.search import ShowSearch, SearchAnalytics, get_search_params_from_request
 from datetime import datetime, time, timedelta
 import json
 
@@ -19,6 +20,8 @@ import json
 @login_required
 def index():
     """Shows listing page with advanced search and filtering"""
+    from app.search import ShowSearch, SearchAnalytics, get_search_params_from_request
+    
     # Get search parameters from request
     params = get_search_params_from_request()
     
@@ -339,6 +342,8 @@ def seat_layout(id):
 @login_required
 def api_autocomplete():
     """API endpoint for show autocomplete suggestions"""
+    from app.search import ShowSearch
+    
     search_term = request.args.get('q', '', type=str)
     
     if not search_term or len(search_term) < 2:
@@ -370,6 +375,8 @@ def api_autocomplete():
 @login_required
 def api_saved_searches():
     """API endpoint to get saved searches"""
+    from app.search import SearchAnalytics
+    
     saved_searches = SearchAnalytics.get_saved_searches(current_user.id, 'shows')
     return jsonify([{
         'id': search.id,
@@ -383,6 +390,8 @@ def api_saved_searches():
 @login_required
 def api_save_search():
     """API endpoint to save a search"""
+    from app.search import SearchAnalytics
+    
     data = request.get_json()
     
     if not data or not data.get('name') or not data.get('search_params'):
@@ -410,6 +419,8 @@ def api_save_search():
 @login_required
 def advanced_search():
     """Advanced search page for shows"""
+    from app.search import SearchAnalytics
+    
     form = AdvancedShowSearchForm()
     
     # Get saved searches
@@ -426,6 +437,8 @@ def advanced_search():
 @admin_required
 def search_analytics():
     """Show search analytics for shows"""
+    from app.search import SearchAnalytics, SearchHistory
+    
     # Get popular search terms
     popular_terms = SearchAnalytics.get_popular_search_terms(days=30)
     

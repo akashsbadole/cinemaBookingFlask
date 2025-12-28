@@ -1,7 +1,8 @@
 """
 Booking Routes
 """
-from app.search import BookingSearch, SearchAnalytics, get_search_params_from_request
+# Import locally to avoid circular imports
+# from app.search import BookingSearch, SearchAnalytics, get_search_params_from_request
 from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, make_response, send_file, abort
 from flask_login import login_required, current_user
 from app.bookings import bp
@@ -165,6 +166,8 @@ def new_booking(show_id):
 @login_required
 def index():
     """List all bookings with search and filtering"""
+    from app.search import BookingSearch, SearchAnalytics, get_search_params_from_request
+    
     try:
         # Get search parameters using centralized utility
         params = get_search_params_from_request(request, [
@@ -277,6 +280,8 @@ def new():
 @login_required
 def advanced_search():
     """Advanced search page for bookings"""
+    from app.search import get_search_params_from_request
+    
     try:
         # Create advanced search form
         form = AdvancedBookingSearchForm()
@@ -1313,6 +1318,8 @@ def generate_ticket_pdf(booking_data):
 @login_required
 def api_search_autocomplete():
     """API endpoint for booking search autocomplete"""
+    from app.search import BookingSearch
+    
     try:
         query = request.args.get('q', '').strip()
         search_type = request.args.get('type', 'all')
@@ -1392,6 +1399,8 @@ def api_delete_saved_search(search_id):
 @admin_required
 def search_analytics():
     """Show search analytics for bookings"""
+    from app.search import SearchAnalytics
+    
     try:
         analytics = SearchAnalytics()
         

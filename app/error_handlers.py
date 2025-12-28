@@ -118,7 +118,7 @@ class ErrorLogger:
         current_app.logger.error(f"Error occurred: {error}")
     
     @staticmethod
-    def log_security_event(event_type, details, severity='warning'):
+    def log_security_event(event_type, details, severity='warning', **kwargs):
         """
         Log security-related events
         
@@ -126,6 +126,7 @@ class ErrorLogger:
             event_type: Type of security event
             details: Event details
             severity: Log level
+            **kwargs: Additional context information (request, user_id, session_data, etc.)
         """
         context = ErrorContext()
         log_data = {
@@ -137,6 +138,9 @@ class ErrorLogger:
             'user_agent': context.user_agent,
             'url': context.url
         }
+        
+        # Add any additional context from kwargs
+        log_data.update(kwargs)
         
         if severity == 'error':
             error_logger.error(f"Security Event: {log_data}")
