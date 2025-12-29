@@ -317,7 +317,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Debounce search requests
             searchTimeout = setTimeout(function() {
-                fetch(`{{ url_for('payments.autocomplete') }}?q=${encodeURIComponent(query)}&type=${searchType.value}`)
+                fetch(`{{ url_for('payments.api_search_autocomplete') }}?q=${encodeURIComponent(query)}&type=${searchType.value}`)
                     .then(response => response.json())
                     .then(data => {
                         searchSuggestions.innerHTML = '';

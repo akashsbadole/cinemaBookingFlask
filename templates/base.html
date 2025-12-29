@@ -14,6 +14,19 @@
     <!-- Animate.css -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     
+    <style>
+        /* Active navigation styling */
+        .navbar-nav .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 0.375rem;
+            font-weight: 600;
+        }
+        
+        .navbar-nav .nav-link.active:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+    
     <!-- PayPal SDK (loaded conditionally based on config) -->
     {% if config.PAYPAL_CLIENT_ID %}
     <script src="https://www.paypal.com/sdk/js?client-id={{ config.PAYPAL_CLIENT_ID }}&currency=USD&intent=capture"></script>
@@ -35,38 +48,38 @@
                     {% if current_user.is_authenticated %}
                     <ul class="navbar-nav me-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('index') }}">
+                            <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
                                 <i class="fas fa-home me-1"></i>Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('movies.index') }}">
+                            <a class="nav-link {% if request.endpoint and 'movies' in request.endpoint %}active{% endif %}" href="{{ url_for('movies.index') }}">
                                 <i class="fas fa-film me-1"></i>Movies
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('screens.index') }}">
+                            <a class="nav-link {% if request.endpoint and 'screens' in request.endpoint %}active{% endif %}" href="{{ url_for('screens.index') }}">
                                 <i class="fas fa-tv me-1"></i>Screens
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('bookings.new') }}">
+                            <a class="nav-link {% if request.endpoint and 'bookings' in request.endpoint %}active{% endif %}" href="{{ url_for('bookings.new') }}">
                                 <i class="fas fa-ticket-alt me-1"></i>New Booking
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('bookings.index') }}">
+                            <a class="nav-link {% if request.endpoint and request.endpoint == 'bookings.index' %}active{% endif %}" href="{{ url_for('bookings.index') }}">
                                 <i class="fas fa-list me-1"></i>Bookings
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('payments.index') }}">
+                            <a class="nav-link {% if request.endpoint and 'payments' in request.endpoint %}active{% endif %}" href="{{ url_for('payments.index') }}">
                                 <i class="fas fa-credit-card me-1"></i>Payments
                             </a>
                         </li>
                         {% if current_user.role == 'admin' %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('reports.index') }}">
+                            <a class="nav-link {% if request.endpoint and 'reports' in request.endpoint %}active{% endif %}" href="{{ url_for('reports.index') }}">
                                 <i class="fas fa-chart-bar me-1"></i>Reports
                             </a>
                         </li>

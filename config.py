@@ -13,6 +13,7 @@ class Config:
     # CSRF protection
     WTF_CSRF_ENABLED = True
     WTF_CSRF_TIME_LIMIT = None
+    WTF_CSRF_SSL_STRICT = True
     
     # Upload configuration
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size

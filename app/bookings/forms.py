@@ -5,7 +5,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, HiddenField, DecimalField, SubmitField, TelField, EmailField, IntegerField
 from wtforms.validators import DataRequired, Length, NumberRange, Optional, Email, ValidationError
 from wtforms.widgets import TextArea
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import re
 from app.validators import (
     BusinessValidators, DataValidators, InputSanitizer,
@@ -238,8 +238,7 @@ class ShowSelectionForm(FlaskForm):
         # Populate date choices (next 7 days)
         self.show_date.choices = [(0, 'All Dates')]
         for i in range(7):
-            date_obj = datetime.now().date()
-            date_obj = date_obj.replace(day=date_obj.day + i)
+            date_obj = datetime.now().date() + timedelta(days=i)
             date_str = date_obj.strftime('%d %b %Y')
             date_int = int(date_obj.strftime('%Y%m%d'))
             self.show_date.choices.append((date_int, date_str))
@@ -286,8 +285,7 @@ class BookingSearchForm(FlaskForm):
         self.date_to.choices = [(0, 'Any Date')]
         
         for i in range(30):
-            date_obj = datetime.now().date()
-            date_obj = date_obj.replace(day=date_obj.day - i)
+            date_obj = datetime.now().date() - timedelta(days=i)
             date_str = date_obj.strftime('%d %b %Y')
             date_int = int(date_obj.strftime('%Y%m%d'))
             self.date_from.choices.append((date_int, date_str))

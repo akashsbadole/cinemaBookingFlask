@@ -46,8 +46,6 @@ class User(UserMixin, db.Model):
     __table_args__ = (
         db.CheckConstraint('length(username) >= 3', name='check_username_length'),
         db.CheckConstraint('length(email) >= 5', name='check_email_length'),
-        db.CheckConstraint("email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$'", name='check_email_format'),
-        db.CheckConstraint("username ~* '^[a-zA-Z0-9_]+$'", name='check_username_format'),
         db.CheckConstraint("role IN ('admin', 'cashier')", name='check_role_values'),
         db.Index('idx_user_email_active', 'email', 'is_active'),
         db.Index('idx_user_username_active', 'username', 'is_active'),

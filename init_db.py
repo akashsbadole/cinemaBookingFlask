@@ -139,8 +139,15 @@ def init_database():
             db.session.commit()
             
             # Create sample shows for today and tomorrow
+            from datetime import timedelta
             today = date.today()
             tomorrow = date.today()
+            
+            # Helper function to calculate end time
+            def calculate_end_time(start_time, duration_minutes):
+                start_datetime = datetime.combine(date.today(), start_time)
+                end_datetime = start_datetime + timedelta(minutes=duration_minutes)
+                return end_datetime.time()
             
             # Shows for today
             show1 = Show(
@@ -148,7 +155,8 @@ def init_database():
                 screen_id=screen1.id,
                 show_date=today,
                 show_time=time(10, 0),  # 10:00 AM
-                base_price=180.00
+                base_price=180.00,
+                end_time=calculate_end_time(time(10, 0), movie1.duration)
             )
             db.session.add(show1)
             
@@ -157,7 +165,8 @@ def init_database():
                 screen_id=screen1.id,
                 show_date=today,
                 show_time=time(14, 30),  # 2:30 PM
-                base_price=200.00
+                base_price=200.00,
+                end_time=calculate_end_time(time(14, 30), movie1.duration)
             )
             db.session.add(show2)
             
@@ -166,7 +175,8 @@ def init_database():
                 screen_id=screen2.id,
                 show_date=today,
                 show_time=time(11, 0),  # 11:00 AM
-                base_price=150.00
+                base_price=150.00,
+                end_time=calculate_end_time(time(11, 0), movie2.duration)
             )
             db.session.add(show3)
             
@@ -175,7 +185,8 @@ def init_database():
                 screen_id=screen1.id,
                 show_date=tomorrow,
                 show_time=time(18, 0),  # 6:00 PM
-                base_price=220.00
+                base_price=220.00,
+                end_time=calculate_end_time(time(18, 0), movie3.duration)
             )
             db.session.add(show4)
             

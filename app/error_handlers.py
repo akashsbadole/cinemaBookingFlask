@@ -442,13 +442,21 @@ def register_error_handlers(app):
     @app.errorhandler(403)
     def forbidden(error):
         """Handle 403 Forbidden errors"""
+        # Log the 403 error for debugging
+        ErrorLogger.log_error(f"403 Forbidden: {getattr(error, 'description', 'No description')}", {
+            'url': request.url,
+            'method': request.method,
+            'user_agent': request.headers.get('User-Agent', 'Unknown'),
+            'remote_addr': request.remote_addr
+        })
+        
         if request.path.startswith('/api/'):
             return ErrorRenderer.render_json_error(
                 403, 
                 "Forbidden", 
                 "You don't have permission to access this resource"
             )
-        return ErrorRenderer.render_error_page(403)
+        return ErrorRenderer.render_error_page(403, "Access Forbidden", "You don't have permission to access this resource.")
     
     @app.errorhandler(404)
     def not_found(error):

@@ -159,8 +159,12 @@ def create_app(config_name=None):
         if request.path.startswith('/static/') or request.path == '/health':
             return
         
-        # Log suspicious activity
-        if request.method in ['POST', 'PUT', 'PATCH']:
+        # Skip CSRF checks for safe HTTP methods
+        if request.method in ['GET', 'HEAD', 'OPTIONS', 'TRACE']:
+            return
+        
+        # Log suspicious activity for state-changing methods
+        if request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
             # Check for common attack patterns
             suspicious_patterns = [
                 '<script', 'javascript:', 'vbscript:', 'onload=', 'onerror=',
@@ -192,7 +196,7 @@ def create_app(config_name=None):
                             )
                             abort(400, "Suspicious input detected")
         
-        # Validate session timeout
+        # Validate session timeout only for authenticated users
         if current_user.is_authenticated:
             last_activity = session.get('last_activity')
             if last_activity:
@@ -202,9 +206,11 @@ def create_app(config_name=None):
                         flash('Session expired due to inactivity', 'info')
                         from flask_login import logout_user
                         logout_user()
+                        session.clear()  # Clear session data
                         return redirect(url_for('auth.login'))
                 except ValueError:
-                    pass
+                    # Invalid timestamp format, clear and continue
+                    session.pop('last_activity', None)
             
             # Update last activity
             session['last_activity'] = datetime.utcnow().isoformat()

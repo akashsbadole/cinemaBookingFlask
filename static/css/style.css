@@ -11,7 +11,7 @@
     --warning-color: #f59e0b;
     --danger-color: #ef4444;
     --info-color: #3b82f6;
-    
+
     /* Neutral Colors */
     --dark-color: #1f2937;
     --light-color: #f9fafb;
@@ -24,18 +24,18 @@
     --gray-700: #374151;
     --gray-800: #1f2937;
     --gray-900: #111827;
-    
+
     /* Typography */
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-size-xs: 0.75rem;
-    --font-size-sm: 0.875rem;
-    --font-size-base: 1rem;
-    --font-size-lg: 1.125rem;
-    --font-size-xl: 1.25rem;
-    --font-size-2xl: 1.5rem;
-    --font-size-3xl: 1.875rem;
-    --font-size-4xl: 2.25rem;
-    
+    --font-size-xs: 0.65rem;
+    --font-size-sm: 0.75rem;
+    --font-size-base: 0.9rem;
+    --font-size-lg: 1.0rem;
+    --font-size-xl: 1.15rem;
+    --font-size-2xl: 1.25rem;
+    --font-size-3xl: 1.375rem;
+    --font-size-4xl: 1.45rem;
+
     /* Spacing */
     --spacing-xs: 0.25rem;
     --spacing-sm: 0.5rem;
@@ -43,19 +43,19 @@
     --spacing-lg: 1.5rem;
     --spacing-xl: 2rem;
     --spacing-2xl: 3rem;
-    
+
     /* Border Radius */
     --border-radius-sm: 0.25rem;
     --border-radius-md: 0.5rem;
     --border-radius-lg: 0.75rem;
     --border-radius-xl: 1rem;
-    
+
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    
+
     /* Transitions */
     --transition-fast: 150ms ease-in-out;
     --transition-normal: 300ms ease-in-out;
@@ -83,18 +83,40 @@ main {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-weight: 600;
     line-height: 1.2;
     margin-bottom: var(--spacing-md);
 }
 
-h1 { font-size: var(--font-size-4xl); }
-h2 { font-size: var(--font-size-3xl); }
-h3 { font-size: var(--font-size-2xl); }
-h4 { font-size: var(--font-size-xl); }
-h5 { font-size: var(--font-size-lg); }
-h6 { font-size: var(--font-size-base); }
+h1 {
+    font-size: var(--font-size-4xl);
+}
+
+h2 {
+    font-size: var(--font-size-3xl);
+}
+
+h3 {
+    font-size: var(--font-size-2xl);
+}
+
+h4 {
+    font-size: var(--font-size-xl);
+}
+
+h5 {
+    font-size: var(--font-size-lg);
+}
+
+h6 {
+    font-size: var(--font-size-base);
+}
 
 /* Navbar Styles */
 .navbar {
@@ -124,6 +146,7 @@ h6 { font-size: var(--font-size-base); }
     position: relative;
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--border-radius-md);
+    font-size: 13px;
 }
 
 .navbar-nav .nav-link:hover {
@@ -574,6 +597,7 @@ footer a:hover {
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -581,9 +605,12 @@ footer a:hover {
 }
 
 @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: scale(1);
     }
+
     50% {
         transform: scale(1.05);
     }
@@ -598,36 +625,44 @@ footer a:hover {
     .dashboard-stats h3 {
         font-size: var(--font-size-3xl);
     }
-    
+
     .card {
         margin-bottom: var(--spacing-lg);
     }
-    
+
     .seat {
         width: 30px;
         height: 30px;
         font-size: 10px;
     }
-    
+
     .navbar-brand {
         font-size: var(--font-size-lg);
     }
-    
-    h1 { font-size: var(--font-size-3xl); }
-    h2 { font-size: var(--font-size-2xl); }
-    h3 { font-size: var(--font-size-xl); }
+
+    h1 {
+        font-size: var(--font-size-3xl);
+    }
+
+    h2 {
+        font-size: var(--font-size-2xl);
+    }
+
+    h3 {
+        font-size: var(--font-size-xl);
+    }
 }
 
 @media (max-width: 576px) {
     .card-body {
         padding: var(--spacing-md);
     }
-    
+
     .btn {
         padding: var(--spacing-xs) var(--spacing-md);
         font-size: var(--font-size-sm);
     }
-    
+
     .form-control {
         padding: var(--spacing-sm);
     }
@@ -635,24 +670,25 @@ footer a:hover {
 
 /* Print Styles */
 @media print {
+
     .navbar,
     .btn,
     footer,
     .social-links {
         display: none !important;
     }
-    
+
     .card {
         box-shadow: none;
         border: 1px solid var(--gray-200);
         break-inside: avoid;
     }
-    
+
     body {
         background: white !important;
         color: black !important;
     }
-    
+
     .table {
         box-shadow: none;
     }
@@ -691,7 +727,7 @@ footer a:hover {
         padding-left: var(--spacing-lg);
         padding-right: var(--spacing-lg);
     }
-    
+
     .dashboard-stats h3 {
         font-size: var(--font-size-3xl);
     }
@@ -702,24 +738,24 @@ footer a:hover {
         text-align: center;
         margin-top: var(--spacing-md);
     }
-    
+
     .navbar-nav .nav-item {
         margin: var(--spacing-xs) 0;
     }
-    
+
     .dashboard-stats h3 {
         font-size: var(--font-size-2xl);
     }
-    
+
     .card {
         margin-bottom: var(--spacing-lg);
     }
-    
+
     .seat-layout {
         max-width: 100%;
         padding: var(--spacing-md);
     }
-    
+
     .seat {
         width: 35px;
         height: 35px;
@@ -731,82 +767,82 @@ footer a:hover {
     body {
         font-size: var(--font-size-sm);
     }
-    
+
     .container-fluid {
         padding-left: var(--spacing-md);
         padding-right: var(--spacing-md);
     }
-    
+
     .navbar-brand {
         font-size: var(--font-size-lg);
     }
-    
+
     .navbar-nav .nav-link {
         padding: var(--spacing-sm) var(--spacing-md);
         font-size: var(--font-size-sm);
     }
-    
+
     .dashboard-stats h3 {
         font-size: var(--font-size-xl);
     }
-    
+
     .card {
         margin-bottom: var(--spacing-md);
         border-radius: var(--border-radius-lg);
     }
-    
+
     .card-body {
         padding: var(--spacing-md);
     }
-    
+
     .btn {
         padding: var(--spacing-sm) var(--spacing-md);
         font-size: var(--font-size-sm);
     }
-    
+
     .btn-lg {
         padding: var(--spacing-md) var(--spacing-lg);
         font-size: var(--font-size-base);
     }
-    
+
     .form-control {
         padding: var(--spacing-sm);
         font-size: var(--font-size-sm);
     }
-    
+
     .form-select {
         padding: var(--spacing-sm);
         font-size: var(--font-size-sm);
     }
-    
+
     .seat {
         width: 30px;
         height: 30px;
         font-size: 9px;
     }
-    
+
     .seat-group {
         gap: var(--spacing-xs);
     }
-    
+
     .booking-summary-card {
         position: static;
         margin-top: var(--spacing-lg);
     }
-    
+
     .icon-box {
         width: 60px;
         height: 60px;
     }
-    
+
     .chart-container {
         height: 200px;
     }
-    
+
     .table {
         font-size: var(--font-size-sm);
     }
-    
+
     .table th,
     .table td {
         padding: var(--spacing-sm);
@@ -818,157 +854,161 @@ footer a:hover {
         padding-left: var(--spacing-sm);
         padding-right: var(--spacing-sm);
     }
-    
+
     h1 {
         font-size: var(--font-size-2xl);
     }
-    
+
     h2 {
         font-size: var(--font-size-xl);
     }
-    
+
     h3 {
         font-size: var(--font-size-lg);
     }
-    
+
     .navbar-brand {
         font-size: var(--font-size-base);
     }
-    
+
     .navbar-nav .nav-link {
         padding: var(--spacing-xs) var(--spacing-sm);
         font-size: var(--font-size-xs);
     }
-    
+
     .navbar-nav .nav-link i {
         margin-right: var(--spacing-xs);
     }
-    
+
     .card {
         margin-bottom: var(--spacing-sm);
         border-radius: var(--border-radius-md);
     }
-    
+
     .card-body {
         padding: var(--spacing-sm);
     }
-    
+
     .card-header {
         padding: var(--spacing-md);
     }
-    
+
     .btn {
         padding: var(--spacing-xs) var(--spacing-sm);
         font-size: var(--font-size-xs);
-        min-height: 44px; /* Touch-friendly */
+        min-height: 44px;
+        /* Touch-friendly */
     }
-    
+
     .btn-lg {
         padding: var(--spacing-sm) var(--spacing-md);
         font-size: var(--font-size-sm);
-        min-height: 48px; /* Touch-friendly */
+        min-height: 48px;
+        /* Touch-friendly */
     }
-    
+
     .form-control {
         padding: var(--spacing-xs) var(--spacing-sm);
         font-size: var(--font-size-sm);
-        min-height: 44px; /* Touch-friendly */
+        min-height: 44px;
+        /* Touch-friendly */
     }
-    
+
     .form-select {
         padding: var(--spacing-xs) var(--spacing-sm);
         font-size: var(--font-size-sm);
-        min-height: 44px; /* Touch-friendly */
+        min-height: 44px;
+        /* Touch-friendly */
     }
-    
+
     .form-label {
         font-size: var(--font-size-sm);
         margin-bottom: var(--spacing-xs);
     }
-    
+
     .seat {
         width: 25px;
         height: 25px;
         font-size: 8px;
         margin: 1px;
     }
-    
+
     .seat-label {
         width: 20px;
         font-size: var(--font-size-xs);
     }
-    
+
     .seat-group {
         gap: 1px;
     }
-    
+
     .icon-box {
         width: 50px;
         height: 50px;
     }
-    
+
     .icon-box i {
         font-size: var(--font-size-lg);
     }
-    
+
     .dashboard-stats h3 {
         font-size: var(--font-size-lg);
     }
-    
+
     .dashboard-stats p {
         font-size: var(--font-size-xs);
     }
-    
+
     .chart-container {
         height: 150px;
     }
-    
+
     .table {
         font-size: var(--font-size-xs);
     }
-    
+
     .table th,
     .table td {
         padding: var(--spacing-xs);
         white-space: nowrap;
     }
-    
+
     /* Mobile-specific adjustments */
     .d-flex {
         flex-direction: column;
         align-items: stretch !important;
     }
-    
+
     .d-flex .btn {
         margin-bottom: var(--spacing-sm);
         width: 100%;
     }
-    
+
     .row {
         margin-bottom: var(--spacing-md);
     }
-    
+
     .col-md-6,
     .col-md-4,
     .col-md-3 {
         margin-bottom: var(--spacing-md);
     }
-    
+
     /* Hide non-essential elements on mobile */
     .breadcrumb {
         display: none;
     }
-    
+
     .social-links {
         display: none;
     }
-    
+
     /* Mobile navigation improvements */
     .navbar-collapse {
         background: rgba(0, 0, 0, 0.95);
         backdrop-filter: blur(10px);
     }
-    
+
     .navbar-nav .nav-link::after {
         display: none;
     }
@@ -976,6 +1016,7 @@ footer a:hover {
 
 /* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
+
     .btn,
     .form-control,
     .form-select,
@@ -983,26 +1024,29 @@ footer a:hover {
         min-height: 48px;
         min-width: 48px;
     }
-    
+
     .seat {
-        border-width: 3px; /* Easier to tap */
+        border-width: 3px;
+        /* Easier to tap */
     }
-    
+
     .card {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); /* More visible on touch devices */
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        /* More visible on touch devices */
     }
 }
 
 /* High DPI displays */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
     .card {
         border-width: 0.5px;
     }
-    
+
     .btn {
         border-width: 0.5px;
     }
-    
+
     .form-control,
     .form-select {
         border-width: 0.5px;
@@ -1015,12 +1059,12 @@ footer a:hover {
         max-height: 300px;
         overflow-y: auto;
     }
-    
+
     .booking-summary-card {
         max-height: 200px;
         overflow-y: auto;
     }
-    
+
     .chart-container {
         height: 180px;
     }
@@ -1038,6 +1082,7 @@ footer a:hover {
 
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {

@@ -269,67 +269,6 @@ function confirmCancel(bookingId, refNumber) {
     modal.show();
 }
 
-// Auto-submit search form on Enter key for search field
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.querySelector('input[name="search_term"]');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.querySelector('form').submit();
-            }
-        });
-    }
-});
-</script>
-
-<style>
-.table th {
-    border-top: none;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
-
-.table td {
-    vertical-align: middle;
-}
-
-.badge {
-    font-size: 0.75em;
-}
-
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-
-.card {
-    transition: box-shadow 0.15s ease-in-out;
-}
-
-.card:hover {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-
-.modal-content {
-    border: none;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-
-.alert {
-    border-left: 4px solid;
-}
-{% endblock %}
-
-{% block scripts %}
-<script>
-function confirmCancel(bookingId, refNumber) {
-    document.getElementById('cancelRefNumber').textContent = refNumber;
-    document.getElementById('cancelForm').action = `/bookings/cancel/${bookingId}`;
-    
-    const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
-    modal.show();
-}
-
 // Search autocomplete functionality
 let searchTimeout;
 const searchInput = document.getElementById('searchInput');

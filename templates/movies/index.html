@@ -85,7 +85,7 @@
                     <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#advancedFilters">
                         <i class="fas fa-filter me-1"></i>Advanced Filters
                     </button>
-                    {% if search_params and any(search_params.get(key) for key in ['genre', 'language', 'status', 'rating', 'release_date_from', 'release_date_to', 'min_duration', 'max_duration']) %}
+                    {% if search_params and (search_params.get('genre') or search_params.get('language') or search_params.get('status') or search_params.get('rating') or search_params.get('release_date_from') or search_params.get('release_date_to') or search_params.get('min_duration') or search_params.get('max_duration')) %}
                     <a href="{{ url_for('movies.index') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-times me-1"></i>Clear Filters
                     </a>

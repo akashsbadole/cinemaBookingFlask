@@ -49,8 +49,6 @@ class Booking(db.Model):
         db.CheckConstraint('length(customer_name) >= 2', name='check_customer_name_length'),
         db.CheckConstraint("status IN ('pending', 'confirmed', 'cancelled')", name='check_booking_status'),
         db.CheckConstraint("payment_method IN ('cash', 'card', 'upi', 'paypal', 'netbanking', 'wallet')", name='check_payment_method'),
-        db.CheckConstraint("customer_phone ~* '^[0-9+\-\s()]*$' OR customer_phone IS NULL", name='check_phone_format'),
-        db.CheckConstraint("customer_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$' OR customer_email IS NULL", name='check_email_format'),
         db.Index('idx_booking_reference', 'reference_number'),
         db.Index('idx_booking_status', 'status'),
         db.Index('idx_booking_show', 'show_id'),

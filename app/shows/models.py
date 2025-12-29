@@ -77,7 +77,7 @@ class Show(db.Model):
     
     def get_available_seats(self):
         """Get list of available seats for this show"""
-        from app.bookings.models import BookingSeat
+        from app.bookings.models import BookingSeat, Booking
         
         # Get all seats for the screen
         all_seats = self.screen.seats
@@ -94,7 +94,7 @@ class Show(db.Model):
     
     def get_occupied_seats(self):
         """Get list of occupied seats for this show"""
-        from app.bookings.models import BookingSeat
+        from app.bookings.models import BookingSeat, Booking
         from app.screens.models import Seat
         
         occupied_seats = db.session.query(Seat).join(BookingSeat).join(Booking).filter(
