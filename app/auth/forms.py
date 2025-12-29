@@ -74,6 +74,7 @@ class RegistrationForm(FlaskForm):
         EqualTo('password', message='Passwords must match')
     ])
     role = SelectField('Role', choices=[('cashier', 'Cashier'), ('admin', 'Admin')], default='cashier')
+    is_shared_account = BooleanField('Shared Account (Admin & Cashier can use same login)', default=False)
     submit = SubmitField('Register')
     
     def validate_username(self, field):
@@ -220,3 +221,9 @@ class ProfileForm(FlaskForm):
             is_valid, error_message = DataValidators.validate_password_strength(field.data)
             if not is_valid:
                 raise ValidationError(error_message)
+
+class RoleSelectionForm(FlaskForm):
+    """Form for selecting role for shared accounts"""
+    selected_role = SelectField('Select Role', choices=[('admin', 'Administrator'), ('cashier', 'Cashier')], 
+                               validators=[DataRequired(message='Please select a role')])
+    submit = SubmitField('Continue')

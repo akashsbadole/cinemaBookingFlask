@@ -6,7 +6,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash
 from app.auth import bp
 from app.auth.models import User
-from app.auth.forms import LoginForm, RegistrationForm, ProfileForm
+from app.auth.forms import LoginForm, RegistrationForm, ProfileForm, RoleSelectionForm
 from app.auth.decorators import admin_required
 from app.database import db
 from app.validators import InputSanitizer, DataValidators, SecurityValidator, ValidationError
@@ -125,6 +125,10 @@ def login():
                 user_id=user.id
             )
             
+            # Handle shared accounts - redirect to role selection
+            if user.is_shared_account_user():
+                return redirect(url_for('auth.select_role'))
+            
             next_page = request.args.get('next')
             if not next_page or url_for('index') not in next_page:
                 next_page = url_for('index')
@@ -138,6 +142,48 @@ def login():
     
     return render_template('auth/login.html', title='Sign In', form=form)
 
+@bp.route('/select-role', methods=['GET', 'POST'])
+@login_required
+def select_role():
+    """Role selection route for shared accounts"""
+    # Only show role selection for shared accounts
+    if not current_user.is_shared_account_user():
+        return redirect(url_for('index'))
+    
+    # Get assigned roles for this user
+    available_roles = current_user.get_assigned_roles()
+    
+    # If user only has one role, redirect immediately
+    if len(available_roles) == 1:
+        session['current_role'] = available_roles[0]
+        return redirect(url_for('index'))
+    
+    form = RoleSelectionForm()
+    
+    # Filter choices to only show assigned roles
+    form.selected_role.choices = [(role, role.capitalize()) for role in available_roles]
+    
+    if form.validate_on_submit():
+        selected_role = form.selected_role.data
+        
+        # Verify the selected role is in user's assigned roles
+        if selected_role in available_roles:
+            session['current_role'] = selected_role
+            
+            ErrorLogger.log_security_event(
+                'role_selected',
+                f'User {current_user.username} selected role: {selected_role}',
+                request,
+                user_id=current_user.id
+            )
+            
+            flash(f'Logged in as {selected_role.capitalize()}', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid role selection', 'danger')
+    
+    return render_template('auth/select_role.html', title='Select Role', form=form, available_roles=available_roles)
+
 @bp.route('/logout')
 @login_required
 def logout():
@@ -150,11 +196,14 @@ def logout():
             user_id=current_user.id
         )
         
+        # Clear current role from session
+        session.pop('current_role', None)
+        
         logout_user()
         flash('You have been logged out successfully.', 'info')
         return redirect(url_for('auth.login'))
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred during logout.', 'warning')
         return redirect(url_for('index'))
@@ -220,9 +269,15 @@ def register():
                 username=username,
                 email=email,
                 role=role,
+                is_shared_account=form.is_shared_account.data,
                 created_at=datetime.utcnow(),
                 created_by=current_user.id
             )
+            
+            # Set assigned roles for shared accounts
+            if form.is_shared_account.data:
+                user.set_assigned_roles(['admin', 'cashier'])
+            
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
@@ -250,7 +305,7 @@ def register():
             
         except Exception as e:
             db.session.rollback()
-            ErrorLogger.log_error(e, request, user_id=current_user.id)
+            ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
             ErrorHandler.handle_error(e, request)
             flash('An error occurred during user registration. Please try again.', 'danger')
     
@@ -342,7 +397,7 @@ def profile():
             
         except Exception as e:
             db.session.rollback()
-            ErrorLogger.log_error(e, request, user_id=current_user.id)
+            ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
             ErrorHandler.handle_error(e, request)
             flash('An error occurred while updating your profile. Please try again.', 'danger')
     

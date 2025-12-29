@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
+import json
 
 # Import db from database module to avoid circular imports
 from app.database import db
@@ -20,7 +21,11 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128), nullable=False,
                             comment="Hashed password")
     role = db.Column(db.Enum('admin', 'cashier', name='user_roles'), default='cashier', nullable=False,
-                    comment="User role for permissions")
+                    comment="Primary user role for permissions (for shared accounts, this is the default role)")
+    assigned_roles = db.Column(db.Text, nullable=True,
+                             comment="JSON array of assigned roles for shared accounts (e.g., ['admin', 'cashier'])")
+    is_shared_account = db.Column(db.Boolean, default=False, nullable=False,
+                                comment="Whether this is a shared account that can be used by multiple roles")
     last_login = db.Column(db.DateTime, default=None,
                          comment="Timestamp of last login")
     is_active = db.Column(db.Boolean, default=True, nullable=False,
@@ -68,12 +73,63 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
     
     def is_admin(self):
-        """Check if user is admin"""
+        """Check if user is admin (uses current session role for shared accounts)"""
+        from flask import session
+        current_role = session.get('current_role')
+        if current_role:
+            return current_role == 'admin'
         return self.role == 'admin'
     
     def is_cashier(self):
-        """Check if user is cashier"""
+        """Check if user is cashier (uses current session role for shared accounts)"""
+        from flask import session
+        current_role = session.get('current_role')
+        if current_role:
+            return current_role == 'cashier'
         return self.role == 'cashier'
+    
+    def has_role(self, role):
+        """Check if user has a specific role (works for both shared and individual accounts)"""
+        if self.is_shared_account:
+            if not self.assigned_roles:
+                return False
+            try:
+                assigned = json.loads(self.assigned_roles)
+                return role in assigned
+            except (json.JSONDecodeError, TypeError):
+                return False
+        else:
+            return self.role == role
+    
+    def get_assigned_roles(self):
+        """Get list of assigned roles for shared accounts"""
+        if self.is_shared_account and self.assigned_roles:
+            try:
+                return json.loads(self.assigned_roles)
+            except (json.JSONDecodeError, TypeError):
+                return [self.role]  # Fallback to primary role
+        return [self.role]
+    
+    def set_assigned_roles(self, roles):
+        """Set assigned roles for shared accounts"""
+        if isinstance(roles, list):
+            # Validate roles
+            valid_roles = ['admin', 'cashier']
+            validated_roles = [r for r in roles if r in valid_roles]
+            if validated_roles:
+                self.assigned_roles = json.dumps(validated_roles)
+                # Set primary role to first role if not set or if current role not in new roles
+                if self.role not in validated_roles:
+                    self.role = validated_roles[0]
+        elif isinstance(roles, str):
+            # Single role as string
+            if roles in ['admin', 'cashier']:
+                self.assigned_roles = json.dumps([roles])
+                self.role = roles
+    
+    def is_shared_account_user(self):
+        """Check if this is a shared account (renamed to avoid conflict with column name)"""
+        return self.is_shared_account
     
     def validate_email(self, email):
         """Validate email format"""
@@ -111,6 +167,8 @@ class User(UserMixin, db.Model):
             'username': self.username,
             'email': self.email,
             'role': self.role,
+            'assigned_roles': self.get_assigned_roles(),
+            'is_shared_account': self.is_shared_account,
             'last_login': self.last_login.isoformat() if self.last_login else None,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None
@@ -133,6 +191,12 @@ class User(UserMixin, db.Model):
         
         if 'role' in data and data['role'] in ['admin', 'cashier']:
             user.role = data['role']
+        
+        if 'is_shared_account' in data:
+            user.is_shared_account = bool(data['is_shared_account'])
+        
+        if 'assigned_roles' in data and isinstance(data['assigned_roles'], list):
+            user.set_assigned_roles(data['assigned_roles'])
         
         if 'is_active' in data:
             user.is_active = bool(data['is_active'])

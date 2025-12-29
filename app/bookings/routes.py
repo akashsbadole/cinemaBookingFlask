@@ -156,7 +156,7 @@ def new_booking(show_id):
                              form=form, show=show, available_seats=available_seats)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while initializing booking', 'danger')
         return redirect(url_for('movies.index'))
@@ -166,11 +166,12 @@ def new_booking(show_id):
 @login_required
 def index():
     """List all bookings with search and filtering"""
+    # Import locally to avoid circular imports
     from app.search import BookingSearch, SearchAnalytics, get_search_params_from_request
     
     try:
         # Get search parameters using centralized utility
-        params = get_search_params_from_request(request, [
+        params = get_search_params_from_request(None, [
             'search', 'search_type', 'date_from', 'date_to', 'booking_status', 'payment_status',
             'payment_method', 'amount_min', 'amount_max', 'show_id', 'customer_email',
             'customer_phone', 'seat_number', 'sort_by', 'page', 'per_page'
@@ -239,7 +240,7 @@ def index():
             )
         except Exception as e:
             # Log analytics error but don't fail the search
-            ErrorLogger.log_error(e, request, context={'analytics_error': True})
+            ErrorLogger.log_error(e, context={'analytics_error': True, 'request': request})
         
         return render_template('bookings/index.html',
                              title='Bookings',
@@ -249,7 +250,7 @@ def index():
                              search_params=params)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while loading bookings', 'danger')
         return render_template('bookings/index.html',
@@ -271,7 +272,7 @@ def new():
         return render_template('bookings/select_show.html', title='Select Show', form=form)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while initializing booking', 'danger')
         return redirect(url_for('index'))
@@ -280,6 +281,7 @@ def new():
 @login_required
 def advanced_search():
     """Advanced search page for bookings"""
+    # Import locally to avoid circular imports
     from app.search import get_search_params_from_request
     
     try:
@@ -287,7 +289,7 @@ def advanced_search():
         form = AdvancedBookingSearchForm()
         
         # Pre-fill form with current search parameters if coming from main search
-        params = get_search_params_from_request(request, [
+        params = get_search_params_from_request(None, [
             'search', 'search_type', 'date_from', 'date_to', 'booking_status', 'payment_status',
             'payment_method', 'amount_min', 'amount_max', 'show_id', 'customer_email',
             'customer_phone', 'seat_number', 'sort_by', 'page', 'per_page'
@@ -304,7 +306,7 @@ def advanced_search():
                              search_params=params)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while loading advanced search', 'danger')
         return redirect(url_for('bookings.index'))
@@ -369,7 +371,7 @@ def select_show():
         return redirect(url_for('bookings.new'))
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while searching for shows', 'danger')
         return redirect(url_for('bookings.new'))
@@ -459,7 +461,7 @@ def select_seats(show_id):
                 raise ValidationError("Invalid matinee discount")
             
         except (ValueError, ValidationError) as e:
-            ErrorLogger.log_error(e, request, context={'show_id': show_id})
+            ErrorLogger.log_error(e, context={'show_id': show_id, 'request': request})
             flash('Invalid pricing information for this show', 'danger')
             return redirect(url_for('bookings.new'))
         
@@ -467,7 +469,7 @@ def select_seats(show_id):
                              show=show, seat_layout=seat_layout, price_info=price_info)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'show_id': show_id})
+        ErrorLogger.log_error(e, context={'show_id': show_id, 'request': request, 'user_id': current_user.id})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while loading seat selection', 'danger')
         return redirect(url_for('bookings.new'))
@@ -525,7 +527,7 @@ def api_seat_status(show_id):
         return jsonify({'success': True, 'seat_layout': seat_layout})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'show_id': show_id})
+        ErrorLogger.log_error(e, context={'show_id': show_id, 'request': request, 'user_id': current_user.id})
         return jsonify({'success': False, 'error': 'Failed to get seat status'})
 
 @bp.route('/api/lock_seats', methods=['POST'])
@@ -620,7 +622,7 @@ def api_lock_seats():
         return jsonify({'success': False, 'error': 'Invalid data format'})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'success': False, 'error': 'Failed to lock seats'})
 
 @bp.route('/api/release_seats', methods=['POST'])
@@ -676,7 +678,7 @@ def api_release_seats():
         return jsonify({'success': False, 'error': 'Invalid data format'})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'success': False, 'error': 'Failed to release seats'})
 
 @bp.route('/api/calculate_price', methods=['POST'])
@@ -741,7 +743,7 @@ def api_calculate_price():
         return jsonify({'success': False, 'error': 'Invalid data format'})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'success': False, 'error': 'Failed to calculate price'})
 
 @bp.route('/confirm_booking', methods=['GET', 'POST'])
@@ -819,7 +821,7 @@ def confirm_booking():
                                  total_amount=total_cost, seat_ids=seat_ids)
         
         except Exception as e:
-            ErrorLogger.log_error(e, request, user_id=current_user.id)
+            ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
             ErrorHandler.handle_error(e, request)
             flash('An error occurred while preparing the booking', 'danger')
             return redirect(url_for('bookings.new'))
@@ -1021,7 +1023,7 @@ def confirm_booking():
         
         except Exception as e:
             db.session.rollback()
-            ErrorLogger.log_error(e, request, user_id=current_user.id)
+            ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
             ErrorHandler.handle_error(e, request)
             flash('An error occurred while creating the booking', 'danger')
             return redirect(url_for('bookings.new'))
@@ -1047,7 +1049,7 @@ def view(id):
         return render_template('bookings/view.html', title='Booking Details', booking=booking)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorLogger.log_error(e, context={'booking_id': id, 'request': request, 'user_id': current_user.id})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while loading booking details', 'danger')
         return redirect(url_for('bookings.index'))
@@ -1073,7 +1075,7 @@ def ticket(id):
         return render_template('bookings/ticket.html', title='Movie Ticket', booking=booking)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorLogger.log_error(e, context={'booking_id': id, 'request': request, 'user_id': current_user.id})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while generating ticket', 'danger')
         return redirect(url_for('bookings.index'))
@@ -1118,7 +1120,7 @@ def ticket_qr(id):
         return send_file(img_io, mimetype='image/png')
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorLogger.log_error(e, context={'booking_id': id, 'request': request, 'user_id': current_user.id})
         return jsonify({'error': 'Failed to generate QR code'}), 500
 
 @bp.route('/ticket/<int:id>/pdf')
@@ -1157,7 +1159,7 @@ def ticket_pdf(id):
         return response
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorLogger.log_error(e, context={'booking_id': id, 'request': request, 'user_id': current_user.id})
         ErrorHandler.handle_error(e, request)
         return jsonify({'error': 'Failed to generate PDF ticket'}), 500
 
@@ -1201,7 +1203,7 @@ def cancel(id):
     
     except Exception as e:
         db.session.rollback()
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorLogger.log_error(e, context={'booking_id': id, 'request': request, 'user_id': current_user.id})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while cancelling the booking', 'danger')
         return redirect(url_for('bookings.view', id=id))
@@ -1246,7 +1248,7 @@ def delete(id):
     
     except Exception as e:
         db.session.rollback()
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': id})
+        ErrorLogger.log_error(e, context={'booking_id': id, 'request': request, 'user_id': current_user.id})
         ErrorHandler.handle_error(e, request)
         flash('An error occurred while deleting the booking', 'danger')
         return redirect(url_for('bookings.index'))
@@ -1318,6 +1320,7 @@ def generate_ticket_pdf(booking_data):
 @login_required
 def api_search_autocomplete():
     """API endpoint for booking search autocomplete"""
+    # Import locally to avoid circular imports
     from app.search import BookingSearch
     
     try:
@@ -1334,7 +1337,7 @@ def api_search_autocomplete():
         return jsonify({'suggestions': suggestions})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'suggestions': []})
 
 @bp.route('/api/saved_searches', methods=['GET', 'POST'])
@@ -1366,7 +1369,7 @@ def api_saved_searches():
             return jsonify({'success': True, 'id': saved_search.id})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         if request.method == 'GET':
             return jsonify({'saved_searches': []})
         else:
@@ -1391,7 +1394,7 @@ def api_delete_saved_search(search_id):
         return jsonify({'success': True})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'error': 'Failed to delete saved search'}), 500
 
 @bp.route('/search_analytics')
@@ -1399,6 +1402,7 @@ def api_delete_saved_search(search_id):
 @admin_required
 def search_analytics():
     """Show search analytics for bookings"""
+    # Import locally to avoid circular imports
     from app.search import SearchAnalytics
     
     try:
@@ -1420,6 +1424,6 @@ def search_analytics():
                              performance_metrics=performance_metrics)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         flash('An error occurred while loading search analytics', 'danger')
         return redirect(url_for('bookings.index'))

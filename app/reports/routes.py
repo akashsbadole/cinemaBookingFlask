@@ -27,156 +27,229 @@ from sqlalchemy import func, and_
 @admin_required
 def index():
     """Reports dashboard"""
-    # Get today's summary for dashboard
-    today = datetime.now().date()
-    
-    # Quick stats
-    today_sales = db.session.query(func.sum(Payment.amount)).join(Booking).join(Show).filter(
-        Show.show_date == today
-    ).scalar() or 0
-    
-    today_bookings = db.session.query(func.count(Booking.id)).join(Show).filter(
-        Show.show_date == today
-    ).scalar() or 0
-    
-    today_tickets = db.session.query(func.count(BookingSeat.id)).join(Booking).join(Show).filter(
-        Show.show_date == today
-    ).scalar() or 0
-    
-    # Calculate average tickets per booking
-    avg_tickets = today_tickets / today_bookings if today_bookings > 0 else 0
-    
-    # Get recent activity
-    recent_activity = db.session.query(
-        Booking.booking_time,
-        Show.show_time,
-        Movie.title,
-        Screen.name,
-        func.count(BookingSeat.id).label('seats'),
-        Payment.amount,
-        User.username
-    ).join(
-        BookingSeat, Booking.id == BookingSeat.booking_id
-    ).join(
-        Show, Booking.show_id == Show.id
-    ).join(
-        Movie, Show.movie_id == Movie.id
-    ).join(
-        Screen, Show.screen_id == Screen.id
-    ).join(
-        Payment, Booking.id == Payment.booking_id
-    ).join(
-        User, Booking.user_id == User.id
-    ).filter(
-        Show.show_date == today
-    ).group_by(
-        Booking.id, Show.show_time, Movie.title, Screen.name, Payment.amount, User.username
-    ).order_by(
-        Booking.booking_time.desc()
-    ).limit(5).all()
-    
-    return render_template(
-        'reports/index.html',
-        title='Reports',
-        today_sales=today_sales,
-        today_bookings=today_bookings,
-        today_tickets=today_tickets,
-        avg_tickets=avg_tickets,
-        recent_activity=recent_activity
-    )
+    try:
+        # Get today's summary for dashboard
+        today = datetime.now().date()
+        
+        # Quick stats with error handling
+        try:
+            today_sales = db.session.query(func.sum(Payment.amount)).join(Booking).join(Show).filter(
+                Show.show_date == today
+            ).scalar() or 0
+        except Exception as e:
+            from app.error_handlers import ErrorLogger
+            ErrorLogger.log_error(e, context={'query': 'today_sales', 'request': request})
+            today_sales = 0
+        
+        try:
+            today_bookings = db.session.query(func.count(Booking.id)).join(Show).filter(
+                Show.show_date == today
+            ).scalar() or 0
+        except Exception as e:
+            from app.error_handlers import ErrorLogger
+            ErrorLogger.log_error(e, context={'query': 'today_bookings', 'request': request})
+            today_bookings = 0
+        
+        try:
+            today_tickets = db.session.query(func.count(BookingSeat.id)).join(Booking).join(Show).filter(
+                Show.show_date == today
+            ).scalar() or 0
+        except Exception as e:
+            from app.error_handlers import ErrorLogger
+            ErrorLogger.log_error(e, context={'query': 'today_tickets', 'request': request})
+            today_tickets = 0
+        
+        # Calculate average tickets per booking
+        avg_tickets = today_tickets / today_bookings if today_bookings > 0 else 0
+        
+        # Get recent activity with error handling
+        try:
+            recent_activity = db.session.query(
+                Booking.booking_time,
+                Show.show_time,
+                Movie.title,
+                Screen.name,
+                func.count(BookingSeat.id).label('seats'),
+                Payment.amount,
+                User.username
+            ).join(
+                BookingSeat, Booking.id == BookingSeat.booking_id
+            ).join(
+                Show, Booking.show_id == Show.id
+            ).join(
+                Movie, Show.movie_id == Movie.id
+            ).join(
+                Screen, Show.screen_id == Screen.id
+            ).join(
+                Payment, Booking.id == Payment.booking_id
+            ).join(
+                User, Booking.user_id == User.id
+            ).filter(
+                Show.show_date == today
+            ).group_by(
+                Booking.id, Show.show_time, Movie.title, Screen.name, Payment.amount, User.username
+            ).order_by(
+                Booking.booking_time.desc()
+            ).limit(5).all()
+        except Exception as e:
+            from app.error_handlers import ErrorLogger
+            ErrorLogger.log_error(e, context={'query': 'recent_activity', 'request': request})
+            recent_activity = []
+        
+        return render_template(
+            'reports/index.html',
+            title='Reports',
+            today_sales=today_sales,
+            today_bookings=today_bookings,
+            today_tickets=today_tickets,
+            avg_tickets=avg_tickets,
+            recent_activity=recent_activity
+        )
+    except Exception as e:
+        from app.error_handlers import ErrorLogger, ErrorHandler
+        ErrorLogger.log_error(e, context={'request': request})
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while loading the reports dashboard', 'danger')
+        return render_template(
+            'reports/index.html',
+            title='Reports',
+            today_sales=0,
+            today_bookings=0,
+            today_tickets=0,
+            avg_tickets=0,
+            recent_activity=[]
+        )
 
 @bp.route('/daily_sales')
 @login_required
 @admin_required
 def daily_sales():
     """Daily sales report"""
-    form = DailySalesForm()
-    
-    # Get filter parameters
-    report_date_str = request.args.get('date')
-    screen_id = request.args.get('screen')
-    movie_id = request.args.get('movie')
-    
-    # Default to today if no date provided
-    if not report_date_str:
-        report_date = datetime.now().date()
-    else:
-        try:
-            report_date = datetime.strptime(report_date_str, '%Y-%m-%d').date()
-        except ValueError:
+    try:
+        form = DailySalesForm()
+        
+        # Get filter parameters
+        report_date_str = request.args.get('date')
+        screen_id = request.args.get('screen')
+        movie_id = request.args.get('movie')
+        
+        # Default to today if no date provided
+        if not report_date_str:
             report_date = datetime.now().date()
-    
-    # Convert IDs to integers if provided
-    screen_id = int(screen_id) if screen_id and screen_id != '0' else None
-    movie_id = int(movie_id) if movie_id and movie_id != '0' else None
-    
-    # Get sales data using ReportQueries
-    sales_data = ReportQueries.get_daily_sales_data(report_date, screen_id, movie_id)
-    
-    # Get movie and screen breakdowns
-    movie_sales = ReportQueries.get_movie_sales_breakdown(report_date, screen_id, movie_id)
-    screen_sales = ReportQueries.get_screen_sales_breakdown(report_date, screen_id, movie_id)
-    
-    # Calculate totals
-    total_sales = sum([row.revenue or 0 for row in sales_data])
-    total_bookings = sum([row.bookings_count or 0 for row in sales_data])
-    tickets_sold = sum([row.tickets_sold or 0 for row in sales_data])
-    average_sale = total_sales / total_bookings if total_bookings > 0 else 0
-    
-    # Calculate occupancy rate
-    total_seats = db.session.query(func.count(Seat.id)).join(Screen).scalar() or 0
-    occupancy_rate = (tickets_sold / total_seats * 100) if total_seats > 0 else 0
-    
-    # Calculate occupancy rate for each show
-    for sale in sales_data:
-        show_total_seats = db.session.query(func.count(Seat.id)).join(Screen).filter(
-            Screen.name == sale.screen_name
-        ).scalar() or 0
-        sale.occupancy_rate = (sale.tickets_sold / show_total_seats * 100) if show_total_seats > 0 else 0
-    
-    # Prepare data for charts
-    movie_sales_labels = [row.title for row in movie_sales]
-    movie_sales_data = [float(row.revenue or 0) for row in movie_sales]
-    
-    screen_sales_labels = [row.name for row in screen_sales]
-    screen_sales_data = [float(row.revenue or 0) for row in screen_sales]
-    
-    # Generate business insights
-    report_data = {
-        'data': [{
-            'movie_title': sale.movie_title,
-            'screen_name': sale.screen_name,
-            'show_time': sale.show_time.strftime('%H:%M'),
-            'tickets_sold': sale.tickets_sold,
-            'revenue': float(sale.revenue or 0),
-            'occupancy_rate': sale.occupancy_rate
-        } for sale in sales_data]
-    }
-    
-    insights = generate_insights(report_data, 'daily_sales')
-    
-    # Set form values
-    form.report_date.data = report_date
-    form.screen_id.data = screen_id or 0
-    form.movie_id.data = movie_id or 0
-    
-    return render_template(
-        'reports/daily_sales.html',
-        title='Daily Sales Report',
-        form=form,
-        report_date=report_date.strftime('%Y-%m-%d'),
-        sales_data=sales_data,
-        total_sales=total_sales,
-        total_bookings=total_bookings,
-        average_sale=average_sale,
-        tickets_sold=tickets_sold,
-        occupancy_rate=occupancy_rate,
-        movie_sales_labels=movie_sales_labels,
-        movie_sales_data=movie_sales_data,
-        screen_sales_labels=screen_sales_labels,
-        screen_sales_data=screen_sales_data,
-        insights=insights
-    )
+        else:
+            try:
+                report_date = datetime.strptime(report_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                report_date = datetime.now().date()
+        
+        # Convert IDs to integers if provided
+        screen_id = int(screen_id) if screen_id and screen_id != '0' else None
+        movie_id = int(movie_id) if movie_id and movie_id != '0' else None
+        
+        # Get sales data using ReportQueries with error handling
+        try:
+            sales_data = ReportQueries.get_daily_sales_data(report_date, screen_id, movie_id)
+        except Exception as e:
+            from app.error_handlers import ErrorLogger
+            ErrorLogger.log_error(e, context={'query': 'daily_sales_data', 'date': report_date, 'request': request})
+            sales_data = []
+        
+        # Get movie and screen breakdowns with error handling
+        try:
+            movie_sales = ReportQueries.get_movie_sales_breakdown(report_date, screen_id, movie_id)
+        except Exception as e:
+            from app.error_handlers import ErrorLogger
+            ErrorLogger.log_error(e, context={'query': 'movie_sales_breakdown', 'request': request})
+            movie_sales = []
+        
+        try:
+            screen_sales = ReportQueries.get_screen_sales_breakdown(report_date, screen_id, movie_id)
+        except Exception as e:
+            from app.error_handlers import ErrorLogger
+            ErrorLogger.log_error(e, context={'query': 'screen_sales_breakdown', 'request': request})
+            screen_sales = []
+        
+        # Calculate totals with safe operations
+        total_sales = sum([row.revenue or 0 for row in sales_data])
+        total_bookings = sum([row.bookings_count or 0 for row in sales_data])
+        tickets_sold = sum([row.tickets_sold or 0 for row in sales_data])
+        average_sale = total_sales / total_bookings if total_bookings > 0 else 0
+        
+        # Calculate occupancy rate with error handling
+        try:
+            total_seats = db.session.query(func.count(Seat.id)).join(Screen).scalar() or 0
+        except Exception as e:
+            from app.error_handlers import ErrorLogger
+            ErrorLogger.log_error(e, context={'query': 'total_seats', 'request': request})
+            total_seats = 0
+        
+        occupancy_rate = (tickets_sold / total_seats * 100) if total_seats > 0 else 0
+        
+        # Calculate occupancy rate for each show with error handling
+        for sale in sales_data:
+            try:
+                show_total_seats = db.session.query(func.count(Seat.id)).join(Screen).filter(
+                    Screen.name == sale.screen_name
+                ).scalar() or 0
+                sale.occupancy_rate = (sale.tickets_sold / show_total_seats * 100) if show_total_seats > 0 else 0
+            except Exception as e:
+                from app.error_handlers import ErrorLogger
+                ErrorLogger.log_error(e, context={'query': 'show_total_seats', 'screen': sale.screen_name, 'request': request})
+                sale.occupancy_rate = 0
+        
+        # Prepare data for charts
+        movie_sales_labels = [row.title for row in movie_sales]
+        movie_sales_data = [float(row.revenue or 0) for row in movie_sales]
+        
+        screen_sales_labels = [row.name for row in screen_sales]
+        screen_sales_data = [float(row.revenue or 0) for row in screen_sales]
+        
+        # Generate business insights with error handling
+        try:
+            report_data = {
+                'data': [{
+                    'movie_title': sale.movie_title,
+                    'screen_name': sale.screen_name,
+                    'show_time': sale.show_time.strftime('%H:%M'),
+                    'tickets_sold': sale.tickets_sold,
+                    'revenue': float(sale.revenue or 0),
+                    'occupancy_rate': sale.occupancy_rate
+                } for sale in sales_data]
+            }
+            insights = generate_insights(report_data, 'daily_sales')
+        except Exception as e:
+            from app.error_handlers import ErrorLogger
+            ErrorLogger.log_error(e, context={'function': 'generate_insights', 'request': request})
+            insights = []
+        
+        # Set form values
+        form.report_date.data = report_date
+        form.screen_id.data = screen_id or 0
+        form.movie_id.data = movie_id or 0
+        
+        return render_template(
+            'reports/daily_sales.html',
+            title='Daily Sales Report',
+            form=form,
+            report_date=report_date.strftime('%Y-%m-%d'),
+            sales_data=sales_data,
+            total_sales=total_sales,
+            total_bookings=total_bookings,
+            average_sale=average_sale,
+            tickets_sold=tickets_sold,
+            occupancy_rate=occupancy_rate,
+            movie_sales_labels=movie_sales_labels,
+            movie_sales_data=movie_sales_data,
+            screen_sales_labels=screen_sales_labels,
+            screen_sales_data=screen_sales_data,
+            insights=insights
+        )
+    except Exception as e:
+        from app.error_handlers import ErrorLogger, ErrorHandler
+        ErrorLogger.log_error(e, context={'request': request})
+        ErrorHandler.handle_error(e, request)
+        flash('An error occurred while loading the daily sales report', 'danger')
+        return redirect(url_for('reports.index'))
 
 @bp.route('/daily_sales/pdf')
 @login_required

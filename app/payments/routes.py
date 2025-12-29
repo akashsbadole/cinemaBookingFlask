@@ -286,7 +286,7 @@ def process_payment(booking_id):
             
     except Exception as e:
         db.session.rollback()
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': booking_id})
+        ErrorLogger.log_error(e, context={'booking_id': booking_id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error processing payment: {str(e)}")
         flash('An error occurred while processing payment', 'danger')
         return redirect(url_for('bookings.view', id=booking_id))
@@ -346,7 +346,7 @@ def create_paypal_order(booking_id):
         
     except Exception as e:
         db.session.rollback()
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': booking_id})
+        ErrorLogger.log_error(e, context={'booking_id': booking_id, 'request': request, 'user_id': current_user.id})
         return jsonify({'error': 'Failed to create PayPal order'}), 500
 
 @bp.route('/capture_paypal_order/<int:booking_id>', methods=['POST'])
@@ -403,7 +403,7 @@ def capture_paypal_order(booking_id):
         
     except Exception as e:
         db.session.rollback()
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'booking_id': booking_id})
+        ErrorLogger.log_error(e, context={'booking_id': booking_id, 'request': request, 'user_id': current_user.id})
         return jsonify({'error': 'Failed to capture PayPal payment'}), 500
 
 @bp.route('/capture/<int:payment_id>', methods=['POST'])
@@ -413,7 +413,7 @@ def capture_payment(payment_id):
     try:
         payment = Payment.query.get(payment_id)
         if not payment:
-            ErrorLogger.log_error(f"Payment not found: {payment_id}", request, context={'payment_id': payment_id})
+            ErrorLogger.log_error(f"Payment not found: {payment_id}", context={'payment_id': payment_id, 'request': request})
             return jsonify({'error': 'Payment not found'}), 404
         
         if payment.status != 'pending':
@@ -445,7 +445,7 @@ def capture_payment(payment_id):
         
     except Exception as e:
         db.session.rollback()
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
         return jsonify({'success': False, 'error': 'Failed to capture payment'}), 500
 
 @bp.route('/refund/<int:payment_id>', methods=['GET', 'POST'])
@@ -507,7 +507,7 @@ def refund_payment(payment_id):
         
     except Exception as e:
         db.session.rollback()
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error processing refund: {str(e)}")
         flash('An error occurred while processing refund', 'danger')
         return redirect(url_for('payments.view', id=payment_id))
@@ -552,7 +552,7 @@ def email_receipt(payment_id):
         return render_template('payments/email_receipt_form.html', payment=payment, form=form)
         
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error sending email receipt: {str(e)}")
         flash('An error occurred while sending receipt', 'danger')
         return redirect(url_for('payments.view', id=payment_id))
@@ -610,7 +610,7 @@ def update_status(payment_id):
         
     except Exception as e:
         db.session.rollback()
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error updating payment status: {str(e)}")
         flash('An error occurred while updating payment status', 'danger')
         return redirect(url_for('payments.view', id=payment_id))
@@ -624,7 +624,7 @@ def index():
     
     try:
         # Get search parameters using centralized utility
-        params = get_search_params_from_request(request, [
+        params = get_search_params_from_request(None, [
             'search', 'search_type', 'status', 'payment_method', 'date_from', 'date_to',
             'amount_min', 'amount_max', 'booking_id', 'customer_name', 'customer_email',
             'customer_phone', 'reference_id', 'transaction_id', 'sort_by', 'page', 'per_page'
@@ -696,7 +696,7 @@ def index():
             )
         except Exception as e:
             # Log analytics error but don't fail the search
-            ErrorLogger.log_error(e, request, context={'analytics_error': True})
+            ErrorLogger.log_error(e, context={'analytics_error': True, 'request': request})
         
         # Calculate summary statistics
         summary = {
@@ -716,7 +716,7 @@ def index():
                              search_params=params)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         logger.error(f"Error loading payments index: {str(e)}")
         flash('An error occurred while loading payments', 'danger')
         return render_template('payments/index.html',
@@ -738,7 +738,7 @@ def view(payment_id):
         return render_template('payments/view.html', title=f'Payment #{payment_id}', payment=payment)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error viewing payment: {str(e)}")
         flash('An error occurred while loading payment details', 'danger')
         return redirect(url_for('payments.index'))
@@ -756,7 +756,7 @@ def receipt(payment_id):
         return render_template('payments/receipt.html', title='Payment Receipt', payment=payment)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error viewing receipt: {str(e)}")
         flash('An error occurred while loading receipt', 'danger')
         return redirect(url_for('payments.index'))
@@ -780,7 +780,7 @@ def status_history(payment_id):
                             history=history)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error loading status history: {str(e)}")
         flash('An error occurred while loading status history', 'danger')
         return redirect(url_for('payments.view', id=payment_id))
@@ -824,7 +824,7 @@ def audit_trail():
         return render_template('payments/audit_trail.html', title='Payment Audit Trail', payments=payments, audit_trail=audit_trail)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         logger.error(f"Error loading audit trail: {str(e)}")
         flash('An error occurred while loading audit trail', 'danger')
         return redirect(url_for('payments.index'))
@@ -863,7 +863,7 @@ def payment_audit_trail(payment_id):
         return render_template('payments/audit_trail.html', title='Payment Audit Trail', payment=payment, audit_trail=audit_trail)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error loading audit trail: {str(e)}")
         flash('An error occurred while loading audit trail', 'danger')
         return redirect(url_for('payments.view', id=payment_id))
@@ -947,7 +947,7 @@ def receipt_pdf(payment_id):
         return response
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id, context={'payment_id': payment_id})
+        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error generating PDF receipt: {str(e)}")
         flash('An error occurred while generating PDF receipt', 'danger')
         return redirect(url_for('payments.receipt', id=payment_id))
@@ -972,7 +972,7 @@ def api_search_autocomplete():
         return jsonify({'suggestions': suggestions})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'suggestions': []})
 
 @bp.route('/api/saved_searches', methods=['GET', 'POST'])
@@ -1007,7 +1007,7 @@ def api_saved_searches():
             return jsonify({'success': True, 'id': saved_search.id})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         if request.method == 'GET':
             return jsonify({'saved_searches': []})
         else:
@@ -1045,7 +1045,7 @@ def save_search():
         return jsonify({'success': True, 'message': 'Search saved successfully'})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'success': False, 'error': 'Failed to save search'}), 500
 
 @bp.route('/load_search/<int:search_id>')
@@ -1070,7 +1070,7 @@ def load_search(search_id):
         })
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'success': False, 'error': 'Failed to load search'}), 500
 
 @bp.route('/delete_search/<int:search_id>', methods=['DELETE'])
@@ -1095,7 +1095,7 @@ def delete_search(search_id):
         return jsonify({'success': True, 'message': 'Search deleted successfully'})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'success': False, 'error': 'Failed to delete search'}), 500
 
 @bp.route('/api/saved_searches/<int:search_id>', methods=['DELETE'])
@@ -1119,7 +1119,7 @@ def api_delete_saved_search(search_id):
         return jsonify({'success': True})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'error': 'Failed to delete saved search'}), 500
 
 @bp.route('/clear_search_history', methods=['DELETE'])
@@ -1135,7 +1135,7 @@ def clear_search_history():
         return jsonify({'success': True, 'message': 'Search history cleared successfully'})
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'success': False, 'error': 'Failed to clear search history'}), 500
 
 @bp.route('/search_analytics')
@@ -1177,7 +1177,7 @@ def search_analytics():
                              saved_searches=saved_searches)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         flash('An error occurred while loading search analytics', 'danger')
         return redirect(url_for('payments.index'))
 
@@ -1267,7 +1267,7 @@ def advanced_search():
             )
         except Exception as e:
             # Log analytics error but don't fail the search
-            ErrorLogger.log_error(e, request, context={'analytics_error': True})
+            ErrorLogger.log_error(e, context={'analytics_error': True, 'request': request})
         
         # Populate form with existing parameters
         for key, value in params.items():
@@ -1286,6 +1286,6 @@ def advanced_search():
                              saved_searches=saved_searches)
     
     except Exception as e:
-        ErrorLogger.log_error(e, request, user_id=current_user.id)
+        ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         flash('An error occurred while loading advanced search', 'danger')
         return redirect(url_for('payments.index'))

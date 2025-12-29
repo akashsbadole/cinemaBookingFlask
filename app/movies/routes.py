@@ -17,7 +17,7 @@ import json
 def index():
     """Movies listing page with advanced search and filtering"""
     # Get search parameters from request
-    params = get_search_params_from_request()
+    params = get_search_params_from_request(None)
     
     # Create advanced movie search
     movie_search = MovieSearch()

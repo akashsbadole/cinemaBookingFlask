@@ -118,25 +118,31 @@ class ErrorLogger:
         current_app.logger.error(f"Error occurred: {error}")
     
     @staticmethod
-    def log_security_event(event_type, details, severity='warning', **kwargs):
+    def log_security_event(event_type, details, request=None, severity='warning', **kwargs):
         """
         Log security-related events
         
         Args:
             event_type: Type of security event
             details: Event details
+            request: Flask request object (optional)
             severity: Log level
-            **kwargs: Additional context information (request, user_id, session_data, etc.)
+            **kwargs: Additional context information (user_id, session_data, context, etc.)
         """
-        context = ErrorContext()
+        # Create error context if request is provided
+        if request:
+            context = ErrorContext()
+        else:
+            context = None
+        
         log_data = {
             'security_event': event_type,
             'timestamp': datetime.utcnow().isoformat(),
             'details': details,
-            'user_id': context.user_id,
-            'ip_address': context.ip_address,
-            'user_agent': context.user_agent,
-            'url': context.url
+            'user_id': kwargs.get('user_id') or (context.user_id if context else None),
+            'ip_address': context.ip_address if context else None,
+            'user_agent': context.user_agent if context else None,
+            'url': context.url if context else None
         }
         
         # Add any additional context from kwargs
