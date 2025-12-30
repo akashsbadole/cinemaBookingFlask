@@ -9,6 +9,7 @@ from app.bookings import bp
 from app.bookings.forms import BookingForm, ShowSelectionForm, BookingSearchForm, AdvancedBookingSearchForm
 from app.bookings.models import Booking, BookingSeat
 from app.bookings.utils import generate_qr_code, get_available_seats, validate_booking_rules
+from app.utils import generate_ticket_pdf
 from app.movies.models import Movie
 from app.shows.models import Show
 from app.screens.models import Screen, Seat
@@ -82,9 +83,47 @@ class BookingCalculator:
         
         show = Show.query.get(show_id)
         if not show:
-            return {'base_price': 0, 'total': 0, 'seat_count': 0}
+            return {'base_price': 0, 'total': 0, 'seat_count': 0, 'seats': []}
         
-        # Get seat type counts
+        # Get individual seat details
+        seats_breakdown = []
+        total_cost = 0.0
+        
+        for seat_id in seat_ids:
+            seat = Seat.query.get(seat_id)
+            if not seat:
+                continue
+                
+            # Calculate price with dynamic pricing
+            base_price = float(seat.price)
+            
+            # Apply show-specific pricing
+            if show.weekend_surcharge and show.show_date.weekday() >= 5:  # Saturday (5) or Sunday (6)
+                base_price *= (1 + float(show.weekend_surcharge) / 100)
+            
+            if show.matinee_discount and show.show_time.hour < 17:  # Before 5 PM
+                base_price *= (1 - float(show.matinee_discount) / 100)
+            
+            # Apply seat type multipliers
+            if seat.type == 'premium':
+                base_price *= 1.5
+            elif seat.type == 'vip':
+                base_price *= 2.0
+            
+            final_price = round(base_price, 2)
+            total_cost += final_price
+            
+            seats_breakdown.append({
+                'seat_id': seat_id,
+                'name': seat.seat_number,
+                'seat_name': seat.seat_number,
+                'type': seat.type,
+                'seat_type': seat.type,
+                'price': final_price,
+                'final_price': final_price
+            })
+        
+        # Get seat type counts for summary
         seat_type_counts = {'normal': 0, 'premium': 0, 'vip': 0}
         base_price = float(show.base_price) if show.base_price else 150.0
         
@@ -98,18 +137,11 @@ class BookingCalculator:
         premium_total = seat_type_counts['premium'] * base_price * 1.5
         vip_total = seat_type_counts['vip'] * base_price * 2.0
         
-        # Apply show-specific adjustments
-        total = normal_total + premium_total + vip_total
-        if show.weekend_surcharge and show.show_date.weekday() >= 5:
-            total *= (1 + float(show.weekend_surcharge) / 100)
-        
-        if show.matinee_discount and show.show_time.hour < 17:
-            total *= (1 - float(show.matinee_discount) / 100)
-        
         return {
             'base_price': base_price,
-            'total': round(total, 2),
+            'total': round(total_cost, 2),
             'seat_count': len(seat_ids),
+            'seats': seats_breakdown,
             'seat_type_counts': seat_type_counts,
             'type_totals': {
                 'normal': round(normal_total, 2),
@@ -264,7 +296,11 @@ def new():
     """Create new booking - first step: select show"""
     try:
         # Clean up expired locks first
-        SeatLock.release_expired_locks()
+        try:
+            SeatLock.release_expired_locks()
+        except Exception as e:
+            # Log the error but don't fail the request
+            current_app.logger.warning(f"Failed to clean up expired locks: {str(e)}")
         
         # Get form for show selection
         form = ShowSelectionForm()
@@ -416,54 +452,98 @@ def select_seats(show_id):
             return redirect(url_for('bookings.new'))
         
         # Convert to expected format for template
-        seat_layout = {
-            'layout': [],
-            'rows': layout_data['screen']['total_rows'],
-            'seats_per_row': layout_data['screen']['total_columns']
-        }
+        seat_layout = {}
         
-        # Convert layout data to expected format
-        for row_letter in layout_data['layout']:
-            for col in layout_data['layout'][row_letter]:
-                seat = layout_data['layout'][row_letter][col]
-                seat_layout['layout'].append({
-                    'row': seat['row'],
-                    'number': seat['column'],
-                    'status': seat['status'],
-                    'type': seat['type']
+        # Convert layout data to expected format (organized by rows)
+        if 'layout' in layout_data and layout_data['layout']:
+            for row_letter, row_data in layout_data['layout'].items():
+                if row_letter not in seat_layout:
+                    seat_layout[row_letter] = []
+                
+                # Sort columns and add seats in order
+                for col in sorted(row_data.keys()):
+                    seat = row_data[col]
+                    seat_layout[row_letter].append({
+                        'id': seat['id'],
+                        'row': seat['row'],
+                        'column': seat['column'],
+                        'status': seat['status'],
+                        'seat_type': seat['type']
+                    })
+        else:
+            # Fallback: Create a simple seat layout if no complex layout exists
+            from app.screens.models import Seat
+            seats = Seat.query.filter_by(screen_id=show.screen_id).order_by(Seat.row, Seat.column).all()
+            
+            if not seats:
+                flash('No seats configured for this screen', 'danger')
+                return redirect(url_for('bookings.new'))
+            
+            # Get booked seats for this show
+            from app.bookings.models import BookingSeat, Booking
+            booked_seat_ids = db.session.query(BookingSeat.seat_id).join(Booking).filter(
+                Booking.show_id == show_id,
+                Booking.status.in_(['confirmed', 'pending'])
+            ).all()
+            booked_seat_ids = [seat_id[0] for seat_id in booked_seat_ids]
+            
+            # Organize seats by row
+            for seat in seats:
+                if seat.row not in seat_layout:
+                    seat_layout[seat.row] = []
+                
+                # Determine seat status
+                if seat.id in booked_seat_ids:
+                    status = 'booked'
+                else:
+                    status = 'available'
+                
+                seat_layout[seat.row].append({
+                    'id': seat.id,
+                    'row': seat.row,
+                    'column': seat.column,
+                    'status': status,
+                    'seat_type': seat.type or 'normal'
                 })
         
         # Validate seat layout
-        if not seat_layout or 'layout' not in seat_layout:
-            flash('Unable to load seat layout', 'danger')
+        if not seat_layout:
+            flash('No seats available for this show', 'danger')
             return redirect(url_for('bookings.new'))
         
         # Get pricing information with validation
         try:
-            base_price = float(show.base_price) if show.base_price else 0
-            weekend_surcharge = float(show.weekend_surcharge or 0) if show.is_weekend() else 0
-            matinee_discount = float(show.matinee_discount or 0) if show.is_matinee() else 0
+            base_price = float(show.base_price) if show.base_price else 150.0  # Default price
+            
+            # Check if methods exist before calling them
+            is_weekend = show.is_weekend() if hasattr(show, 'is_weekend') else False
+            is_matinee = show.is_matinee() if hasattr(show, 'is_matinee') else False
+            
+            weekend_surcharge = float(show.weekend_surcharge or 0) if is_weekend else 0
+            matinee_discount = float(show.matinee_discount or 0) if is_matinee else 0
             
             price_info = {
                 'base_price': base_price,
                 'weekend_surcharge': weekend_surcharge,
                 'matinee_discount': matinee_discount,
-                'is_weekend': show.is_weekend(),
-                'is_matinee': show.is_matinee()
+                'is_weekend': is_weekend,
+                'is_matinee': is_matinee
             }
             
             # Validate pricing
             if base_price < 0:
-                raise ValidationError("Invalid base price")
-            if weekend_surcharge < 0:
-                raise ValidationError("Invalid weekend surcharge")
-            if matinee_discount < 0:
-                raise ValidationError("Invalid matinee discount")
+                base_price = 150.0  # Fallback price
+                price_info['base_price'] = base_price
             
-        except (ValueError, ValidationError) as e:
-            ErrorLogger.log_error(e, context={'show_id': show_id, 'request': request})
-            flash('Invalid pricing information for this show', 'danger')
-            return redirect(url_for('bookings.new'))
+        except (ValueError, AttributeError) as e:
+            # Fallback pricing if there are any issues
+            price_info = {
+                'base_price': 150.0,
+                'weekend_surcharge': 0,
+                'matinee_discount': 0,
+                'is_weekend': False,
+                'is_matinee': False
+            }
         
         return render_template('bookings/select_seats.html', title='Select Seats',
                              show=show, seat_layout=seat_layout, price_info=price_info)
@@ -588,9 +668,10 @@ def api_lock_seats():
         for seat_id in seat_ids:
             availability = check_seat_availability(seat_id, show_id)
             if not availability['available']:
+                current_app.logger.error(f"Seat {seat_id} not available: {availability.get('reason', 'Unknown reason')}")
                 return jsonify({
                     'success': False,
-                    'error': f"Seat {availability['seat'].seat_number} is not available: {availability['reason']}"
+                    'error': f"Seat {availability.get('seat', {}).get('seat_number', seat_id)} is not available: {availability['reason']}"
                 })
         
         # Lock seats
@@ -598,6 +679,7 @@ def api_lock_seats():
         locked_seats = result.get('locked_seats', [])
         
         if not result['success']:
+            current_app.logger.error(f"Failed to lock seats: {result.get('errors', [])}")
             return jsonify({
                 'success': False,
                 'error': 'Failed to lock seats',
@@ -619,9 +701,11 @@ def api_lock_seats():
         })
     
     except ValueError as e:
-        return jsonify({'success': False, 'error': 'Invalid data format'})
+        current_app.logger.error(f"ValueError in api_lock_seats: {str(e)}")
+        return jsonify({'success': False, 'error': f'Invalid data format: {str(e)}'})
     
     except Exception as e:
+        current_app.logger.error(f"Exception in api_lock_seats: {str(e)}")
         ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'success': False, 'error': 'Failed to lock seats'})
 
@@ -740,9 +824,11 @@ def api_calculate_price():
         })
     
     except ValueError as e:
-        return jsonify({'success': False, 'error': 'Invalid data format'})
+        current_app.logger.error(f"ValueError in api_calculate_price: {str(e)}")
+        return jsonify({'success': False, 'error': f'Invalid data format: {str(e)}'})
     
     except Exception as e:
+        current_app.logger.error(f"Exception in api_calculate_price: {str(e)}")
         ErrorLogger.log_error(e, context={'user_id': current_user.id, 'request': request})
         return jsonify({'success': False, 'error': 'Failed to calculate price'})
 
@@ -767,7 +853,12 @@ def confirm_booking():
             
             # Validate and parse seat IDs
             try:
-                seat_ids = [int(sid) for sid in seat_ids_str.split(',') if sid.strip()]
+                if isinstance(seat_ids_str, int):
+                    seat_ids = [seat_ids_str]
+                elif isinstance(seat_ids_str, str):
+                    seat_ids = [int(sid) for sid in seat_ids_str.split(',') if sid.strip()]
+                else:
+                    raise ValueError("Invalid seat ID format")
                 if not seat_ids or any(sid <= 0 for sid in seat_ids):
                     raise ValueError("Invalid seat ID format")
             except ValueError:
@@ -801,7 +892,11 @@ def confirm_booking():
             for seat_id in seat_ids:
                 availability = check_seat_availability(seat_id, show_id)
                 if not availability['available']:
-                    flash(f"Seat {availability['seat'].row}{availability['seat'].column} is not available: {availability['reason']}", 'danger')
+                    # Get seat info for error message
+                    from app.screens.models import Seat
+                    seat = Seat.query.get(seat_id)
+                    seat_name = f"{seat.row}{seat.column}" if seat else f"Seat {seat_id}"
+                    flash(f"Seat {seat_name} is not available: {availability['reason']}", 'danger')
                     return redirect(url_for('bookings.select_seats', show_id=show_id))
             
             # Calculate and validate total cost
@@ -839,7 +934,12 @@ def confirm_booking():
                 
                 # Validate and parse seat IDs
                 try:
-                    seat_ids = [int(sid) for sid in seat_ids_str.split(',') if sid.strip()]
+                    if isinstance(seat_ids_str, int):
+                        seat_ids = [seat_ids_str]
+                    elif isinstance(seat_ids_str, str):
+                        seat_ids = [int(sid) for sid in seat_ids_str.split(',') if sid.strip()]
+                    else:
+                        raise ValueError("Invalid seat ID format")
                     if not seat_ids or any(sid <= 0 for sid in seat_ids):
                         raise ValueError("Invalid seat ID format")
                 except ValueError:
@@ -983,7 +1083,7 @@ def confirm_booking():
                 )
                 
                 flash(f'Booking confirmed! Reference: {booking.reference_number}', 'success')
-                return redirect(url_for('payments.process', booking_id=booking.id))
+                return redirect(url_for('payments.process_payment', booking_id=booking.id))
             
             # Form validation failed
             for field, errors in form.errors.items():
@@ -995,7 +1095,12 @@ def confirm_booking():
             seat_ids_str = request.form.get('seat_ids', '')
             
             try:
-                seat_ids = [int(sid) for sid in seat_ids_str.split(',') if sid.strip()]
+                if isinstance(seat_ids_str, int):
+                    seat_ids = [seat_ids_str]
+                elif isinstance(seat_ids_str, str):
+                    seat_ids = [int(sid) for sid in seat_ids_str.split(',') if sid.strip()]
+                else:
+                    seat_ids = []
                 if show_id > 0 and seat_ids:
                     total_cost, seat_costs = BookingCalculator.calculate_booking_cost(show_id, seat_ids)
                     show = Show.query.get(show_id)
@@ -1094,7 +1199,7 @@ def ticket_qr(id):
         
         # Sanitize QR code data
         customer_name = InputSanitizer.sanitize_string(booking.customer_name, max_length=50)
-        movie_title = InputSanitizer.sanitize_string(booking.show.movie.title, max_length=100)
+        movie_title = InputSanitizer.sanitize_string(booking.show.movie.name, max_length=100)
         seats_list = booking.get_seats_list()
         
         # Generate QR code with booking information
@@ -1140,7 +1245,7 @@ def ticket_pdf(id):
             'id': booking.id,
             'reference_number': booking.reference_number,
             'customer_name': InputSanitizer.sanitize_string(booking.customer_name, max_length=100),
-            'movie_title': InputSanitizer.sanitize_string(booking.show.movie.title, max_length=200) if booking.show.movie else 'N/A',
+            'movie_title': InputSanitizer.sanitize_string(booking.show.movie.name, max_length=200) if booking.show.movie else 'N/A',
             'screen_name': InputSanitizer.sanitize_string(booking.show.screen.name, max_length=100) if booking.show.screen else 'N/A',
             'show_date': booking.show.show_date.strftime('%d %b %Y') if booking.show.show_date else 'N/A',
             'show_time': booking.show.show_time.strftime('%I:%M %p') if booking.show.show_time else 'N/A',

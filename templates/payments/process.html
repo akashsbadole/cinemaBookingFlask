@@ -22,7 +22,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Movie:</strong></td>
-                                <td>{{ booking.show.movie.title }}</td>
+                                <td>{{ booking.show.movie.name }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Screen:</strong></td>
@@ -30,11 +30,13 @@
                             </tr>
                             <tr>
                                 <td><strong>Show Date & Time:</strong></td>
-                                <td>{{ booking.show.show_date.strftime('%d %b %Y') }} at {{ booking.show.show_time.strftime('%H:%M') }}</td>
+                                <td>{{ booking.show.show_date.strftime('%d %b %Y') }} at {{
+                                    booking.show.show_time.strftime('%H:%M') }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Seats:</strong></td>
-                                <td>{{ booking.get_seats_list()|join(', ') if booking.get_seats_list() else booking.seats }}</td>
+                                <td>{{ booking.get_seats_list()|join(', ') if booking.get_seats_list() else
+                                    booking.seats }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Total Amount:</strong></td>
@@ -43,11 +45,11 @@
                         </table>
                     </div>
                 </div>
-                
+
                 <form method="POST" id="payment-form">
                     <div class="mb-4">
                         <h5>Payment Information</h5>
-                        
+
                         <!-- Payment Method Selection -->
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -67,12 +69,12 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="amount_received" class="form-label">Amount Received</label>
-                                    <input type="number" step="0.01" class="form-control" id="amount_received" 
-                                           name="amount_received" value="{{ booking.total_amount }}" required>
+                                    <input type="number" step="0.01" class="form-control" id="amount_received"
+                                        name="amount_received" value="{{ booking.total_amount }}" required>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Cash Payment Details -->
                         <div id="cash-details" style="display: none;">
                             <div class="card card-body bg-light mb-3">
@@ -81,15 +83,16 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="amount_tendered" class="form-label">Amount Tendered</label>
-                                            <input type="number" step="0.01" class="form-control" id="amount_tendered" 
-                                                   name="amount_tendered" placeholder="Enter amount received from customer">
+                                            <input type="number" step="0.01" class="form-control" id="amount_tendered"
+                                                name="amount_tendered"
+                                                placeholder="Enter amount received from customer">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="cash_reference_id" class="form-label">Receipt Number</label>
-                                            <input type="text" class="form-control" id="cash_reference_id" 
-                                                   name="reference_id" placeholder="Enter receipt number">
+                                            <input type="text" class="form-control" id="cash_reference_id"
+                                                name="reference_id" placeholder="Enter receipt number">
                                         </div>
                                     </div>
                                 </div>
@@ -98,7 +101,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Card Payment Details -->
                         <div id="card-details" style="display: none;">
                             <div class="card card-body bg-light mb-3">
@@ -107,8 +110,8 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="card_number" class="form-label">Card Number</label>
-                                            <input type="text" class="form-control" id="card_number" name="card_number" 
-                                                   placeholder="1234 5678 9012 3456" maxlength="19">
+                                            <input type="text" class="form-control" id="card_number" name="card_number"
+                                                placeholder="1234 5678 9012 3456" maxlength="19">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -144,7 +147,8 @@
                                     <div class="col-md-3">
                                         <div class="mb-3">
                                             <label for="cvv" class="form-label">CVV</label>
-                                            <input type="text" class="form-control" id="cvv" name="cvv" placeholder="123" maxlength="4">
+                                            <input type="text" class="form-control" id="cvv" name="cvv"
+                                                placeholder="123" maxlength="4">
                                         </div>
                                     </div>
                                     <div class="col-md-3">
@@ -165,14 +169,14 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="card_reference_id" class="form-label">Authorization Code</label>
-                                            <input type="text" class="form-control" id="card_reference_id" 
-                                                   name="reference_id" placeholder="Enter authorization code">
+                                            <input type="text" class="form-control" id="card_reference_id"
+                                                name="reference_id" placeholder="Enter authorization code">
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- UPI Payment Details -->
                         <div id="upi-details" style="display: none;">
                             <div class="card card-body bg-light mb-3">
@@ -181,14 +185,15 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="upi_id" class="form-label">UPI ID</label>
-                                            <input type="text" class="form-control" id="upi_id" name="upi_id" 
-                                                   placeholder="username@upi">
+                                            <input type="text" class="form-control" id="upi_id" name="upi_id"
+                                                placeholder="username@upi">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="upi_transaction_id" class="form-label">Transaction ID</label>
-                                            <input type="text" class="form-control" id="upi_transaction_id" name="transaction_id">
+                                            <input type="text" class="form-control" id="upi_transaction_id"
+                                                name="transaction_id">
                                         </div>
                                     </div>
                                 </div>
@@ -196,18 +201,20 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="upi_reference_id" class="form-label">UTR Number</label>
-                                            <input type="text" class="form-control" id="upi_reference_id" name="reference_id">
+                                            <input type="text" class="form-control" id="upi_reference_id"
+                                                name="reference_id">
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- PayPal Payment Details -->
                         <div id="paypal-details" style="display: none;">
                             <div class="card card-body bg-light mb-3">
                                 <h6 class="card-title">PayPal Payment</h6>
-                                <p class="text-muted">Click the PayPal button below to complete your payment securely.</p>
+                                <p class="text-muted">Click the PayPal button below to complete your payment securely.
+                                </p>
                                 <div id="paypal-button-container"></div>
                                 <div id="paypal-spinner" class="text-center" style="display: none;">
                                     <div class="spinner-border text-primary" role="status">
@@ -217,7 +224,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Net Banking Payment Details -->
                         <div id="netbanking-details" style="display: none;">
                             <div class="card card-body bg-light mb-3">
@@ -244,8 +251,10 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label for="netbanking_transaction_id" class="form-label">Transaction Reference</label>
-                                            <input type="text" class="form-control" id="netbanking_transaction_id" name="transaction_id">
+                                            <label for="netbanking_transaction_id" class="form-label">Transaction
+                                                Reference</label>
+                                            <input type="text" class="form-control" id="netbanking_transaction_id"
+                                                name="transaction_id">
                                         </div>
                                     </div>
                                 </div>
@@ -253,20 +262,22 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="account_last_4" class="form-label">Account Last 4 Digits</label>
-                                            <input type="text" class="form-control" id="account_last_4" name="account_last_4" 
-                                                   placeholder="1234" maxlength="4">
+                                            <input type="text" class="form-control" id="account_last_4"
+                                                name="account_last_4" placeholder="1234" maxlength="4">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label for="netbanking_reference_id" class="form-label">Bank Reference</label>
-                                            <input type="text" class="form-control" id="netbanking_reference_id" name="reference_id">
+                                            <label for="netbanking_reference_id" class="form-label">Bank
+                                                Reference</label>
+                                            <input type="text" class="form-control" id="netbanking_reference_id"
+                                                name="reference_id">
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Wallet Payment Details -->
                         <div id="wallet-details" style="display: none;">
                             <div class="card card-body bg-light mb-3">
@@ -291,9 +302,10 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label for="wallet_mobile" class="form-label">Registered Mobile Number</label>
-                                            <input type="text" class="form-control" id="wallet_mobile" name="mobile_number" 
-                                                   placeholder="9876543210" maxlength="10">
+                                            <label for="wallet_mobile" class="form-label">Registered Mobile
+                                                Number</label>
+                                            <input type="text" class="form-control" id="wallet_mobile"
+                                                name="mobile_number" placeholder="9876543210" maxlength="10">
                                         </div>
                                     </div>
                                 </div>
@@ -301,27 +313,29 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="wallet_transaction_id" class="form-label">Transaction ID</label>
-                                            <input type="text" class="form-control" id="wallet_transaction_id" name="transaction_id">
+                                            <input type="text" class="form-control" id="wallet_transaction_id"
+                                                name="transaction_id">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="wallet_reference_id" class="form-label">Wallet Reference</label>
-                                            <input type="text" class="form-control" id="wallet_reference_id" name="reference_id">
+                                            <input type="text" class="form-control" id="wallet_reference_id"
+                                                name="reference_id">
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Notes -->
                         <div class="mb-3">
                             <label for="notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="2" 
-                                      placeholder="Additional payment notes..."></textarea>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"
+                                placeholder="Additional payment notes..."></textarea>
                         </div>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('bookings.view', id=booking.id) }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Back to Booking
@@ -356,13 +370,14 @@
                 </table>
             </div>
         </div>
-        
+
         <div class="card mt-3">
             <div class="card-header">
                 <h5><i class="fas fa-shield-alt me-2"></i>Security</h5>
             </div>
             <div class="card-body">
-                <p class="small text-muted">All payment information is encrypted and secure. We do not store card details on our servers.</p>
+                <p class="small text-muted">All payment information is encrypted and secure. We do not store card
+                    details on our servers.</p>
                 <div class="d-flex justify-content-center">
                     <i class="fas fa-lock fa-2x text-muted"></i>
                 </div>
@@ -374,160 +389,160 @@
 
 {% block scripts %}
 <script>
-document.getElementById('payment_method').addEventListener('change', function() {
-    // Hide all payment detail sections
-    const sections = ['cash-details', 'card-details', 'upi-details', 'paypal-details', 'netbanking-details', 'wallet-details'];
-    sections.forEach(id => {
-        document.getElementById(id).style.display = 'none';
+    document.getElementById('payment_method').addEventListener('change', function () {
+        // Hide all payment detail sections
+        const sections = ['cash-details', 'card-details', 'upi-details', 'paypal-details', 'netbanking-details', 'wallet-details'];
+        sections.forEach(id => {
+            document.getElementById(id).style.display = 'none';
+        });
+
+        // Show the selected payment detail section
+        switch (this.value) {
+            case 'cash':
+                document.getElementById('cash-details').style.display = 'block';
+                break;
+            case 'card':
+                document.getElementById('card-details').style.display = 'block';
+                break;
+            case 'upi':
+                document.getElementById('upi-details').style.display = 'block';
+                break;
+            case 'paypal':
+                document.getElementById('paypal-details').style.display = 'block';
+                renderPayPalButton();
+                break;
+            case 'netbanking':
+                document.getElementById('netbanking-details').style.display = 'block';
+                break;
+            case 'wallet':
+                document.getElementById('wallet-details').style.display = 'block';
+                break;
+        }
     });
-    
-    // Show the selected payment detail section
-    switch(this.value) {
-        case 'cash':
-            document.getElementById('cash-details').style.display = 'block';
-            break;
-        case 'card':
-            document.getElementById('card-details').style.display = 'block';
-            break;
-        case 'upi':
-            document.getElementById('upi-details').style.display = 'block';
-            break;
-        case 'paypal':
-            document.getElementById('paypal-details').style.display = 'block';
-            renderPayPalButton();
-            break;
-        case 'netbanking':
-            document.getElementById('netbanking-details').style.display = 'block';
-            break;
-        case 'wallet':
-            document.getElementById('wallet-details').style.display = 'block';
-            break;
-    }
-});
 
-// Cash payment change calculation
-document.getElementById('amount_tendered').addEventListener('input', function() {
-    const amountReceived = parseFloat(document.getElementById('amount_received').value) || 0;
-    const amountTendered = parseFloat(this.value) || 0;
-    
-    if (amountTendered > amountReceived) {
-        const change = amountTendered - amountReceived;
-        document.getElementById('change-amount').textContent = change.toFixed(2);
-        document.getElementById('change-calculated').style.display = 'block';
-    } else {
-        document.getElementById('change-calculated').style.display = 'none';
-    }
-});
+    // Cash payment change calculation
+    document.getElementById('amount_tendered').addEventListener('input', function () {
+        const amountReceived = parseFloat(document.getElementById('amount_received').value) || 0;
+        const amountTendered = parseFloat(this.value) || 0;
 
-// Card number formatting
-document.getElementById('card_number').addEventListener('input', function() {
-    let value = this.value.replace(/\s/g, '');
-    let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
-    this.value = formattedValue;
-});
+        if (amountTendered > amountReceived) {
+            const change = amountTendered - amountReceived;
+            document.getElementById('change-amount').textContent = change.toFixed(2);
+            document.getElementById('change-calculated').style.display = 'block';
+        } else {
+            document.getElementById('change-calculated').style.display = 'none';
+        }
+    });
 
-// PayPal button rendering
-function renderPayPalButton() {
-    // Clear any existing PayPal button
-    document.getElementById('paypal-button-container').innerHTML = '';
-    
-    if (typeof paypal !== 'undefined') {
-        paypal.Buttons({
-            createOrder: function(data, actions) {
-                // Show spinner
-                document.getElementById('paypal-spinner').style.display = 'block';
-                
-                // Call server to create PayPal order
-                return fetch('{{ url_for("payments.create_paypal_order", booking_id=booking.id) }}', {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(orderData => {
-                    if (orderData.error) {
-                        throw new Error(orderData.error);
-                    }
-                    return orderData.orderID;
-                })
-                .catch(error => {
-                    // Hide spinner and show error
-                    document.getElementById('paypal-spinner').style.display = 'none';
-                    alert('Error creating PayPal order: ' + error.message);
-                    throw error;
-                });
-            },
-            onApprove: function(data, actions) {
-                // Call server to capture the order
-                return fetch('{{ url_for("payments.capture_paypal_order", booking_id=booking.id) }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        orderID: data.orderID
+    // Card number formatting
+    document.getElementById('card_number').addEventListener('input', function () {
+        let value = this.value.replace(/\s/g, '');
+        let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+        this.value = formattedValue;
+    });
+
+    // PayPal button rendering
+    function renderPayPalButton() {
+        // Clear any existing PayPal button
+        document.getElementById('paypal-button-container').innerHTML = '';
+
+        if (typeof paypal !== 'undefined') {
+            paypal.Buttons({
+                createOrder: function (data, actions) {
+                    // Show spinner
+                    document.getElementById('paypal-spinner').style.display = 'block';
+
+                    // Call server to create PayPal order
+                    return fetch('{{ url_for("payments.create_paypal_order", booking_id=booking.id) }}', {
+                        method: 'POST'
                     })
-                })
-                .then(response => response.json())
-                .then(orderData => {
+                        .then(response => response.json())
+                        .then(orderData => {
+                            if (orderData.error) {
+                                throw new Error(orderData.error);
+                            }
+                            return orderData.orderID;
+                        })
+                        .catch(error => {
+                            // Hide spinner and show error
+                            document.getElementById('paypal-spinner').style.display = 'none';
+                            alert('Error creating PayPal order: ' + error.message);
+                            throw error;
+                        });
+                },
+                onApprove: function (data, actions) {
+                    // Call server to capture the order
+                    return fetch('{{ url_for("payments.capture_paypal_order", booking_id=booking.id) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            orderID: data.orderID
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(orderData => {
+                            // Hide spinner
+                            document.getElementById('paypal-spinner').style.display = 'none';
+
+                            if (orderData.error) {
+                                alert('Error capturing PayPal payment: ' + orderData.error);
+                            } else {
+                                // Redirect to receipt page
+                                window.location.href = orderData.redirect_url;
+                            }
+                        })
+                        .catch(error => {
+                            // Hide spinner and show error
+                            document.getElementById('paypal-spinner').style.display = 'none';
+                            alert('Error capturing PayPal payment: ' + error.message);
+                        });
+                },
+                onCancel: function (data) {
                     // Hide spinner
                     document.getElementById('paypal-spinner').style.display = 'none';
-                    
-                    if (orderData.error) {
-                        alert('Error capturing PayPal payment: ' + orderData.error);
-                    } else {
-                        // Redirect to receipt page
-                        window.location.href = orderData.redirect_url;
-                    }
-                })
-                .catch(error => {
+                    alert('PayPal payment was cancelled');
+                },
+                onError: function (err) {
                     // Hide spinner and show error
                     document.getElementById('paypal-spinner').style.display = 'none';
-                    alert('Error capturing PayPal payment: ' + error.message);
-                });
-            },
-            onCancel: function(data) {
-                // Hide spinner
-                document.getElementById('paypal-spinner').style.display = 'none';
-                alert('PayPal payment was cancelled');
-            },
-            onError: function(err) {
-                // Hide spinner and show error
-                document.getElementById('paypal-spinner').style.display = 'none';
-                alert('PayPal error: ' + err);
-            }
-        }).render('#paypal-button-container');
-    } else {
-        document.getElementById('paypal-button-container').innerHTML = 
-            '<p class="text-danger">PayPal SDK not loaded. Please check your configuration.</p>';
+                    alert('PayPal error: ' + err);
+                }
+            }).render('#paypal-button-container');
+        } else {
+            document.getElementById('paypal-button-container').innerHTML =
+                '<p class="text-danger">PayPal SDK not loaded. Please check your configuration.</p>';
+        }
     }
-}
 
-// Form submission handling
-document.getElementById('payment-form').addEventListener('submit', function(e) {
-    const paymentMethod = document.getElementById('payment_method').value;
-    
-    // Prevent form submission for PayPal (it's handled by the PayPal button)
-    if (paymentMethod === 'paypal') {
-        e.preventDefault();
-        alert('Please use the PayPal button above to complete your payment.');
-    }
-    
-    // Basic validation
-    if (paymentMethod === 'card') {
-        const cardNumber = document.getElementById('card_number').value.replace(/\s/g, '');
-        if (cardNumber.length < 13 || cardNumber.length > 19) {
+    // Form submission handling
+    document.getElementById('payment-form').addEventListener('submit', function (e) {
+        const paymentMethod = document.getElementById('payment_method').value;
+
+        // Prevent form submission for PayPal (it's handled by the PayPal button)
+        if (paymentMethod === 'paypal') {
             e.preventDefault();
-            alert('Please enter a valid card number');
-            return;
+            alert('Please use the PayPal button above to complete your payment.');
         }
-    } else if (paymentMethod === 'upi') {
-        const upiId = document.getElementById('upi_id').value;
-        if (!upiId.includes('@')) {
-            e.preventDefault();
-            alert('Please enter a valid UPI ID');
-            return;
+
+        // Basic validation
+        if (paymentMethod === 'card') {
+            const cardNumber = document.getElementById('card_number').value.replace(/\s/g, '');
+            if (cardNumber.length < 13 || cardNumber.length > 19) {
+                e.preventDefault();
+                alert('Please enter a valid card number');
+                return;
+            }
+        } else if (paymentMethod === 'upi') {
+            const upiId = document.getElementById('upi_id').value;
+            if (!upiId.includes('@')) {
+                e.preventDefault();
+                alert('Please enter a valid UPI ID');
+                return;
+            }
         }
-    }
-});
+    });
 </script>
 {% endblock %}
 

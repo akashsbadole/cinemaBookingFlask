@@ -40,10 +40,8 @@ def check_seat_availability(seat_id, show_id):
         }
     
     # Check if seat is booked for this show
-    booking_seat = BookingSeat.query.filter_by(
-        seat_id=seat_id
-    ).join('booking').filter(
-        BookingSeat.booking_id == Booking.id,
+    booking_seat = db.session.query(BookingSeat).join(Booking).filter(
+        BookingSeat.seat_id == seat_id,
         Booking.show_id == show_id,
         Booking.status.in_(['confirmed', 'pending'])
     ).first()

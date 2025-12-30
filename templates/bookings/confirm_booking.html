@@ -17,21 +17,21 @@
                 <form method="POST">
                     {{ form.hidden_tag() }}
                     <input type="hidden" name="seat_ids" value="{{ seat_ids|join(',') }}">
-                    
+
                     <!-- Show Information -->
                     <div class="alert alert-info mb-4">
                         <h6 class="alert-heading">Booking Details</h6>
                         <div class="row">
                             <div class="col-md-6">
-                                <p class="mb-1"><strong>Movie:</strong> {{ show.movie.title }}</p>
+                                <p class="mb-1"><strong>Movie:</strong> {{ show.movie.name }}</p>
                                 <p class="mb-1"><strong>Date:</strong> {{ show.show_date.strftime('%d %b %Y') }}</p>
                                 <p class="mb-1"><strong>Time:</strong> {{ show.show_time.strftime('%I:%M %p') }}</p>
                             </div>
                             <div class="col-md-6">
                                 <p class="mb-1"><strong>Screen:</strong> {{ show.screen.name }}</p>
-                                <p class="mb-1"><strong>Seats:</strong> 
+                                <p class="mb-1"><strong>Seats:</strong>
                                     {% for cost in seat_costs %}
-                                        <span class="badge bg-primary">{{ cost.seat_name }}</span>
+                                    <span class="badge bg-primary">{{ cost.seat_name }}</span>
                                     {% endfor %}
                                 </p>
                                 <p class="mb-1"><strong>Seat Count:</strong> {{ seat_costs|length }}</p>
@@ -45,22 +45,22 @@
                             {{ form.customer_name.label(class="form-label") }}
                             {{ form.customer_name(class="form-control", placeholder="Enter customer name") }}
                             {% if form.customer_name.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.customer_name.errors %}
-                                        <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
+                            <div class="text-danger">
+                                {% for error in form.customer_name.errors %}
+                                <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
                             {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
                             {{ form.customer_phone.label(class="form-label") }}
                             {{ form.customer_phone(class="form-control", placeholder="Enter phone number") }}
                             {% if form.customer_phone.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.customer_phone.errors %}
-                                        <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
+                            <div class="text-danger">
+                                {% for error in form.customer_phone.errors %}
+                                <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
                             {% endif %}
                         </div>
                     </div>
@@ -70,11 +70,11 @@
                             {{ form.customer_email.label(class="form-label") }}
                             {{ form.customer_email(class="form-control", placeholder="Enter email (optional)") }}
                             {% if form.customer_email.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.customer_email.errors %}
-                                        <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
+                            <div class="text-danger">
+                                {% for error in form.customer_email.errors %}
+                                <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
                             {% endif %}
                         </div>
                     </div>
@@ -85,22 +85,23 @@
                             {{ form.payment_method.label(class="form-label") }}
                             {{ form.payment_method(class="form-select") }}
                             {% if form.payment_method.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.payment_method.errors %}
-                                        <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
+                            <div class="text-danger">
+                                {% for error in form.payment_method.errors %}
+                                <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
                             {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
                             {{ form.payment_reference.label(class="form-label") }}
-                            {{ form.payment_reference(class="form-control", placeholder="Reference ID (for card/UPI)") }}
+                            {{ form.payment_reference(class="form-control", placeholder="Reference ID (for card/UPI)")
+                            }}
                             {% if form.payment_reference.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.payment_reference.errors %}
-                                        <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
+                            <div class="text-danger">
+                                {% for error in form.payment_reference.errors %}
+                                <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
                             {% endif %}
                         </div>
                     </div>
@@ -109,8 +110,10 @@
                     <div class="row">
                         <div class="col-12">
                             {{ form.submit(class="btn btn-primary me-2") }}
-                            <a href="{{ url_for('bookings.select_seats', show_id=show.id) }}" class="btn btn-secondary">Back to Seat Selection</a>
-                            <a href="{{ url_for('bookings.select_show') }}" class="btn btn-outline-secondary">Start Over</a>
+                            <a href="{{ url_for('bookings.select_seats', show_id=show.id) }}"
+                                class="btn btn-secondary">Back to Seat Selection</a>
+                            <a href="{{ url_for('bookings.select_show') }}" class="btn btn-outline-secondary">Start
+                                Over</a>
                         </div>
                     </div>
                 </form>
@@ -131,20 +134,20 @@
                     <span>₹{{ "%.2f"|format(cost.price) }}</span>
                 </div>
                 {% endfor %}
-                
+
                 <hr>
-                
+
                 <div class="d-flex justify-content-between">
                     <h5>Total Amount</h5>
                     <h5>₹{{ "%.2f"|format(total_amount) }}</h5>
                 </div>
-                
+
                 {% if show.is_weekend() %}
                 <div class="alert alert-warning mt-2 mb-0">
                     <small><i class="fas fa-info-circle me-1"></i>Weekend surcharge applied</small>
                 </div>
                 {% endif %}
-                
+
                 {% if show.is_matinee() %}
                 <div class="alert alert-info mt-2 mb-0">
                     <small><i class="fas fa-info-circle me-1"></i>Matinee discount applied</small>
@@ -166,7 +169,7 @@
                     <li>Management reserves the right of admission</li>
                     <li>Tickets are non-transferable</li>
                 </ul>
-                
+
                 <div class="form-check mt-3">
                     <input class="form-check-input" type="checkbox" id="agreeTerms" required>
                     <label class="form-check-label" for="agreeTerms">
@@ -197,7 +200,8 @@
             <div class="modal-body">
                 <p>Are you sure you want to confirm this booking?</p>
                 <p><strong>Total Amount:</strong> ₹{{ "%.2f"|format(total_amount) }}</p>
-                <p><strong>Payment Method:</strong> {{ form.payment_method.data|title if form.payment_method.data else 'Not selected' }}</p>
+                <p><strong>Payment Method:</strong> {{ form.payment_method.data|title if form.payment_method.data else
+                    'Not selected' }}</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -210,111 +214,111 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    setupFormValidation();
-    setupModal();
-});
-
-function setupFormValidation() {
-    const form = document.querySelector('form');
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const agreeCheckbox = document.getElementById('agreeTerms');
-    
-    // Disable submit button initially
-    submitBtn.disabled = true;
-    
-    // Enable/disable submit based on terms agreement
-    agreeCheckbox.addEventListener('change', function() {
-        submitBtn.disabled = !this.checked;
+    document.addEventListener('DOMContentLoaded', function () {
+        setupFormValidation();
+        setupModal();
     });
-    
-    // Form submission with confirmation
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        if (!agreeCheckbox.checked) {
-            alert('Please agree to the terms and conditions');
-            return;
-        }
-        
-        // Show confirmation modal
-        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-        modal.show();
-    });
-}
 
-function setupModal() {
-    const confirmBtn = document.getElementById('confirmBookingBtn');
-    
-    confirmBtn.addEventListener('click', function() {
+    function setupFormValidation() {
         const form = document.querySelector('form');
-        form.submit();
-    });
-}
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const agreeCheckbox = document.getElementById('agreeTerms');
 
-// Payment reference field validation
-document.getElementById('payment_method').addEventListener('change', function() {
-    const paymentReference = document.getElementById('payment_reference');
-    const referenceField = document.querySelector('[for="payment_reference"]');
-    
-    if (this.value === 'cash') {
-        paymentReference.disabled = true;
-        paymentReference.required = false;
-        paymentReference.value = '';
-        referenceField.classList.add('text-muted');
-    } else {
-        paymentReference.disabled = false;
-        paymentReference.required = true;
-        referenceField.classList.remove('text-muted');
+        // Disable submit button initially
+        submitBtn.disabled = true;
+
+        // Enable/disable submit based on terms agreement
+        agreeCheckbox.addEventListener('change', function () {
+            submitBtn.disabled = !this.checked;
+        });
+
+        // Form submission with confirmation
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            if (!agreeCheckbox.checked) {
+                alert('Please agree to the terms and conditions');
+                return;
+            }
+
+            // Show confirmation modal
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
+        });
     }
-});
 
-// Initialize payment reference field based on initial selection
-document.addEventListener('DOMContentLoaded', function() {
-    const paymentMethod = document.getElementById('payment_method');
-    if (paymentMethod.value === 'cash') {
+    function setupModal() {
+        const confirmBtn = document.getElementById('confirmBookingBtn');
+
+        confirmBtn.addEventListener('click', function () {
+            const form = document.querySelector('form');
+            form.submit();
+        });
+    }
+
+    // Payment reference field validation
+    document.getElementById('payment_method').addEventListener('change', function () {
         const paymentReference = document.getElementById('payment_reference');
         const referenceField = document.querySelector('[for="payment_reference"]');
-        paymentReference.disabled = true;
-        referenceField.classList.add('text-muted');
-    }
-});
+
+        if (this.value === 'cash') {
+            paymentReference.disabled = true;
+            paymentReference.required = false;
+            paymentReference.value = '';
+            referenceField.classList.add('text-muted');
+        } else {
+            paymentReference.disabled = false;
+            paymentReference.required = true;
+            referenceField.classList.remove('text-muted');
+        }
+    });
+
+    // Initialize payment reference field based on initial selection
+    document.addEventListener('DOMContentLoaded', function () {
+        const paymentMethod = document.getElementById('payment_method');
+        if (paymentMethod.value === 'cash') {
+            const paymentReference = document.getElementById('payment_reference');
+            const referenceField = document.querySelector('[for="payment_reference"]');
+            paymentReference.disabled = true;
+            referenceField.classList.add('text-muted');
+        }
+    });
 </script>
 
 <style>
-.form-check-input:checked {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
+    .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
 
-.alert {
-    border-left: 4px solid;
-}
+    .alert {
+        border-left: 4px solid;
+    }
 
-.alert-info {
-    border-left-color: #0dcaf0;
-}
+    .alert-info {
+        border-left-color: #0dcaf0;
+    }
 
-.alert-warning {
-    border-left-color: #ffc107;
-}
+    .alert-warning {
+        border-left-color: #ffc107;
+    }
 
-.btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-}
+    .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
 
-.card {
-    transition: transform 0.2s ease-in-out;
-}
+    .card {
+        transition: transform 0.2s ease-in-out;
+    }
 
-.card:hover {
-    transform: translateY(-2px);
-}
+    .card:hover {
+        transform: translateY(-2px);
+    }
 
-.badge {
-    margin-right: 4px;
-    margin-bottom: 4px;
-}
+    .badge {
+        margin-right: 4px;
+        margin-bottom: 4px;
+    }
 </style>
 {% endblock %}

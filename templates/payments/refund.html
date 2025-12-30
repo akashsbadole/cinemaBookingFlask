@@ -39,96 +39,101 @@
                             </tr>
                             <tr>
                                 <td><strong>Payment Date:</strong></td>
-                                <td>{{ payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A' }}</td>
+                                <td>{{ payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A' }}
+                                </td>
                             </tr>
                             {% if payment.booking %}
                             <tr>
                                 <td><strong>Movie:</strong></td>
-                                <td>{{ payment.booking.show.movie.title }}</td>
+                                <td>{{ payment.booking.show.movie.name }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Show Date & Time:</strong></td>
-                                <td>{{ payment.booking.show.show_date.strftime('%d %b %Y') }} at {{ payment.booking.show.show_time.strftime('%H:%M') }}</td>
+                                <td>{{ payment.booking.show.show_date.strftime('%d %b %Y') }} at {{
+                                    payment.booking.show.show_time.strftime('%H:%M') }}</td>
                             </tr>
                             {% endif %}
                         </table>
                     </div>
                 </div>
-                
+
                 <form method="POST">
                     {{ form.hidden_tag() }}
-                    
+
                     <div class="mb-3">
                         <label for="refund_amount" class="form-label">Refund Amount</label>
                         <div class="input-group">
                             <span class="input-group-text">₹</span>
-                            {{ form.refund_amount(class="form-control", placeholder="0.00", max=payment.amount, id="refund_amount") }}
+                            {{ form.refund_amount(class="form-control", placeholder="0.00", max=payment.amount,
+                            id="refund_amount") }}
                         </div>
                         <div class="form-text">
                             Maximum refundable amount: <strong>₹{{ "%.2f"|format(payment.amount) }}</strong>
                         </div>
                         {% if form.refund_amount.errors %}
-                            <div class="text-danger">
-                                {% for error in form.refund_amount.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
+                        <div class="text-danger">
+                            {% for error in form.refund_amount.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
                         {% endif %}
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="refund_reason" class="form-label">Refund Reason</label>
                         {{ form.refund_reason(class="form-select") }}
                         {% if form.refund_reason.errors %}
-                            <div class="text-danger">
-                                {% for error in form.refund_reason.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
+                        <div class="text-danger">
+                            {% for error in form.refund_reason.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
                         {% endif %}
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="refund_method" class="form-label">Refund Method</label>
                         {{ form.refund_method(class="form-select") }}
                         {% if form.refund_method.errors %}
-                            <div class="text-danger">
-                                {% for error in form.refund_method.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
+                        <div class="text-danger">
+                            {% for error in form.refund_method.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
                         {% endif %}
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="reference_id" class="form-label">Refund Reference ID (Optional)</label>
                         {{ form.reference_id(class="form-control", placeholder="Enter refund reference if available") }}
                         {% if form.reference_id.errors %}
-                            <div class="text-danger">
-                                {% for error in form.reference_id.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
+                        <div class="text-danger">
+                            {% for error in form.reference_id.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
                         {% endif %}
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="refund_notes" class="form-label">Refund Notes</label>
-                        {{ form.refund_notes(class="form-control", rows="3", placeholder="Enter detailed notes about this refund") }}
+                        {{ form.refund_notes(class="form-control", rows="3", placeholder="Enter detailed notes about
+                        this refund") }}
                         {% if form.refund_notes.errors %}
-                            <div class="text-danger">
-                                {% for error in form.refund_notes.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
+                        <div class="text-danger">
+                            {% for error in form.refund_notes.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
                         {% endif %}
                     </div>
-                    
+
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Important:</strong> Refunds cannot be undone. Please verify all details before submitting.
+                        <strong>Important:</strong> Refunds cannot be undone. Please verify all details before
+                        submitting.
                     </div>
-                    
+
                     <div class="alert alert-info" id="refund-summary" style="display: none;">
                         <h6><i class="fas fa-info-circle me-2"></i>Refund Summary</h6>
                         <div class="row">
@@ -146,7 +151,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('payments.receipt', id=payment.id) }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Back to Receipt
@@ -162,21 +167,22 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const refundAmountInput = document.getElementById('refund_amount');
-    const originalAmount = {{ payment.amount }};
-    
+    document.addEventListener('DOMContentLoaded', function () {
+        const refundAmountInput = document.getElementById('refund_amount');
+        const originalAmount = {{ payment.amount }
+    };
+
     // Update refund summary when amount changes
-    refundAmountInput.addEventListener('input', function() {
+    refundAmountInput.addEventListener('input', function () {
         const refundAmount = parseFloat(this.value) || 0;
         const remainingBalance = originalAmount - refundAmount;
         const refundPercentage = (refundAmount / originalAmount * 100).toFixed(1);
-        
+
         // Update display
         document.getElementById('display-refund-amount').textContent = refundAmount.toFixed(2);
         document.getElementById('remaining-balance').textContent = remainingBalance.toFixed(2);
         document.getElementById('refund-percentage').textContent = refundPercentage;
-        
+
         // Show/hide summary
         const summaryDiv = document.getElementById('refund-summary');
         if (refundAmount > 0) {
@@ -184,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             summaryDiv.style.display = 'none';
         }
-        
+
         // Validate amount
         if (refundAmount > originalAmount) {
             this.setCustomValidity('Refund amount cannot exceed original amount');
@@ -194,31 +200,31 @@ document.addEventListener('DOMContentLoaded', function() {
             this.setCustomValidity('');
         }
     });
-    
+
     // Form submission confirmation
     const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', function (e) {
         const refundAmount = parseFloat(refundAmountInput.value) || 0;
         const refundReason = document.getElementById('refund_reason').value;
-        
+
         if (refundAmount <= 0) {
             e.preventDefault();
             alert('Please enter a valid refund amount');
             return;
         }
-        
+
         if (!refundReason) {
             e.preventDefault();
             alert('Please select a refund reason');
             return;
         }
-        
+
         // Confirmation dialog
         const confirmMessage = `Are you sure you want to process this refund?\n\n` +
-                           `Amount: ₹${refundAmount.toFixed(2)}\n` +
-                           `Reason: ${refundReason}\n\n` +
-                           `This action cannot be undone.`;
-        
+            `Amount: ₹${refundAmount.toFixed(2)}\n` +
+            `Reason: ${refundReason}\n\n` +
+            `This action cannot be undone.`;
+
         if (!confirm(confirmMessage)) {
             e.preventDefault();
         }

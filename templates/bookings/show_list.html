@@ -43,66 +43,68 @@
 <div class="row">
     <div class="col-12">
         {% if shows %}
-            <div class="row">
-                {% for show in shows %}
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">{{ show.movie.title }}</h6>
-                            <span class="badge bg-primary">{{ show.screen.name }}</span>
+        <div class="row">
+            {% for show in shows %}
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">{{ show.movie.name }}</h6>
+                        <span class="badge bg-primary">{{ show.screen.name }}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Date:</strong> {{ show.show_date.strftime('%d %b %Y') }}</p>
+                                <p class="mb-1"><strong>Time:</strong> {{ show.show_time.strftime('%I:%M %p') }}</p>
+                                <p class="mb-1"><strong>Duration:</strong> {{ show.get_duration_string() }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Type:</strong> {{ (show.show_type or 'regular').title() }}</p>
+                                <p class="mb-1"><strong>Base Price:</strong> ₹{{ "%.2f"|format(show.base_price) }}</p>
+                                <p class="mb-1"><strong>Available Seats:</strong> {{ show.get_available_seats_count()
+                                    }}/{{ show.get_total_seats_count() }}</p>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <p class="mb-1"><strong>Date:</strong> {{ show.show_date.strftime('%d %b %Y') }}</p>
-                                    <p class="mb-1"><strong>Time:</strong> {{ show.show_time.strftime('%I:%M %p') }}</p>
-                                    <p class="mb-1"><strong>Duration:</strong> {{ show.get_duration_string() }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p class="mb-1"><strong>Type:</strong> {{ show.show_type.title() }}</p>
-                                    <p class="mb-1"><strong>Base Price:</strong> ₹{{ "%.2f"|format(show.base_price) }}</p>
-                                    <p class="mb-1"><strong>Available Seats:</strong> {{ show.get_available_seats_count() }}/{{ show.get_total_seats_count() }}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                {% if show.is_weekend() %}
-                                <span class="badge bg-warning me-1">Weekend Surcharge</span>
-                                {% endif %}
-                                {% if show.is_matinee() %}
-                                <span class="badge bg-info me-1">Matinee Discount</span>
-                                {% endif %}
-                                <span class="badge bg-success me-1">{{ show.get_occupancy_percentage() }}% Occupied</span>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between align-items-center">
+
+                        <div class="mb-3">
+                            {% if show.is_weekend() %}
+                            <span class="badge bg-warning me-1">Weekend Surcharge</span>
+                            {% endif %}
+                            {% if show.is_matinee() %}
+                            <span class="badge bg-info me-1">Matinee Discount</span>
+                            {% endif %}
+                            <span class="badge bg-success me-1">{{ show.get_occupancy_percentage() }}% Occupied</span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-muted">Price Range:</small>
                                 <div>
-                                    <small class="text-muted">Price Range:</small>
-                                    <div>
-                                        <span class="badge bg-secondary">Normal ₹{{ show.calculate_price('normal') }}</span>
-                                        <span class="badge bg-secondary">Premium ₹{{ show.calculate_price('premium') }}</span>
-                                        <span class="badge bg-secondary">VIP ₹{{ show.calculate_price('vip') }}</span>
-                                    </div>
+                                    <span class="badge bg-secondary">Normal ₹{{ show.calculate_price('normal') }}</span>
+                                    <span class="badge bg-secondary">Premium ₹{{ show.calculate_price('premium')
+                                        }}</span>
+                                    <span class="badge bg-secondary">VIP ₹{{ show.calculate_price('vip') }}</span>
                                 </div>
-                                <a href="{{ url_for('bookings.select_seats', show_id=show.id) }}" 
-                                   class="btn btn-primary {% if show.get_available_seats_count() == 0 %}disabled{% endif %}">
-                                    <i class="fas fa-chair me-1"></i>Select Seats
-                                </a>
                             </div>
+                            <a href="{{ url_for('bookings.select_seats', show_id=show.id) }}"
+                                class="btn btn-primary {% if show.get_available_seats_count() == 0 %}disabled{% endif %}">
+                                <i class="fas fa-chair me-1"></i>Select Seats
+                            </a>
                         </div>
                     </div>
                 </div>
-                {% endfor %}
             </div>
+            {% endfor %}
+        </div>
         {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-film fa-4x text-muted mb-3"></i>
-                <h4 class="text-muted">No shows found</h4>
-                <p class="text-muted">Try adjusting your filters or check back later for new shows.</p>
-                <a href="{{ url_for('bookings.new') }}" class="btn btn-outline-primary">
-                    <i class="fas fa-arrow-left me-1"></i>Back to Search
-                </a>
-            </div>
+        <div class="text-center py-5">
+            <i class="fas fa-film fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">No shows found</h4>
+            <p class="text-muted">Try adjusting your filters or check back later for new shows.</p>
+            <a href="{{ url_for('bookings.new') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Search
+            </a>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -110,39 +112,39 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Add hover effects to cards
-    const cards = document.querySelectorAll('.card');
-    cards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
-            this.style.transition = 'transform 0.2s ease-in-out';
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
+    document.addEventListener('DOMContentLoaded', function () {
+        // Add hover effects to cards
+        const cards = document.querySelectorAll('.card');
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', function () {
+                this.style.transform = 'translateY(-2px)';
+                this.style.transition = 'transform 0.2s ease-in-out';
+            });
+
+            card.addEventListener('mouseleave', function () {
+                this.style.transform = 'translateY(0)';
+            });
         });
     });
-});
 </script>
 
 <style>
-.card {
-    transition: all 0.3s ease;
-    border: 1px solid #dee2e6;
-}
+    .card {
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+    }
 
-.card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
+    .card:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
 
-.badge {
-    font-size: 0.75em;
-}
+    .badge {
+        font-size: 0.75em;
+    }
 
-.btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-}
+    .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
 </style>
 {% endblock %}

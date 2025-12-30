@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
+<!-- Hidden form for CSRF token -->
+<form id="csrf-form" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+</form>
+
+<div class="row" data-show-id="{{ show.id }}">
     <div class="col-12">
         <h1 class="mb-4">Select Seats</h1>
     </div>
@@ -12,8 +17,9 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="mb-0">{{ show.movie.title }}</h5>
-                    <small class="text-muted">{{ show.show_date.strftime('%d %b %Y') }} at {{ show.show_time.strftime('%I:%M %p') }} - {{ show.screen.name }}</small>
+                    <h5 class="mb-0">{{ show.movie.name }}</h5>
+                    <small class="text-muted">{{ show.show_date.strftime('%d %b %Y') }} at {{
+                        show.show_time.strftime('%I:%M %p') }} - {{ show.screen.name }}</small>
                 </div>
                 <div>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshSeats">
@@ -25,152 +31,357 @@
                 <!-- Seat Legend -->
                 <div class="row mb-3">
                     <div class="col-12">
-                        <div class="d-flex justify-content-center">
-                            <div class="me-4">
-                                <span class="badge bg-success me-1">Available</span>
-                                <span class="text-muted">Available</span>
+                        <div class="seat-legend">
+                            <div class="legend-item">
+                                <div class="legend-seat legend-available"></div>
+                                <span>Available</span>
                             </div>
-                            <div class="me-4">
-                                <span class="badge bg-warning me-1">Selected</span>
-                                <span class="text-muted">Selected</span>
+                            <div class="legend-item">
+                                <div class="legend-seat legend-selected"></div>
+                                <span>Selected</span>
                             </div>
-                            <div class="me-4">
-                                <span class="badge bg-info me-1">Locked</span>
-                                <span class="text-muted">Temporarily Locked</span>
+                            <div class="legend-item">
+                                <div class="legend-seat legend-locked"></div>
+                                <span>Temporarily Locked</span>
                             </div>
-                            <div>
-                                <span class="badge bg-secondary me-1">Booked</span>
-                                <span class="text-muted">Already Booked</span>
+                            <div class="legend-item"></div>
+                            <div class="legend-seat legend-booked"></div>
+                            <span>Already Booked</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing Information -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading">Pricing Information</h6>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Normal:</strong> ₹{{ "%.2f"|format(price_info.base_price) }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Premium:</strong> ₹{{ "%.2f"|format(price_info.base_price * 1.5) }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>VIP:</strong> ₹{{ "%.2f"|format(price_info.base_price * 2.0) }}
+                            </div>
+                            <div class="col-md-3">
+                                {% if price_info.weekend_surcharge %}
+                                <small class="text-warning">Weekend Surcharge: +₹{{
+                                    "%.2f"|format(price_info.weekend_surcharge) }}</small>
+                                {% endif %}
+                                {% if price_info.matinee_discount %}
+                                <small class="text-info">Matinee Discount: -₹{{
+                                    "%.2f"|format(price_info.matinee_discount) }}</small>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Pricing Information -->
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <div class="alert alert-info">
-                            <h6 class="alert-heading">Pricing Information</h6>
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <strong>Normal:</strong> ₹{{ "%.2f"|format(price_info.base_price) }}
+            <!-- Seat Layout -->
+            <div class="seat-container">
+                <!-- Screen -->
+                <div class="screen-wrapper">
+                    <div class="screen">SCREEN</div>
+                </div>
+
+                <!-- Seat Grid -->
+                <div class="seat-grid">
+                    <!-- Seat Categories Legend -->
+                    <div class="seat-categories-legend mb-4">
+                        <h6 class="mb-3">Seat Categories & Pricing</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="category-info normal-category">
+                                    <div class="category-seat normal-seat"></div>
+                                    <div class="category-details">
+                                        <strong>Normal Seats</strong>
+                                        <div class="category-price">₹{{ "%.0f"|format(price_info.base_price) }}</div>
+                                    </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <strong>Premium:</strong> ₹{{ "%.2f"|format(price_info.base_price * 1.5) }}
+                            </div>
+                            <div class="col-md-4">
+                                <div class="category-info premium-category">
+                                    <div class="category-seat premium-seat"></div>
+                                    <div class="category-details">
+                                        <strong>Premium Seats</strong>
+                                        <div class="category-price">₹{{ "%.0f"|format(price_info.base_price * 1.5) }}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <strong>VIP:</strong> ₹{{ "%.2f"|format(price_info.base_price * 2.0) }}
-                                </div>
-                                <div class="col-md-3">
-                                    {% if price_info.weekend_surcharge %}
-                                        <small class="text-warning">Weekend Surcharge: +₹{{ "%.2f"|format(price_info.weekend_surcharge) }}</small>
-                                    {% endif %}
-                                    {% if price_info.matinee_discount %}
-                                        <small class="text-info">Matinee Discount: -₹{{ "%.2f"|format(price_info.matinee_discount) }}</small>
-                                    {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <div class="category-info vip-category">
+                                    <div class="category-seat vip-seat"></div>
+                                    <div class="category-details">
+                                        <strong>VIP Seats</strong>
+                                        <div class="category-price">₹{{ "%.0f"|format(price_info.base_price * 2.0) }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Seat Layout -->
-                <div class="seat-container">
-                    <div class="screen mb-4">SCREEN</div>
-                    
+                    <!-- Seat Layout by Sections - Dynamic based on actual seat types -->
+                    {% set vip_rows = [] %}
+                    {% set premium_rows = [] %}
+                    {% set normal_rows = [] %}
+
+                    <!-- Dynamically categorize rows based on actual seat types -->
                     {% for row, seats in seat_layout.items() %}
-                    <div class="seat-row mb-2">
-                        <div class="seat-label">{{ row }}</div>
-                        <div class="seats-row">
-                            {% for seat in seats %}
-                            <button type="button"
-                                    class="seat btn btn-sm seat-{{ seat.status }}"
-                                    data-seat-id="{{ seat.id }}"
+                    {% if seats %}
+                    {% set row_type = seats[0].seat_type %}
+                    {% if row_type == 'vip' %}
+                    {% set _ = vip_rows.append(row) %}
+                    {% elif row_type == 'premium' %}
+                    {% set _ = premium_rows.append(row) %}
+                    {% else %}
+                    {% set _ = normal_rows.append(row) %}
+                    {% endif %}
+                    {% endif %}
+                    {% endfor %}
+
+                    <!-- Debug Information -->
+                    <div class="alert alert-info mb-3">
+                        <strong>Seat Layout Debug:</strong>
+                        <br>Total rows: {{ seat_layout.keys()|list|length }}
+                        <br>Available rows: {{ seat_layout.keys()|list|join(', ') }}
+                        <br>VIP rows: {{ vip_rows|join(', ') if vip_rows else 'None' }}
+                        <br>Premium rows: {{ premium_rows|join(', ') if premium_rows else 'None' }}
+                        <br>Normal rows: {{ normal_rows|join(', ') if normal_rows else 'None' }}
+                        {% for row, seats in seat_layout.items() %}
+                        <br>Row {{ row }}: {{ seats|length }} seats ({{ seats[0].seat_type if seats else 'unknown' }}
+                        type)
+                        {% endfor %}
+                    </div>
+
+                    <!-- VIP Section -->
+                    {% set has_vip_rows = false %}
+                    {% for row in seat_layout.keys() %}
+                    {% if row in vip_rows %}
+                    {% set has_vip_rows = true %}
+                    {% endif %}
+                    {% endfor %}
+                    {% if has_vip_rows %}
+                    <div class="seat-section vip-section">
+                        <div class="section-header">
+                            <h6 class="section-title">VIP Section</h6>
+                            <span class="section-price">₹{{ "%.0f"|format(price_info.base_price * 2.0) }}</span>
+                        </div>
+                        {% for row in vip_rows %}
+                        {% if row in seat_layout %}
+                        <div class="seat-row">
+                            <div class="seat-label vip-label">{{ row }}</div>
+                            <div class="seats-row">
+                                {% for seat in seat_layout[row] %}
+                                <button type="button" class="seat seat-{{ seat.status }} vip-seat-btn"
+                                    data-seat-id="{{ seat.id }}" data-seat-name="{{ seat.row }}{{ seat.column }}"
+                                    data-seat-type="{{ seat.seat_type }}" data-row="{{ seat.row }}"
+                                    data-column="{{ seat.column }}" {% if seat.status=='booked' or seat.status=='locked'
+                                    %}disabled{% endif %}>
+                                    <span class="seat-number">{{ seat.column }}</span>
+                                    <span class="vip-star">★</span>
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Premium Section -->
+                    {% set has_premium_rows = false %}
+                    {% for row in seat_layout.keys() %}
+                    {% if row in premium_rows %}
+                    {% set has_premium_rows = true %}
+                    {% endif %}
+                    {% endfor %}
+                    {% if has_premium_rows %}
+                    <div class="seat-section premium-section">
+                        <div class="section-header">
+                            <h6 class="section-title">Premium Section</h6>
+                            <span class="section-price">₹{{ "%.0f"|format(price_info.base_price * 1.5) }}</span>
+                        </div>
+                        {% for row in premium_rows %}
+                        {% if row in seat_layout %}
+                        <div class="seat-row">
+                            <div class="seat-label premium-label">{{ row }}</div>
+                            <div class="seats-row">
+                                {% for seat in seat_layout[row] %}
+                                <button type="button" class="seat seat-{{ seat.status }} premium-seat-btn"
+                                    data-seat-id="{{ seat.id }}" data-seat-name="{{ seat.row }}{{ seat.column }}"
+                                    data-seat-type="{{ seat.seat_type }}" data-row="{{ seat.row }}"
+                                    data-column="{{ seat.column }}" {% if seat.status=='booked' or seat.status=='locked'
+                                    %}disabled{% endif %}>
+                                    <span class="seat-number">{{ seat.column }}</span>
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Normal Section -->
+                    {% set has_normal_rows = false %}
+                    {% for row in seat_layout.keys() %}
+                    {% if row in normal_rows %}
+                    {% set has_normal_rows = true %}
+                    {% endif %}
+                    {% endfor %}
+                    {% if has_normal_rows %}
+                    <div class="seat-section normal-section">
+                        <div class="section-header">
+                            <h6 class="section-title">Normal Section</h6>
+                            <span class="section-price">₹{{ "%.0f"|format(price_info.base_price) }}</span>
+                        </div>
+                        {% for row in normal_rows %}
+                        {% if row in seat_layout %}
+                        <div class="seat-row">
+                            <div class="seat-label normal-label">{{ row }}</div>
+                            <div class="seats-row">
+                                {% for seat in seat_layout[row] %}
+                                <button type="button" class="seat seat-{{ seat.status }} normal-seat-btn"
+                                    data-seat-id="{{ seat.id }}" data-seat-name="{{ seat.row }}{{ seat.column }}"
+                                    data-seat-type="{{ seat.seat_type }}" data-row="{{ seat.row }}"
+                                    data-column="{{ seat.column }}" {% if seat.status=='booked' or seat.status=='locked'
+                                    %}disabled{% endif %}>
+                                    <span class="seat-number">{{ seat.column }}</span>
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Handle any remaining rows not in predefined categories -->
+                    {% for row, seats in seat_layout.items() %}
+                    {% if row not in vip_rows and row not in premium_rows and row not in normal_rows %}
+                    <div class="seat-section other-section">
+                        <div class="seat-row">
+                            <div class="seat-label">{{ row }}</div>
+                            <div class="seats-row">
+                                {% for seat in seats %}
+                                <button type="button" class="seat seat-{{ seat.status }}" data-seat-id="{{ seat.id }}"
                                     data-seat-name="{{ seat.row }}{{ seat.column }}"
-                                    data-seat-type="{{ seat.seat_type }}"
-                                    data-row="{{ seat.row }}"
-                                    data-column="{{ seat.column }}"
-                                    {% if seat.status == 'booked' or seat.status == 'locked' %}disabled{% endif %}>
-                                {{ seat.row }}{{ seat.column }}
-                            </button>
-                            {% endfor %}
+                                    data-seat-type="{{ seat.seat_type }}" data-row="{{ seat.row }}"
+                                    data-column="{{ seat.column }}" {% if seat.status=='booked' or seat.status=='locked'
+                                    %}disabled{% endif %}>
+                                    {{ seat.row }}{{ seat.column }}
+                                </button>
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
+                    {% endif %}
                     {% endfor %}
-                </div>
 
-                <!-- Action Buttons -->
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <button type="button" class="btn btn-outline-secondary" id="resetSelection">
-                            <i class="fas fa-times me-1"></i>Reset Selection
-                        </button>
-                        <button type="button" class="btn btn-primary" id="continueToPayment" disabled>
-                            <i class="fas fa-arrow-right me-1"></i>Continue to Payment
-                        </button>
-                        <a href="{{ url_for('bookings.select_show') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-1"></i>Back to Shows
-                        </a>
+                    <!-- Fallback: Simple seat display if no seats are shown above -->
+                    {% if not has_vip_rows and not has_premium_rows and not has_normal_rows %}
+                    <div class="alert alert-warning" style="display: flex;gap: 10px;">
+                        <h6>Simple Seat Layout</h6>
+                        {% for row, seats in seat_layout.items() %}
+                        <div class="seat-row mb-2" style="padding: 10px;">
+                            <div class="seat-label">{{ row }}</div>
+                            <div class="seats-row">
+                                {% for seat in seats %}
+                                <button type="button" class="seat seat-{{ seat.status }}" data-seat-id="{{ seat.id }}"
+                                    data-seat-name="{{ seat.row }}{{ seat.column }}"
+                                    data-seat-type="{{ seat.seat_type }}" data-row="{{ seat.row }}"
+                                    data-column="{{ seat.column }}" {% if seat.status=='booked' or seat.status=='locked'
+                                    %}disabled{% endif %}>
+                                    {{ seat.row }}{{ seat.column }}
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <button type="button" class="btn btn-outline-secondary" id="resetSelection">
+                        <i class="fas fa-times me-1"></i>Reset Selection
+                    </button>
+                    <button type="button" class="btn btn-primary" id="continueToPayment" disabled>
+                        <i class="fas fa-arrow-right me-1"></i>Continue to Payment
+                    </button>
+                    <a href="{{ url_for('bookings.select_show') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Shows
+                    </a>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Booking Summary</h5>
+<div class="col-md-4">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Booking Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <strong>Movie:</strong> {{ show.movie.name }}
             </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <strong>Movie:</strong> {{ show.movie.title }}
+            <div class="mb-3">
+                <strong>Date:</strong> {{ show.show_date.strftime('%d %b %Y') }}
+            </div>
+            <div class="mb-3">
+                <strong>Time:</strong> {{ show.show_time.strftime('%I:%M %p') }}
+            </div>
+            <div class="mb-3">
+                <strong>Screen:</strong> {{ show.screen.name }}
+            </div>
+
+            <hr>
+
+            <div class="mb-3">
+                <strong>Selected Seats:</strong>
+                <div id="selectedSeatsList" class="mt-2">
+                    <span class="text-muted">No seats selected</span>
                 </div>
-                <div class="mb-3">
-                    <strong>Date:</strong> {{ show.show_date.strftime('%d %b %Y') }}
+            </div>
+
+            <div class="mb-3">
+                <strong>Seat Count:</strong> <span id="seatCount">0</span>
+            </div>
+
+            <hr>
+
+            <div class="mb-3">
+                <strong>Price Breakdown:</strong>
+                <div id="priceBreakdown" class="mt-2">
+                    <!-- Will be populated by JavaScript -->
                 </div>
-                <div class="mb-3">
-                    <strong>Time:</strong> {{ show.show_time.strftime('%I:%M %p') }}
+            </div>
+
+            <div class="mb-3">
+                <h5>Total Amount: ₹<span id="totalAmount">0.00</span></h5>
+            </div>
+
+            <div id="loadingMessage" class="text-center" style="display: none;">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
-                <div class="mb-3">
-                    <strong>Screen:</strong> {{ show.screen.name }}
-                </div>
-                
-                <hr>
-                
-                <div class="mb-3">
-                    <strong>Selected Seats:</strong>
-                    <div id="selectedSeatsList" class="mt-2">
-                        <span class="text-muted">No seats selected</span>
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <strong>Seat Count:</strong> <span id="seatCount">0</span>
-                </div>
-                
-                <hr>
-                
-                <div class="mb-3">
-                    <strong>Price Breakdown:</strong>
-                    <div id="priceBreakdown" class="mt-2">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <h5>Total Amount: ₹<span id="totalAmount">0.00</span></h5>
-                </div>
-                
-                <div id="loadingMessage" class="text-center" style="display: none;">
-                    <div class="spinner-border spinner-border-sm" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <small class="text-muted">Processing...</small>
-                </div>
+                <small class="text-muted">Processing...</small>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Error Modal -->
@@ -194,384 +405,1062 @@
 
 {% block styles %}
 <style>
-.seat-container {
-    max-width: 600px;
-    margin: 0 auto;
-    text-align: center;
-}
-
-.screen {
-    background: linear-gradient(to bottom, #6c757d, #495057);
-    color: white;
-    padding: 10px;
-    border-radius: 10px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-.seat-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 5px;
-}
-
-.seat-label {
-    width: 30px;
-    text-align: center;
-    font-weight: bold;
-    color: #6c757d;
-    margin-right: 10px;
-}
-
-.seats-row {
-    display: flex;
-    gap: 5px;
-}
-
-.seat {
-    width: 40px;
-    height: 40px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: bold;
-    border: 2px solid;
-    background: white;
-    transition: all 0.2s ease;
-}
-
-.seat-available {
-    border-color: #28a745;
-    color: #28a745;
-}
-
-.seat-available:hover:not(:disabled) {
-    background-color: #28a745;
-    color: white;
-    transform: scale(1.1);
-}
-
-.seat-selected {
-    background-color: #ffc107;
-    border-color: #ffc107;
-    color: #212529;
-    transform: scale(1.1);
-}
-
-.seat-locked {
-    background-color: #17a2b8;
-    border-color: #17a2b8;
-    color: white;
-}
-
-.seat-booked {
-    background-color: #6c757d;
-    border-color: #6c757d;
-    color: white;
-}
-
-.seat:disabled {
-    cursor: not-allowed;
-    opacity: 0.7;
-}
-
-.price-breakdown-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 2px 0;
-    font-size: 14px;
-}
-
-@media (max-width: 768px) {
-    .seat {
-        width: 30px;
-        height: 30px;
-        font-size: 10px;
+    /* Clean, professional cinema seat layout */
+    .seat-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 30px 20px;
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
-    
+
+    .screen-wrapper {
+        margin-bottom: 40px;
+        text-align: center;
+    }
+
+    .screen {
+        background: #343a40;
+        color: white;
+        padding: 15px 30px;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 16px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        display: inline-block;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .seat-grid {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .seat-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+    }
+
+    .seat-label {
+        width: 40px;
+        text-align: center;
+        font-weight: bold;
+        color: #495057;
+        margin-right: 15px;
+        font-size: 16px;
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 8px 4px;
+    }
+
     .seats-row {
-        gap: 3px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        justify-content: center;
     }
-}
+
+    .seat {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: bold;
+        border: 2px solid;
+        background: white;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Seat status colors - clean and clear */
+    .seat-available {
+        border-color: #28a745;
+        color: #28a745;
+        background: #f8fff9;
+    }
+
+    .seat-available:hover:not(:disabled) {
+        background: #28a745;
+        color: white;
+        transform: scale(1.05);
+    }
+
+    .seat-selected {
+        background: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+        transform: scale(1.05);
+    }
+
+    .seat-locked {
+        background: #17a2b8;
+        border-color: #17a2b8;
+        color: white;
+    }
+
+    .seat-booked {
+        background: #6c757d;
+        border-color: #6c757d;
+        color: white;
+        cursor: not-allowed;
+    }
+
+    .seat:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+    /* Seat Categories Legend */
+    .seat-categories-legend {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        margin-bottom: 30px;
+    }
+
+    .category-info {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        border: 2px solid;
+        margin-bottom: 10px;
+    }
+
+    .normal-category {
+        border-color: #28a745;
+    }
+
+    .premium-category {
+        border-color: #fd7e14;
+    }
+
+    .vip-category {
+        border-color: #dc3545;
+    }
+
+    .category-seat {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        margin-right: 15px;
+        border: 2px solid;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        position: relative;
+    }
+
+    .normal-seat {
+        background: #d4edda;
+        border-color: #28a745;
+        color: #155724;
+    }
+
+    .premium-seat {
+        background: #fff3cd;
+        border-color: #fd7e14;
+        color: #856404;
+    }
+
+    .vip-seat {
+        background: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+    }
+
+    .vip-seat::after {
+        content: '★';
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #ffc107;
+        color: #212529;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        border: 1px solid #fff;
+    }
+
+    .category-details strong {
+        display: block;
+        font-size: 16px;
+        color: #495057;
+    }
+
+    .category-price {
+        font-size: 18px;
+        font-weight: bold;
+        color: #28a745;
+        margin-top: 5px;
+    }
+
+    /* Seat Sections */
+    .seat-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        border-radius: 8px;
+        border: 2px solid;
+    }
+
+    .vip-section {
+        background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+        border-color: #dc3545;
+    }
+
+    .premium-section {
+        background: linear-gradient(135deg, #fffbf0 0%, #feebc8 100%);
+        border-color: #fd7e14;
+    }
+
+    .normal-section {
+        background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+        border-color: #28a745;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .section-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .vip-section .section-title {
+        color: #dc3545;
+    }
+
+    .premium-section .section-title {
+        color: #fd7e14;
+    }
+
+    .normal-section .section-title {
+        color: #28a745;
+    }
+
+    .section-price {
+        font-size: 20px;
+        font-weight: bold;
+        padding: 8px 15px;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 20px;
+        border: 2px solid;
+    }
+
+    .vip-section .section-price {
+        color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    .premium-section .section-price {
+        color: #fd7e14;
+        border-color: #fd7e14;
+    }
+
+    .normal-section .section-price {
+        color: #28a745;
+        border-color: #28a745;
+    }
+
+    /* Seat Labels by Category */
+    .seat-label {
+        width: 40px;
+        text-align: center;
+        font-weight: bold;
+        margin-right: 15px;
+        font-size: 16px;
+        border-radius: 6px;
+        padding: 10px 8px;
+        border: 2px solid;
+    }
+
+    .vip-label {
+        background: #dc3545;
+        color: white;
+        border-color: #dc3545;
+    }
+
+    .premium-label {
+        background: #fd7e14;
+        color: white;
+        border-color: #fd7e14;
+    }
+
+    .normal-label {
+        background: #28a745;
+        color: white;
+        border-color: #28a745;
+    }
+
+    /* Seat Buttons by Category */
+    .vip-seat-btn {
+        background: #fff5f5;
+        border-color: #dc3545;
+        color: #dc3545;
+        position: relative;
+    }
+
+    .premium-seat-btn {
+        background: #fffbf0;
+        border-color: #fd7e14;
+        color: #fd7e14;
+    }
+
+    .normal-seat-btn {
+        background: #f0fff4;
+        border-color: #28a745;
+        color: #28a745;
+    }
+
+    .seat-number {
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .vip-star {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        background: #ffc107;
+        color: #212529;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        border: 1px solid #fff;
+    }
+
+    /* Hover effects by category */
+    .vip-seat-btn:hover:not(:disabled) {
+        background: #dc3545;
+        color: white;
+    }
+
+    .premium-seat-btn:hover:not(:disabled) {
+        background: #fd7e14;
+        color: white;
+    }
+
+    .normal-seat-btn:hover:not(:disabled) {
+        background: #28a745;
+        color: white;
+    }
+
+    /* Selected state by category */
+    .vip-seat-btn.seat-selected {
+        background: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+    }
+
+    .premium-seat-btn.seat-selected {
+        background: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+    }
+
+    .normal-seat-btn.seat-selected {
+        background: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+    }
+
+    /* Legend styling */
+    .seat-legend {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        margin-bottom: 20px;
+    }
+
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        margin: 0 20px 10px 0;
+        font-size: 14px;
+    }
+
+    .legend-seat {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        margin-right: 8px;
+        border: 2px solid;
+    }
+
+    .legend-available {
+        border-color: #28a745;
+        background: #f8fff9;
+    }
+
+    .legend-selected {
+        background: #ffc107;
+        border-color: #ffc107;
+    }
+
+    .legend-locked {
+        background: #17a2b8;
+        border-color: #17a2b8;
+    }
+
+    .legend-booked {
+        background: #6c757d;
+        border-color: #6c757d;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .seat-container {
+            padding: 20px 15px;
+            margin: 0 10px;
+        }
+
+        .seat-categories-legend {
+            padding: 15px;
+        }
+
+        .category-info {
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .category-seat {
+            width: 35px;
+            height: 35px;
+            margin-right: 10px;
+        }
+
+        .category-details strong {
+            font-size: 14px;
+        }
+
+        .category-price {
+            font-size: 16px;
+        }
+
+        .seat-section {
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 16px;
+        }
+
+        .section-price {
+            font-size: 18px;
+            padding: 6px 12px;
+        }
+
+        .seat {
+            width: 35px;
+            height: 35px;
+            font-size: 9px;
+            padding: 10px;
+        }
+
+        .seats-row {
+            gap: 4px;
+        }
+
+        .seat-label {
+            width: 35px;
+            margin-right: 12px;
+            font-size: 14px;
+            padding: 8px 4px;
+        }
+
+        .screen {
+            font-size: 14px;
+            padding: 12px 20px;
+        }
+
+        .legend-item {
+            margin: 0 15px 8px 0;
+            font-size: 13px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .seat-container {
+            padding: 15px 10px;
+        }
+
+        .seat-categories-legend .row {
+            flex-direction: column;
+        }
+
+        .category-info {
+            margin-bottom: 10px;
+        }
+
+        .seat-section {
+            padding: 10px;
+        }
+
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .section-price {
+            align-self: flex-end;
+        }
+
+        .seat {
+            width: 30px;
+            height: 30px;
+            font-size: 8px;
+        }
+
+        .seats-row {
+            gap: 3px;
+        }
+
+        .seat-label {
+            width: 30px;
+            margin-right: 10px;
+            font-size: 12px;
+            padding: 6px 2px;
+        }
+
+        .screen {
+            font-size: 12px;
+            padding: 10px 15px;
+        }
+
+        .seat-row {
+            margin-bottom: 6px;
+        }
+
+        .vip-star {
+            width: 14px;
+            height: 14px;
+            font-size: 7px;
+        }
+    }
+
+    /* Price breakdown styling */
+    .price-breakdown-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        font-size: 14px;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .price-breakdown-item:last-child {
+        border-bottom: none;
+        font-weight: bold;
+        font-size: 16px;
+        color: #28a745;
+    }
+
+    /* Loading and error states */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        z-index: 10;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
 </style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-const showId = {{ show.id }};
-let selectedSeats = [];
-let seatLocks = {};
+    const showId = parseInt(document.querySelector('[data-show-id]').dataset.showId);
+    let selectedSeats = [];
+    let seatLocks = {};
 
-document.addEventListener('DOMContentLoaded', function() {
-    initializeSeatSelection();
-    setupEventListeners();
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeSeatSelection();
+        setupEventListeners();
+    });
 
-function initializeSeatSelection() {
-    const seatButtons = document.querySelectorAll('.seat-available');
-    
-    seatButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const seatId = parseInt(this.dataset.seatId);
-            const seatName = this.dataset.seatName;
-            const seatType = this.dataset.seatType;
-            
-            if (selectedSeats.find(s => s.id === seatId)) {
-                // Deselect seat
-                deselectSeat(seatId, this);
-            } else {
-                // Select seat
-                selectSeat(seatId, seatName, seatType, this);
+    function initializeSeatSelection() {
+        const seatButtons = document.querySelectorAll('.seat-available');
+
+        seatButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const seatId = parseInt(this.dataset.seatId);
+                const seatName = this.dataset.seatName;
+                const seatType = this.dataset.seatType;
+
+                // Add click animation
+                this.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 150);
+
+                if (selectedSeats.find(s => s.id === seatId)) {
+                    // Deselect seat
+                    deselectSeat(seatId, this);
+                } else {
+                    // Select seat
+                    selectSeat(seatId, seatName, seatType, this);
+                }
+
+                updateSummary();
+            });
+
+            // Add hover tooltip
+            button.addEventListener('mouseenter', function () {
+                showSeatTooltip(this);
+            });
+
+            button.addEventListener('mouseleave', function () {
+                hideSeatTooltip();
+            });
+        });
+    }
+
+    function selectSeat(seatId, seatName, seatType, button) {
+        selectedSeats.push({
+            id: seatId,
+            name: seatName,
+            type: seatType
+        });
+
+        button.classList.remove('seat-available');
+        button.classList.add('seat-selected');
+
+        // Lock the seat on server
+        lockSeat(seatId);
+    }
+
+    function deselectSeat(seatId, button) {
+        selectedSeats = selectedSeats.filter(s => s.id !== seatId);
+
+        button.classList.remove('seat-selected');
+        button.classList.add('seat-available');
+
+        // Release the lock on server
+        releaseSeat(seatId);
+    }
+
+    async function lockSeat(seatId) {
+        try {
+            const csrfToken = document.querySelector('#csrf-form input[name="csrf_token"]').value;
+            const response = await fetch('/bookings/api/lock_seats', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    show_id: showId,
+                    seat_ids: [seatId],
+                    duration_minutes: 5
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
-            updateSummary();
-        });
-    });
-}
 
-function selectSeat(seatId, seatName, seatType, button) {
-    selectedSeats.push({
-        id: seatId,
-        name: seatName,
-        type: seatType
-    });
-    
-    button.classList.remove('seat-available');
-    button.classList.add('seat-selected');
-    
-    // Lock the seat on server
-    lockSeat(seatId);
-}
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Expected JSON but got:', text.substring(0, 200));
+                throw new Error('Server returned non-JSON response');
+            }
 
-function deselectSeat(seatId, button) {
-    selectedSeats = selectedSeats.filter(s => s.id !== seatId);
-    
-    button.classList.remove('seat-selected');
-    button.classList.add('seat-available');
-    
-    // Release the lock on server
-    releaseSeat(seatId);
-}
-
-async function lockSeat(seatId) {
-    try {
-        const response = await fetch('/bookings/api/lock_seats', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                show_id: showId,
-                seat_ids: [seatId],
-                duration_minutes: 5
-            })
-        });
-        
-        const data = await response.json();
-        if (!data.success) {
-            console.error('Failed to lock seat:', data.error);
+            const data = await response.json();
+            if (!data.success) {
+                console.error('Failed to lock seat:', data.error);
+                showError('Failed to lock seat: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error locking seat:', error);
+            showError('Error locking seat: ' + error.message);
         }
-    } catch (error) {
-        console.error('Error locking seat:', error);
     }
-}
 
-async function releaseSeat(seatId) {
-    try {
-        const response = await fetch('/bookings/api/release_seats', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                show_id: showId,
-                seat_ids: [seatId]
-            })
-        });
-        
-        const data = await response.json();
-        if (!data.success) {
-            console.error('Failed to release seat:', data.error);
+    async function releaseSeat(seatId) {
+        try {
+            const csrfToken = document.querySelector('#csrf-form input[name="csrf_token"]').value;
+            const response = await fetch('/bookings/api/release_seats', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    show_id: showId,
+                    seat_ids: [seatId]
+                })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                console.error('Failed to release seat:', data.error);
+            }
+        } catch (error) {
+            console.error('Error releasing seat:', error);
         }
-    } catch (error) {
-        console.error('Error releasing seat:', error);
     }
-}
 
-async function calculatePrice() {
-    if (selectedSeats.length === 0) return 0;
-    
-    try {
-        const seatIds = selectedSeats.map(s => s.id);
-        const response = await fetch('/bookings/api/calculate_price', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                show_id: showId,
-                seat_ids: seatIds
-            })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            return data;
-        } else {
-            showError('Failed to calculate price: ' + data.error);
+    async function releaseMultipleSeats(seatIds) {
+        if (!seatIds || seatIds.length === 0) return;
+
+        try {
+            const csrfToken = document.querySelector('#csrf-form input[name="csrf_token"]').value;
+            const response = await fetch('/bookings/api/release_seats', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    show_id: showId,
+                    seat_ids: seatIds
+                })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                console.error('Failed to release seats:', data.error);
+            }
+        } catch (error) {
+            console.error('Error releasing seats:', error);
+        }
+    }
+
+    async function calculatePrice() {
+        if (selectedSeats.length === 0) return 0;
+
+        try {
+            const seatIds = selectedSeats.map(s => s.id);
+            const csrfToken = document.querySelector('#csrf-form input[name="csrf_token"]').value;
+            const response = await fetch('/bookings/api/calculate_price', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    show_id: showId,
+                    seat_ids: seatIds
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Expected JSON but got:', text.substring(0, 200));
+                throw new Error('Server returned non-JSON response');
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                return data;
+            } else {
+                showError('Failed to calculate price: ' + (data.error || 'Unknown error'));
+                return null;
+            }
+        } catch (error) {
+            showError('Error calculating price: ' + error.message);
             return null;
         }
-    } catch (error) {
-        showError('Error calculating price: ' + error.message);
-        return null;
     }
-}
 
-function updateSummary() {
-    const seatsList = document.getElementById('selectedSeatsList');
-    const seatCount = document.getElementById('seatCount');
-    const totalAmount = document.getElementById('totalAmount');
-    const continueButton = document.getElementById('continueToPayment');
-    const priceBreakdown = document.getElementById('priceBreakdown');
-    
-    if (selectedSeats.length === 0) {
-        seatsList.innerHTML = '<span class="text-muted">No seats selected</span>';
-        seatCount.textContent = '0';
-        totalAmount.textContent = '0.00';
-        priceBreakdown.innerHTML = '';
-        continueButton.disabled = true;
-        return;
-    }
-    
-    // Update seats list
-    seatsList.innerHTML = selectedSeats.map(s => 
-        `<span class="badge bg-warning me-1">${s.name}</span>`
-    ).join('');
-    
-    seatCount.textContent = selectedSeats.length;
-    
-    // Calculate price
-    showLoading(true);
-    calculatePrice().then(data => {
-        if (data) {
-            totalAmount.textContent = data.total_cost.toFixed(2);
-            
-            // Update price breakdown
-            let breakdownHtml = '';
-            data.breakdown.seats.forEach(seat => {
+    function updateSummary() {
+        const seatsList = document.getElementById('selectedSeatsList');
+        const seatCount = document.getElementById('seatCount');
+        const totalAmount = document.getElementById('totalAmount');
+        const continueButton = document.getElementById('continueToPayment');
+        const priceBreakdown = document.getElementById('priceBreakdown');
+
+        if (selectedSeats.length === 0) {
+            seatsList.innerHTML = '<span class="text-muted">No seats selected</span>';
+            seatCount.textContent = '0';
+            totalAmount.textContent = '0.00';
+            priceBreakdown.innerHTML = '';
+            continueButton.disabled = true;
+            return;
+        }
+
+        // Update seats list
+        seatsList.innerHTML = selectedSeats.map(s =>
+            `<span class="badge bg-warning me-1">${s.name}</span>`
+        ).join('');
+
+        seatCount.textContent = selectedSeats.length;
+
+        // Calculate price
+        showLoading(true);
+        calculatePrice().then(data => {
+            if (data) {
+                totalAmount.textContent = data.total_cost.toFixed(2);
+
+                // Update price breakdown
+                let breakdownHtml = '';
+                if (data.breakdown && data.breakdown.seats && Array.isArray(data.breakdown.seats)) {
+                    data.breakdown.seats.forEach(seat => {
+                        breakdownHtml += `
+                        <div class="price-breakdown-item">
+                            <span>${seat.name || seat.seat_name || 'Seat'} (${seat.type || seat.seat_type || 'normal'})</span>
+                            <span>₹${(seat.final_price || seat.price || 0).toFixed(2)}</span>
+                        </div>
+                    `;
+                    });
+                } else {
+                    breakdownHtml = '<div class="text-muted">Price breakdown not available</div>';
+                }
+
                 breakdownHtml += `
-                    <div class="price-breakdown-item">
-                        <span>${seat.name} (${seat.type})</span>
-                        <span>₹${seat.final_price.toFixed(2)}</span>
-                    </div>
-                `;
-            });
-            
-            breakdownHtml += `
                 <hr>
                 <div class="price-breakdown-item">
                     <strong>Total</strong>
                     <strong>₹${data.total_cost.toFixed(2)}</strong>
                 </div>
             `;
-            
-            priceBreakdown.innerHTML = breakdownHtml;
-            continueButton.disabled = false;
-        }
-        showLoading(false);
-    });
-}
 
-function setupEventListeners() {
-    // Reset selection button
-    document.getElementById('resetSelection').addEventListener('click', function() {
-        const seatIds = selectedSeats.map(s => s.id);
-        
-        // Release all locks
-        releaseSeat(seatIds);
-        
-        // Reset UI
-        selectedSeats = [];
-        document.querySelectorAll('.seat-selected').forEach(button => {
-            button.classList.remove('seat-selected');
-            button.classList.add('seat-available');
+                priceBreakdown.innerHTML = breakdownHtml;
+                continueButton.disabled = false;
+            }
+            showLoading(false);
         });
-        
-        updateSummary();
-    });
-    
-    // Continue to payment button
-    document.getElementById('continueToPayment').addEventListener('click', function() {
-        if (selectedSeats.length === 0) {
-            showError('Please select at least one seat');
-            return;
-        }
-        
-        const seatIds = selectedSeats.map(s => s.id).join(',');
-        window.location.href = `/bookings/confirm_booking?show_id=${showId}&seat_ids=${seatIds}`;
-    });
-    
-    // Refresh seats button
-    document.getElementById('refreshSeats').addEventListener('click', function() {
-        refreshSeatStatus();
-    });
-    
-    // Auto-refresh every 30 seconds
-    setInterval(refreshSeatStatus, 30000);
-}
-
-async function refreshSeatStatus() {
-    try {
-        const response = await fetch(`/bookings/api/show/${showId}/seat_status`);
-        const data = await response.json();
-        
-        if (data.success) {
-            updateSeatLayout(data.seat_layout);
-        }
-    } catch (error) {
-        console.error('Error refreshing seat status:', error);
     }
-}
 
-function updateSeatLayout(seatLayout) {
-    // Update seat statuses based on server response
-    for (const [row, seats] of Object.entries(seatLayout)) {
-        seats.forEach(seat => {
-            const button = document.querySelector(`[data-seat-id="${seat.id}"]`);
-            if (button) {
-                // Remove all status classes
-                button.classList.remove('seat-available', 'seat-selected', 'seat-locked', 'seat-booked');
-                
-                // Add current status class
-                button.classList.add(`seat-${seat.status}`);
-                
-                // Update disabled state
-                if (seat.status === 'booked' || seat.status === 'locked') {
-                    button.disabled = true;
-                    
-                    // If seat was selected by current user but now locked/booked
-                    if (selectedSeats.find(s => s.id === seat.id)) {
-                        selectedSeats = selectedSeats.filter(s => s.id !== seat.id);
-                        button.classList.remove('seat-selected');
-                        updateSummary();
+    function setupEventListeners() {
+        // Reset selection button
+        document.getElementById('resetSelection').addEventListener('click', function () {
+            const seatIds = selectedSeats.map(s => s.id);
+
+            // Release all locks at once
+            releaseMultipleSeats(seatIds);
+
+            // Reset UI
+            selectedSeats = [];
+            document.querySelectorAll('.seat-selected').forEach(button => {
+                button.classList.remove('seat-selected');
+                button.classList.add('seat-available');
+            });
+
+            updateSummary();
+        });
+
+        // Continue to payment button
+        document.getElementById('continueToPayment').addEventListener('click', function () {
+            if (selectedSeats.length === 0) {
+                showError('Please select at least one seat');
+                return;
+            }
+
+            const seatIds = selectedSeats.map(s => s.id).join(',');
+            window.location.href = `/bookings/confirm_booking?show_id=${showId}&seat_ids=${seatIds}`;
+        });
+
+        // Refresh seats button
+        document.getElementById('refreshSeats').addEventListener('click', function () {
+            refreshSeatStatus();
+        });
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshSeatStatus, 30000);
+    }
+
+    async function refreshSeatStatus() {
+        try {
+            const response = await fetch(`/bookings/api/show/${showId}/seat_status`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Expected JSON but got:', text.substring(0, 200));
+                throw new Error('Server returned non-JSON response');
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.seat_layout) {
+                updateSeatLayout(data.seat_layout);
+            } else {
+                console.error('Failed to refresh seat status:', data.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error('Error refreshing seat status:', error);
+        }
+    }
+
+    function updateSeatLayout(seatLayout) {
+        // Update seat statuses based on server response
+        // Handle both array and object formats
+        if (Array.isArray(seatLayout.layout)) {
+            // Handle array format
+            seatLayout.layout.forEach(seat => {
+                const button = document.querySelector(`[data-seat-id="${seat.id}"]`);
+                if (button) {
+                    // Remove all status classes
+                    button.classList.remove('seat-available', 'seat-selected', 'seat-locked', 'seat-booked');
+
+                    // Add current status class
+                    button.classList.add(`seat-${seat.status}`);
+
+                    // Update disabled state
+                    if (seat.status === 'booked' || seat.status === 'locked') {
+                        button.disabled = true;
+
+                        // If seat was selected by current user but now locked/booked
+                        if (selectedSeats.find(s => s.id === seat.id)) {
+                            selectedSeats = selectedSeats.filter(s => s.id !== seat.id);
+                            button.classList.remove('seat-selected');
+                            updateSummary();
+                        }
+                    } else {
+                        button.disabled = false;
                     }
-                } else {
-                    button.disabled = false;
+                }
+            });
+        } else {
+            // Handle object format (original code)
+            for (const [row, seats] of Object.entries(seatLayout)) {
+                if (Array.isArray(seats)) {
+                    seats.forEach(seat => {
+                        const button = document.querySelector(`[data-seat-id="${seat.id}"]`);
+                        if (button) {
+                            // Remove all status classes
+                            button.classList.remove('seat-available', 'seat-selected', 'seat-locked', 'seat-booked');
+
+                            // Add current status class
+                            button.classList.add(`seat-${seat.status}`);
+
+                            // Update disabled state
+                            if (seat.status === 'booked' || seat.status === 'locked') {
+                                button.disabled = true;
+
+                                // If seat was selected by current user but now locked/booked
+                                if (selectedSeats.find(s => s.id === seat.id)) {
+                                    selectedSeats = selectedSeats.filter(s => s.id !== seat.id);
+                                    button.classList.remove('seat-selected');
+                                    updateSummary();
+                                }
+                            } else {
+                                button.disabled = false;
+                            }
+                        }
+                    });
                 }
             }
-        });
+        }
     }
-}
 
-function showLoading(show) {
-    document.getElementById('loadingMessage').style.display = show ? 'block' : 'none';
-}
+    function showLoading(show) {
+        document.getElementById('loadingMessage').style.display = show ? 'block' : 'none';
+    }
 
-function showError(message) {
-    document.getElementById('errorMessage').textContent = message;
-    const modal = new bootstrap.Modal(document.getElementById('errorModal'));
-    modal.show();
-}
+    function showError(message) {
+        document.getElementById('errorMessage').textContent = message;
+        const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+        modal.show();
+    }
+
+    // Enhanced tooltip functionality
+    function showSeatTooltip(seatButton) {
+        const seatName = seatButton.dataset.seatName;
+        const seatType = seatButton.dataset.seatType;
+
+        // Remove existing tooltip
+        hideSeatTooltip();
+
+        // Create tooltip
+        const tooltip = document.createElement('div');
+        tooltip.id = 'seat-tooltip';
+        tooltip.className = 'seat-tooltip';
+        tooltip.innerHTML = `
+            <strong>${seatName}</strong><br>
+            <small>${seatType.charAt(0).toUpperCase() + seatType.slice(1)} Seat</small>
+        `;
+
+        document.body.appendChild(tooltip);
+
+        // Position tooltip
+        const rect = seatButton.getBoundingClientRect();
+        tooltip.style.left = (rect.left + rect.width / 2 - tooltip.offsetWidth / 2) + 'px';
+        tooltip.style.top = (rect.top - tooltip.offsetHeight - 10) + 'px';
+    }
+
+    function hideSeatTooltip() {
+        const tooltip = document.getElementById('seat-tooltip');
+        if (tooltip) {
+            tooltip.remove();
+        }
+    }
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            // Reset selection on Escape
+            document.getElementById('resetSelection').click();
+        } else if (e.key === 'Enter' && selectedSeats.length > 0) {
+            // Continue to payment on Enter
+            document.getElementById('continueToPayment').click();
+        }
+    });
 </script>
 {% endblock %}

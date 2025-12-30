@@ -27,11 +27,12 @@
                                     <span class="payment-details-label">Booking ID:</span>
                                     <span>
                                         {% if payment.booking %}
-                                            <a href="{{ url_for('bookings.view', id=payment.booking.id) }}" class="text-decoration-none">
-                                                #{{ payment.booking.id }}
-                                            </a>
+                                        <a href="{{ url_for('bookings.view', id=payment.booking.id) }}"
+                                            class="text-decoration-none">
+                                            #{{ payment.booking.id }}
+                                        </a>
                                         {% else %}
-                                            N/A
+                                        N/A
                                         {% endif %}
                                     </span>
                                 </div>
@@ -49,7 +50,8 @@
                                 </div>
                                 <div class="payment-details-row">
                                     <span class="payment-details-label">Payment Date:</span>
-                                    <span>{{ payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A' }}</span>
+                                    <span>{{ payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else
+                                        'N/A' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -240,11 +242,18 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>{{ payment.booking.show.movie.title if payment.booking.show and payment.booking.show.movie else 'N/A' }}</td>
-                                    <td>{{ payment.booking.show.screen.name if payment.booking.show and payment.booking.show.screen else 'N/A' }}</td>
-                                    <td>{{ payment.booking.show.show_date.strftime('%d %b %Y') if payment.booking.show and payment.booking.show.show_date else 'N/A' }}<br>{{ payment.booking.show.show_time.strftime('%H:%M') if payment.booking.show and payment.booking.show.show_time else 'N/A' }}</td>
-                                    <td>{{ payment.booking.seats if payment.booking and payment.booking.seats else 'N/A' }}</td>
-                                    <td class="text-end">₹{{ "%.2f"|format(payment.amount) if payment.amount else '0.00' }}</td>
+                                    <td>{{ payment.booking.show.movie.name if payment.booking.show and
+                                        payment.booking.show.movie else 'N/A' }}</td>
+                                    <td>{{ payment.booking.show.screen.name if payment.booking.show and
+                                        payment.booking.show.screen else 'N/A' }}</td>
+                                    <td>{{ payment.booking.show.show_date.strftime('%d %b %Y') if payment.booking.show
+                                        and payment.booking.show.show_date else 'N/A' }}<br>{{
+                                        payment.booking.show.show_time.strftime('%H:%M') if payment.booking.show and
+                                        payment.booking.show.show_time else 'N/A' }}</td>
+                                    <td>{{ payment.booking.seats if payment.booking and payment.booking.seats else 'N/A'
+                                        }}</td>
+                                    <td class="text-end">₹{{ "%.2f"|format(payment.amount) if payment.amount else '0.00'
+                                        }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -326,7 +335,8 @@
                 <div class="d-flex justify-content-between flex-wrap">
                     <div class="mb-2">
                         {% if payment.booking %}
-                        <a href="{{ url_for('bookings.view', id=payment.booking.id) }}" class="btn btn-outline-secondary me-2">
+                        <a href="{{ url_for('bookings.view', id=payment.booking.id) }}"
+                            class="btn btn-outline-secondary me-2">
                             <i class="fas fa-ticket-alt me-2"></i>View Booking
                         </a>
                         {% endif %}
@@ -338,47 +348,48 @@
                         <a href="{{ url_for('payments.receipt', id=payment.id) }}" class="btn btn-primary me-2">
                             <i class="fas fa-receipt me-2"></i>View Receipt
                         </a>
-                        <a href="{{ url_for('payments.status_history', id=payment.id) }}" class="btn btn-outline-info me-2">
+                        <a href="{{ url_for('payments.status_history', id=payment.id) }}"
+                            class="btn btn-outline-info me-2">
                             <i class="fas fa-history me-2"></i>Status History
                         </a>
                         {% if current_user.role == 'admin' %}
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-outline-warning dropdown-toggle" 
-                                        data-bs-toggle="dropdown" 
-                                        aria-expanded="false"
-                                        title="Admin Actions">
-                                    <i class="fas fa-cog"></i>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    {% if payment.can_be_refunded() %}
-                                    <li>
-                                        <a class="dropdown-item text-warning" 
-                                           href="{{ url_for('payments.refund', id=payment.id) }}">
-                                            <i class="fas fa-undo me-2"></i>Process Refund
-                                        </a>
-                                    </li>
-                                    {% endif %}
-                                    <li>
-                                        <a class="dropdown-item text-info" 
-                                           href="{{ url_for('payments.update_status', id=payment.id) }}">
-                                            <i class="fas fa-edit me-2"></i>Update Status
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" 
-                                           href="{{ url_for('payments.email_receipt', id=payment.id) }}">
-                                            <i class="fas fa-envelope me-2"></i>Email Receipt
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item"
-                                           href="{{ url_for('payments.payment_audit_trail', id=payment.id) }}">
-                                            <i class="fas fa-shield-alt me-2"></i>Audit Trail
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-warning dropdown-toggle"
+                                data-bs-toggle="dropdown" aria-expanded="false" title="Admin Actions">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                {% if payment.can_be_refunded() %}
+                                <li>
+                                    <a class="dropdown-item text-warning"
+                                        href="{{ url_for('payments.refund', id=payment.id) }}">
+                                        <i class="fas fa-undo me-2"></i>Process Refund
+                                    </a>
+                                </li>
+                                {% endif %}
+                                <li>
+                                    <a class="dropdown-item text-info"
+                                        href="{{ url_for('payments.update_status', id=payment.id) }}">
+                                        <i class="fas fa-edit me-2"></i>Update Status
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                        href="{{ url_for('payments.email_receipt', id=payment.id) }}">
+                                        <i class="fas fa-envelope me-2"></i>Email Receipt
+                                    </a>
+                                </li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                        href="{{ url_for('payments.payment_audit_trail', id=payment.id) }}">
+                                        <i class="fas fa-shield-alt me-2"></i>Audit Trail
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -390,42 +401,42 @@
 
 {% block styles %}
 <style>
-.payment-section {
-    background-color: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    border-left: 4px solid #007bff;
-    margin-bottom: 15px;
-}
+    .payment-section {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #007bff;
+        margin-bottom: 15px;
+    }
 
-.payment-section-title {
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #007bff;
-    border-bottom: 1px solid #dee2e6;
-    padding-bottom: 5px;
-}
+    .payment-section-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #007bff;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 5px;
+    }
 
-.payment-details {
-    margin-bottom: 0;
-}
+    .payment-details {
+        margin-bottom: 0;
+    }
 
-.payment-details-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    padding-bottom: 5px;
-    border-bottom: 1px dashed #dee2e6;
-}
+    .payment-details-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+        border-bottom: 1px dashed #dee2e6;
+    }
 
-.payment-details-row:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
+    .payment-details-row:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
 
-.payment-details-label {
-    font-weight: bold;
-    color: #495057;
-}
+    .payment-details-label {
+        font-weight: bold;
+        color: #495057;
+    }
 </style>
 {% endblock %}

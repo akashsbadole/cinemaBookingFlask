@@ -341,7 +341,7 @@ class Seat(db.Model):
     price = db.Column(db.Numeric(10, 2), nullable=False)
     
     # Relationships
-    booking_seats = db.relationship('BookingSeat', backref='screen_seat', lazy=True, overlaps="seat_bookings")
+    booking_seats = db.relationship('BookingSeat', backref='screen_seat', lazy=True, overlaps="seat_bookings,screen_seat")
     
     # Unique constraint for seat within a screen
     __table_args__ = (db.UniqueConstraint('screen_id', 'row', 'column', name='_seat_location_uc'),)
@@ -411,10 +411,11 @@ class SeatLock(db.Model):
             return False, "Seat is already locked"
         
         # Check if seat is already booked
-        from app.bookings.models import BookingSeat
-        booked_seat = BookingSeat.query.filter_by(
-            seat_id=seat_id,
-            show_id=show_id
+        from app.bookings.models import BookingSeat, Booking
+        booked_seat = db.session.query(BookingSeat).join(Booking).filter(
+            BookingSeat.seat_id == seat_id,
+            Booking.show_id == show_id,
+            Booking.status.in_(['confirmed', 'pending'])
         ).first()
         
         if booked_seat:
@@ -457,16 +458,32 @@ class SeatLock(db.Model):
     @classmethod
     def release_expired_locks(cls):
         """Release all expired locks"""
-        expired_locks = cls.query.filter(
-            cls.is_active == True,
-            cls.expires_at < datetime.utcnow()
-        ).all()
-        
-        for lock in expired_locks:
-            lock.is_active = False
-        
-        db.session.commit()
-        return len(expired_locks)
+        try:
+            # Use a single update query instead of updating individual records
+            expired_count = db.session.query(cls).filter(
+                cls.is_active == True,
+                cls.expires_at < datetime.utcnow()
+            ).update({cls.is_active: False}, synchronize_session=False)
+            
+            db.session.commit()
+            return expired_count
+        except Exception as e:
+            db.session.rollback()
+            # If there's an integrity error, try deleting expired locks instead
+            try:
+                expired_locks = cls.query.filter(
+                    cls.is_active == True,
+                    cls.expires_at < datetime.utcnow()
+                ).all()
+                
+                for lock in expired_locks:
+                    db.session.delete(lock)
+                
+                db.session.commit()
+                return len(expired_locks)
+            except Exception as e2:
+                db.session.rollback()
+                return 0
     
     @classmethod
     def get_locked_seats_for_show(cls, show_id):

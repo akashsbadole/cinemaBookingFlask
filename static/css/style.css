@@ -475,7 +475,8 @@ footer a:hover {
 
 /* Seat Selection Grid */
 .seat-grid {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-sm);
     margin: var(--spacing-xl) 0;
     justify-content: center;

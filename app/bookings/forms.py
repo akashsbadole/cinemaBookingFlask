@@ -39,7 +39,8 @@ class BookingForm(FlaskForm):
     payment_method = SelectField('Payment Method', choices=[
         ('cash', 'Cash'),
         ('card', 'Credit/Debit Card'),
-        ('upi', 'UPI')
+        ('upi', 'UPI'),
+        ('net_banking', 'Net Banking')
     ], validators=[DataRequired(message='Please select a payment method')])
     payment_reference = StringField('Payment Reference', validators=[
         Optional(),
@@ -188,8 +189,14 @@ class SeatSelectionForm(FlaskForm):
     def validate_selected_seats(self, field):
         """Validate selected seats format and availability with enhanced checks"""
         if field.data:
-            # Parse seat data (expecting format like "A1,A2,A3")
-            seat_ids = [int(sid.strip()) for sid in field.data.split(',') if sid.strip()]
+            # Handle both string and integer inputs
+            if isinstance(field.data, int):
+                seat_ids = [field.data]
+            elif isinstance(field.data, str):
+                # Parse seat data (expecting format like "A1,A2,A3")
+                seat_ids = [int(sid.strip()) for sid in field.data.split(',') if sid.strip()]
+            else:
+                raise ValidationError('Invalid seat selection format')
             
             if len(seat_ids) > 10:
                 raise ValidationError('Maximum 10 seats can be booked at once')
@@ -337,8 +344,14 @@ class SeatLockForm(FlaskForm):
     def validate_seat_ids(self, field):
         """Validate seat IDs format"""
         if field.data:
-            # Parse seat data
-            seat_ids = [int(sid.strip()) for sid in field.data.split(',') if sid.strip()]
+            # Handle both string and integer inputs
+            if isinstance(field.data, int):
+                seat_ids = [field.data]
+            elif isinstance(field.data, str):
+                # Parse seat data
+                seat_ids = [int(sid.strip()) for sid in field.data.split(',') if sid.strip()]
+            else:
+                raise ValidationError('Invalid seat IDs format')
             
             if len(seat_ids) > 10:
                 raise ValidationError('Maximum 10 seats can be locked at once')

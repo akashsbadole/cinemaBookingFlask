@@ -78,35 +78,25 @@ def process_payment(booking_id):
             
             # Process based on payment method
             if payment_method == 'cash':
-                cash_form = CashPaymentForm(request.form)
-                if cash_form.validate():
-                    payment.mode = 'cash'
-                    payment.reference_id = cash_form.reference_id.data
-                    payment.mark_completed()
-                    db.session.add(payment)
-                    db.session.commit()
-                    
-                    # Log audit
-                    PaymentAudit.log_operation(
-                        payment.id, 'CREATE', current_user.id,
-                        new_values={'mode': 'cash', 'amount': amount_received, 'status': 'completed'},
-                        ip_address=request.remote_addr,
-                        user_agent=request.headers.get('User-Agent')
-                    )
-                    
-                    flash('Cash payment processed successfully!', 'success')
-                    return redirect(url_for('payments.receipt', id=payment.id))
-                else:
-                    flash('Please correct errors in form', 'danger')
-                    return render_template('payments/process.html', 
-                                        booking=booking, 
-                                        payment_method_form=payment_method_form,
-                                        cash_form=cash_form,
-                                        card_form=card_form,
-                                        upi_form=upi_form,
-                                        netbanking_form=netbanking_form,
-                                        wallet_form=wallet_form,
-                                        now_year=datetime.now().year)
+                # For cash payments, use amount_received as amount_tendered if not provided
+                amount_tendered = float(request.form.get('amount_tendered', amount_received))
+                
+                payment.mode = 'cash'
+                payment.reference_id = request.form.get('reference_id', f'CASH-{booking_id}-{datetime.now().strftime("%Y%m%d%H%M%S")}')
+                payment.mark_completed()
+                db.session.add(payment)
+                db.session.commit()
+                
+                # Log audit
+                PaymentAudit.log_operation(
+                    payment.id, 'CREATE', current_user.id,
+                    new_values={'mode': 'cash', 'amount': amount_received, 'status': 'completed'},
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+                
+                flash('Cash payment processed successfully!', 'success')
+                return redirect(url_for('payments.receipt', id=payment.id))
             
             elif payment_method == 'card':
                 card_form = CardPaymentForm(request.form)
@@ -743,12 +733,12 @@ def view(payment_id):
         flash('An error occurred while loading payment details', 'danger')
         return redirect(url_for('payments.index'))
 
-@bp.route('/receipt/<int:payment_id>')
+@bp.route('/receipt/<int:id>')
 @login_required
-def receipt(payment_id):
+def receipt(id):
     """View payment receipt"""
     try:
-        payment = Payment.query.get(payment_id)
+        payment = Payment.query.get(id)
         if not payment:
             flash('Payment not found', 'danger')
             return redirect(url_for('payments.index'))
@@ -756,7 +746,7 @@ def receipt(payment_id):
         return render_template('payments/receipt.html', title='Payment Receipt', payment=payment)
     
     except Exception as e:
-        ErrorLogger.log_error(e, context={'payment_id': payment_id, 'request': request, 'user_id': current_user.id})
+        ErrorLogger.log_error(e, context={'payment_id': id, 'request': request, 'user_id': current_user.id})
         logger.error(f"Error viewing receipt: {str(e)}")
         flash('An error occurred while loading receipt', 'danger')
         return redirect(url_for('payments.index'))
@@ -868,19 +858,19 @@ def payment_audit_trail(payment_id):
         flash('An error occurred while loading audit trail', 'danger')
         return redirect(url_for('payments.view', id=payment_id))
 
-@bp.route('/receipt/<int:payment_id>/pdf')
+@bp.route('/receipt/<int:id>/pdf')
 @login_required
-def receipt_pdf(payment_id):
+def receipt_pdf(id):
     """Generate PDF receipt for a payment"""
     try:
-        payment = Payment.query.get(payment_id)
+        payment = Payment.query.get(id)
         if not payment:
             flash('Payment not found', 'danger')
             return redirect(url_for('payments.index'))
         
         # Prepare receipt data for PDF generation
         receipt_data = {
-            'receipt_id': f"RCP-{payment_id}-{payment.created_at.strftime('%Y%m%d') if payment.created_at else 'N/A'}",
+            'receipt_id': f"RCP-{id}-{payment.created_at.strftime('%Y%m%d') if payment.created_at else 'N/A'}",
             'payment_date': payment.created_at.strftime('%d %b %Y %H:%M') if payment.created_at else 'N/A',
             'payment_method': payment.get_payment_method_display(),
             'payment_method_details': {},
@@ -891,7 +881,7 @@ def receipt_pdf(payment_id):
             'customer_contact': payment.booking.contact_number if payment.booking else 'N/A',
             'customer_email': payment.booking.email if payment.booking else 'N/A',
             'booking_id': f"#{payment.booking.id}" if payment.booking else 'N/A',
-            'movie_title': payment.booking.show.movie.title if payment.booking and payment.booking.show and payment.booking.show.movie else 'N/A',
+            'movie_title': payment.booking.show.movie.name if payment.booking and payment.booking.show and payment.booking.show.movie else 'N/A',
             'screen_name': payment.booking.show.screen.name if payment.booking and payment.booking.show and payment.booking.show.screen else 'N/A',
             'show_date': payment.booking.show.show_date.strftime('%d %b %Y') if payment.booking and payment.booking.show and payment.booking.show.show_date else 'N/A',
             'show_time': payment.booking.show.show_time.strftime('%H:%M') if payment.booking and payment.booking.show and payment.booking.show.show_time else 'N/A',

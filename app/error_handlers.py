@@ -262,15 +262,20 @@ class ErrorHandler:
     """Main error handling class with specific handlers for different error types"""
     
     @staticmethod
-    def handle_error(error, request, is_json=False):
+    def handle_error(error, request=None, is_json=False):
         """
         Handle general errors
         
         Args:
             error: Exception instance
-            request: Flask request object
+            request: Flask request object (optional, will use current request if not provided)
             is_json: Whether to return JSON response
         """
+        # Use current request if not provided
+        if request is None:
+            from flask import request as current_request
+            request = current_request
+        
         # Log the error
         ErrorLogger.log_error(error)
         
@@ -286,6 +291,7 @@ class ErrorHandler:
             if is_json:
                 return ErrorRenderer.render_json_error(500, error_message, {'general_error': True})
             else:
+                from flask import flash, redirect, url_for
                 flash(error_message, 'danger')
                 return redirect(request.referrer or url_for('index'))
     

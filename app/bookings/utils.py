@@ -6,7 +6,7 @@ import io
 import qrcode
 from flask import send_file
 from app.database import db
-from app.bookings.models import BookingSeat
+from app.bookings.models import Booking, BookingSeat
 from app.screens.models import Seat
 
 
@@ -84,6 +84,12 @@ class SeatManager:
     def lock_seats(show_id, seat_ids, duration_minutes=5, user_id=None):
         """Lock multiple seats for a specified duration (default 5 minutes)"""
         try:
+            # Ensure seat_ids is a list
+            if isinstance(seat_ids, int):
+                seat_ids = [seat_ids]
+            elif not isinstance(seat_ids, list):
+                raise Exception("Invalid seat IDs format")
+            
             # Clean up expired locks first
             SeatManager.cleanup_expired_locks()
             
@@ -127,6 +133,12 @@ class SeatManager:
     def release_seat_locks(show_id, seat_ids):
         """Release locks for specified seats"""
         try:
+            # Ensure seat_ids is a list
+            if isinstance(seat_ids, int):
+                seat_ids = [seat_ids]
+            elif not isinstance(seat_ids, list):
+                raise Exception("Invalid seat IDs format")
+                
             released_count = 0
             for seat_id in seat_ids:
                 # Find locked seats for this show and seat
@@ -177,6 +189,12 @@ class SeatManager:
         """Validate if specified seats are available for booking"""
         from app.shows.models import Show
         
+        # Ensure seat_ids is a list
+        if isinstance(seat_ids, int):
+            seat_ids = [seat_ids]
+        elif not isinstance(seat_ids, list):
+            return False, "Invalid seat IDs format"
+        
         show = Show.query.get(show_id)
         if not show:
             return False, "Show not found"
@@ -215,6 +233,12 @@ class BookingCalculator:
         from app.shows.models import Show
         from app.screens.models import Seat
         
+        # Ensure seat_ids is a list
+        if isinstance(seat_ids, int):
+            seat_ids = [seat_ids]
+        elif not isinstance(seat_ids, list):
+            return 0, "Invalid seat IDs format"
+        
         show = Show.query.get(show_id)
         if not show:
             return 0, "Show not found"
@@ -245,6 +269,12 @@ class BookingCalculator:
         """Get detailed price breakdown for booking"""
         from app.shows.models import Show
         from app.screens.models import Seat
+        
+        # Ensure seat_ids is a list
+        if isinstance(seat_ids, int):
+            seat_ids = [seat_ids]
+        elif not isinstance(seat_ids, list):
+            return {'error': 'Invalid seat IDs format'}
         
         show = Show.query.get(show_id)
         if not show:
@@ -315,6 +345,12 @@ def get_available_seats(show_id):
 def validate_booking_rules(show_id, seat_ids, user_id=None):
     """Validate booking rules and constraints"""
     from app.shows.models import Show
+    
+    # Ensure seat_ids is a list
+    if isinstance(seat_ids, int):
+        seat_ids = [seat_ids]
+    elif not isinstance(seat_ids, list):
+        return False, "Invalid seat IDs format"
     
     show = Show.query.get(show_id)
     if not show:
